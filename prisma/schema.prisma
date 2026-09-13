@@ -1,0 +1,387 @@
+// SchoolLedger — multi-tenant schema
+//
+// SECURITY NOTES (read before changing this file):
+// - Every tenant-owned table carries an explicit organizationId column and an
+//   index on it. ALL application queries must filter by organizationId — see
+//   src/lib/tenant.ts, which is the only place allowed to build that filter.
+// - No table stores a plaintext password. User.passwordHash is a bcrypt hash
+//   only (see src/lib/auth.ts).
+// - Money is stored as integer "cents" (amountCents) to avoid floating point
+//   errors in financial calculations — never store money as Float.
+// - AuditLog is append-only from the application's point of view: nothing in
+//   this codebase should ever update or delete an AuditLog row.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN // full access: billing, settings, invite/remove users, all data
+  ACCOUNTANT // record payments, manage children/categories, generate statements
+  MANAGER // manage children/categories, view financials, cannot manage billing/users
+  VIEWER // read-only, scope limited by ViewerScope
+}
+
+enum PaymentMethod {
+  CASH
+  EFT
+  CARD
+  OTHER
+}
+
+enum PlanEntryStatus {
+  UPCOMING
+  OUTSTANDING
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+model Organization {
+  id                String   @id @default(cuid())
+  name              String
+  countryCode       String // ISO 3166-1 alpha-2, drives currency + phone format
+  currencyCode      String // ISO 4217, e.g. ZAR, USD
+  addressLine1      String?
+  addressLine2      String?
+  province           String?
+  logoUrl           String?
+  letterheadUrl     String?
+  bankName          String?
+  // Never store full bank account numbers in plaintext beyond what's needed
+  // to print on a statement. Kept optional and separate from anything else
+  // sensitive so it can be encrypted-at-rest (see SECURITY.md) without a
+  // schema change later (encryption handled at the field level in app code).
+  bankAccountNumber String?
+  timezone          String   @default("Africa/Johannesburg")
+  stripeCustomerId  String?  @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId     String?
+  // trialing | active | past_due | canceled | incomplete — mirrors Stripe's
+  // own subscription status values so the webhook handler can copy them
+  // across almost verbatim (see src/app/api/webhooks/stripe/route.ts).
+  subscriptionStatus String  @default("trialing")
+  currentPeriodEnd  DateTime?
+  trialEndsAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  memberships   Membership[]
+  invites       Invite[]
+  categories    Category[]
+  children      Child[]
+  paymentTypes  PaymentType[]
+  planEntries   FinancialPlanEntry[]
+  payments      Payment[]
+  creditBalances CreditBalance[]
+  auditLogs     AuditLog[]
+  events        Event[]
+
+  @@map("organizations")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  // bcrypt hash only, never plaintext or reversibly encrypted.
+  passwordHash  String
+  name          String
+  emailVerified DateTime?
+  // Incremented on password change / suspicious activity to invalidate
+  // existing sessions/JWTs (checked in the NextAuth jwt callback).
+  tokenVersion  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  memberships Membership[]
+  auditLogs   AuditLog[]
+  payments    Payment[] @relation("RecordedBy")
+
+  @@map("users")
+}
+
+// A user's role within one specific school/organization. A user can belong
+// to more than one organization (e.g. an accountant who works with several
+// schools), always with an independent role per org.
+model Membership {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           Role
+  createdAt      DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+// Pending invitations. Token is a random opaque string (never the invite id)
+// hashed with SHA-256 before storage, same principle as a password reset
+// token, so a leaked database dump doesn't hand out valid invite links.
+model Invite {
+  id             String       @id @default(cuid())
+  organizationId String
+  email          String
+  role           Role
+  tokenHash      String       @unique
+  status         InviteStatus @default(PENDING)
+  invitedByUserId String
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("invites")
+}
+
+// Category / sub-category hierarchy (e.g. Daycare > Ducks Class, or Primary
+// School > Grade 1). Self-referential so nesting depth is not hardcoded.
+model Category {
+  id             String    @id @default(cuid())
+  organizationId String
+  parentId       String?
+  name           String
+  monthlyFeeCents Int?      // null = inherits nothing; leaf categories should set this
+  archived       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       Category?    @relation("CategoryToParent", fields: [parentId], references: [id])
+  children     Category[]   @relation("CategoryToParent")
+  learners     Child[]
+  eventCategories EventCategory[]
+
+  @@index([organizationId])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Child {
+  id             String    @id @default(cuid())
+  organizationId String
+  categoryId     String
+  firstName      String
+  lastName       String
+  parentName     String
+  // Stored in E.164 format (e.g. +27821234567), validated against
+  // organization.countryCode at the API boundary — see src/lib/validation.ts.
+  parentPhone    String?
+  parentEmail    String?
+  enrollmentDate DateTime
+  exitDate       DateTime?
+  feeOverrideCents Int?
+  // Set whenever an admin/accountant/manager marks a payment reminder as
+  // sent for this child (see /dashboard/reminders) — purely informational,
+  // lets whoever's doing month-end reminders see who's already been
+  // nudged without re-checking the audit log for each child.
+  lastReminderSentAt DateTime?
+  archived       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id])
+  planEntries  FinancialPlanEntry[]
+  payments     Payment[]
+  creditBalance CreditBalance?
+
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([organizationId, lastName])
+  @@map("children")
+}
+
+model PaymentType {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  isRecurring    Boolean  @default(false)
+  // Used for one-time charges (Registration, Uniform, Trip) generated
+  // automatically — e.g. the mandatory Registration charge on enrollment.
+  // Recurring types (School Fees) ignore this and use the category's
+  // monthlyFeeCents / the child's feeOverrideCents instead.
+  defaultAmountCents Int?
+  active         Boolean  @default(true)
+  // True for the dedicated PaymentType an Event auto-creates for itself
+  // (see the Event model) — kept out of the manually-managed Payment Types
+  // settings list so admins aren't confused by dozens of one-off event
+  // types mixed in with the ones they actually curate, but it still works
+  // exactly like any other one-time type for recording/allocating a
+  // payment against it.
+  isEventType    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planEntries  FinancialPlanEntry[]
+  event        Event?
+
+  @@index([organizationId])
+  @@map("payment_types")
+}
+
+// A one-time, class-wide charge (e.g. "September Trip — R750") — spec
+// section 9. Creating an Event auto-generates a one-time FinancialPlanEntry
+// for every active child in the selected category/categories via its own
+// dedicated one-time PaymentType (so it reuses the existing payment
+// recording/allocation machinery instead of inventing a parallel one). An
+// admin can later remove an individual child (deleting their entry) if
+// they're not participating — see the events API routes for the rule that
+// blocks removing a child who has already paid.
+model Event {
+  id             String   @id @default(cuid())
+  organizationId String
+  paymentTypeId  String   @unique
+  name           String
+  eventDate      DateTime
+  amountCents    Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  paymentType  PaymentType     @relation(fields: [paymentTypeId], references: [id])
+  categories   EventCategory[]
+
+  @@index([organizationId])
+  @@map("events")
+}
+
+model EventCategory {
+  id         String @id @default(cuid())
+  eventId    String
+  categoryId String
+
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([eventId, categoryId])
+  @@index([categoryId])
+  @@map("event_categories")
+}
+
+// One row per child, per month/charge, per payment type. Recurring monthly
+// fee rows are generated from enrollment/exit dates; one-time rows (events,
+// registration) are created directly. Amounts are locked at creation time —
+// changing a fee later does not retroactively alter existing rows.
+model FinancialPlanEntry {
+  id             String          @id @default(cuid())
+  organizationId String
+  childId        String
+  paymentTypeId  String
+  year           Int
+  month          Int?            // 1-12, null for one-time (event/registration) charges
+  description    String
+  amountDueCents Int
+  amountPaidCents Int            @default(0)
+  status         PlanEntryStatus @default(OUTSTANDING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  paymentType  PaymentType       @relation(fields: [paymentTypeId], references: [id])
+  allocations  PaymentAllocation[]
+
+  @@index([organizationId])
+  @@index([childId, year, month])
+  @@map("financial_plan_entries")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  organizationId  String
+  childId         String
+  amountCents     Int
+  method          PaymentMethod
+  date            DateTime
+  reference       String?
+  notes           String?
+  recordedByUserId String
+  createdAt       DateTime      @default(now())
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child               @relation(fields: [childId], references: [id])
+  recordedBy   User                @relation("RecordedBy", fields: [recordedByUserId], references: [id])
+  allocations  PaymentAllocation[]
+  receipt      Receipt?
+
+  @@index([organizationId])
+  @@index([childId])
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id                   String @id @default(cuid())
+  paymentId            String
+  financialPlanEntryId String
+  amountCents          Int
+
+  payment            Payment             @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  financialPlanEntry FinancialPlanEntry  @relation(fields: [financialPlanEntryId], references: [id])
+
+  @@index([paymentId])
+  @@index([financialPlanEntryId])
+  @@map("payment_allocations")
+}
+
+model Receipt {
+  id            String   @id @default(cuid())
+  paymentId     String   @unique
+  number        String   @unique // REC-{year}-{6-digit sequence}
+  createdAt     DateTime @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("receipts")
+}
+
+model CreditBalance {
+  id             String   @id @default(cuid())
+  organizationId String
+  childId        String   @unique
+  amountCents    Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("credit_balances")
+}
+
+// Append-only trail: who did what, when. Required both for the "Frank
+// viewed records" activity feed the product spec asks for, and for being
+// able to answer "who accessed/changed this record" if a customer or
+// regulator ever asks after an incident.
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         String   // e.g. "payment.created", "child.archived", "statement.viewed"
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
+}
