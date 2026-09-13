@@ -28,7 +28,10 @@ export async function logAudit(entry: {
         action: entry.action,
         entityType: entry.entityType,
         entityId: entry.entityId ?? null,
-        metadata: entry.metadata ?? Prisma.JsonNull,
+        metadata:
+          entry.metadata !== undefined
+            ? (entry.metadata as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
       },
     });
   } catch (err) {
