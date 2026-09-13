@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 /**
  * Write an audit trail entry. Call this for anything a school admin would
@@ -27,7 +28,7 @@ export async function logAudit(entry: {
         action: entry.action,
         entityType: entry.entityType,
         entityId: entry.entityId ?? null,
-        metadata: entry.metadata,
+        metadata: entry.metadata ?? Prisma.JsonNull,
       },
     });
   } catch (err) {
