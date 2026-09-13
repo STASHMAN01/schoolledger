@@ -59,6 +59,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.tokenVersion = (user as { tokenVersion: number }).tokenVersion;
       }
 
+      // This revalidation needs Prisma, which cannot run in the Edge
+      // runtime that middleware.ts executes in (Prisma needs a real
+      // TCP/Node runtime for its Postgres connection). Skip it there —
+      // middleware still gets a validly-signed token for its coarse
+      // "is there a session at all" redirect check, and every actual
+      // page/API request (Node.js runtime, not Edge) still gets full
+      // per-request enforcement via requireMembership/requireSession,
+      // which call this same callback in a Node context. Without this
+      // guard, every middleware-gated request throws trying to reach
+      // Postgres from Edge, which surfaces to users as a login that
+      // silently fails or immediately bounces back to /login.
+      if (process.env.NEXT_RUNTIME === "edge") {
+        return token;
+      }
+
       // Invalidate this token if the user's tokenVersion has since been
       // bumped (password change, admin-forced logout, suspected compromise).
       if (typeof token.userId === "string") {
