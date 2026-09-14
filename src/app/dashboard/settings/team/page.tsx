@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
+import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
 type Member = { membershipId: string; userId: string; name: string; email: string; role: string };
 type Invite = { id: string; email: string; role: string; expiresAt: string; createdAt: string };
@@ -62,114 +63,114 @@ export default function TeamPage() {
   }
 
   if (role !== "ADMIN") {
-    return <p className="text-sm text-neutral-500">Only an admin can manage the team.</p>;
+    return <p className="text-sm text-muted-foreground">Only an admin can manage the team.</p>;
   }
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-semibold">Team</h1>
+    <div className="animate-in">
+      <PageHeader title="Team" />
 
-      <form
-        onSubmit={sendInvite}
-        className="mb-8 flex flex-wrap items-end gap-3 rounded border border-neutral-200 p-4"
-      >
-        <label className="flex flex-col gap-1 text-sm">
-          Email to invite
-          <input
-            required
-            type="email"
-            className="rounded border border-neutral-300 px-3 py-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Role
-          <select
-            className="rounded border border-neutral-300 px-3 py-2"
-            value={inviteRole}
-            onChange={(e) => setInviteRole(e.target.value as (typeof ROLES)[number])}
-          >
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Create invite link
-        </button>
-      </form>
+      <Card className="mb-8 p-4">
+        <form onSubmit={sendInvite} className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="invite-email">Email to invite</Label>
+            <Input
+              id="invite-email"
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="invite-role">Role</Label>
+            <Select
+              id="invite-role"
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as (typeof ROLES)[number])}
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Button type="submit">Create invite link</Button>
+        </form>
+      </Card>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
       {newLink && (
-        <div className="mb-6 rounded border border-green-200 bg-green-50 p-3 text-sm">
-          <p className="mb-1 text-green-800">
+        <Card className="mb-6 bg-success-soft p-3 text-sm">
+          <p className="mb-1 text-success">
             Invite created. Copy this link and send it yourself (email-sending isn&apos;t
             wired up yet) — it only works once and expires in 7 days:
           </p>
-          <code className="break-all">{newLink}</code>
-        </div>
+          <code className="break-all text-foreground">{newLink}</code>
+        </Card>
       )}
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
         <>
-          <h2 className="mb-2 text-lg font-medium">Members</h2>
-          <table className="mb-8 w-full text-sm">
-            <thead className="bg-neutral-50 text-left">
-              <tr>
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Email</th>
-                <th className="px-3 py-2">Role</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => (
-                <tr key={m.membershipId} className="border-t border-neutral-100">
-                  <td className="px-3 py-2">{m.name}</td>
-                  <td className="px-3 py-2">{m.email}</td>
-                  <td className="px-3 py-2">{m.role}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <h2 className="mb-2 text-lg font-medium">Pending invites</h2>
-          {invites.length === 0 ? (
-            <p className="text-sm text-neutral-500">No pending invites.</p>
-          ) : (
+          <h2 className="font-display mb-2 text-lg font-medium text-foreground">Members</h2>
+          <Card className="mb-8 overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-neutral-50 text-left">
+              <thead className="bg-background text-left text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2">Email</th>
-                  <th className="px-3 py-2">Role</th>
-                  <th className="px-3 py-2">Expires</th>
-                  <th className="px-3 py-2"></th>
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Email</th>
+                  <th className="px-3 py-2 font-medium">Role</th>
                 </tr>
               </thead>
-              <tbody>
-                {invites.map((i) => (
-                  <tr key={i.id} className="border-t border-neutral-100">
-                    <td className="px-3 py-2">{i.email}</td>
-                    <td className="px-3 py-2">{i.role}</td>
-                    <td className="px-3 py-2">
-                      {new Date(i.expiresAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        onClick={() => revoke(i.id)}
-                        className="text-xs text-neutral-500 underline"
-                      >
-                        Revoke
-                      </button>
-                    </td>
+              <tbody className="divide-y divide-border">
+                {members.map((m) => (
+                  <tr key={m.membershipId}>
+                    <td className="px-3 py-2 text-foreground">{m.name}</td>
+                    <td className="px-3 py-2 text-foreground">{m.email}</td>
+                    <td className="px-3 py-2 text-foreground">{m.role}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </Card>
+
+          <h2 className="font-display mb-2 text-lg font-medium text-foreground">
+            Pending invites
+          </h2>
+          {invites.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending invites.</p>
+          ) : (
+            <Card className="overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-background text-left text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Email</th>
+                    <th className="px-3 py-2 font-medium">Role</th>
+                    <th className="px-3 py-2 font-medium">Expires</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {invites.map((i) => (
+                    <tr key={i.id}>
+                      <td className="px-3 py-2 text-foreground">{i.email}</td>
+                      <td className="px-3 py-2 text-foreground">{i.role}</td>
+                      <td className="px-3 py-2 text-foreground">
+                        {new Date(i.expiresAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => revoke(i.id)}>
+                          Revoke
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
           )}
         </>
       )}

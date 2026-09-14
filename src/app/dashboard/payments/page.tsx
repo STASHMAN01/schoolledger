@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../OrgContext";
+import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
 type Category = { id: string; name: string };
 type Child = { id: string; firstName: string; lastName: string; categoryId: string };
@@ -123,127 +124,119 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-semibold">Payments</h1>
+    <div className="animate-in">
+      <PageHeader title="Payments" />
 
       {canRecord && (
-        <form
-          onSubmit={recordPayment}
-          className="mb-8 grid grid-cols-1 gap-3 rounded border border-neutral-200 p-4 sm:grid-cols-2"
-        >
-          <label className="flex flex-col gap-1 text-sm">
-            Category
-            <select
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.categoryId}
-              onChange={(e) =>
-                setForm({ ...form, categoryId: e.target.value, childId: "" })
-              }
-            >
-              <option value="">All categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Child
-            <select
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.childId}
-              onChange={(e) => setForm({ ...form, childId: e.target.value })}
-            >
-              <option value="">Select a child...</option>
-              {childrenInCategory.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.firstName} {c.lastName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Payment type (leave blank for general school fees)
-            <select
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.paymentTypeId}
-              onChange={(e) => setForm({ ...form, paymentTypeId: e.target.value })}
-            >
-              <option value="">General (oldest-first allocation)</option>
-              {paymentTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Amount
-            <input
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              inputMode="decimal"
-              placeholder="e.g. 1400"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Method
-            <select
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.method}
-              onChange={(e) => setForm({ ...form, method: e.target.value })}
-            >
-              <option value="CASH">Cash</option>
-              <option value="EFT">EFT</option>
-              <option value="CARD">Card</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Date
-            <input
-              required
-              type="date"
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Reference
-            <input
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.reference}
-              onChange={(e) => setForm({ ...form, reference: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            Notes
-            <input
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
-          </label>
-          <div className="sm:col-span-2">
-            <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-              Record payment
-            </button>
-          </div>
-        </form>
+        <Card as="div" className="mb-8 p-4">
+          <form
+            onSubmit={recordPayment}
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+          >
+            <Label className="flex flex-col gap-1">
+              Category
+              <Select
+                value={form.categoryId}
+                onChange={(e) =>
+                  setForm({ ...form, categoryId: e.target.value, childId: "" })
+                }
+              >
+                <option value="">All categories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Child
+              <Select
+                required
+                value={form.childId}
+                onChange={(e) => setForm({ ...form, childId: e.target.value })}
+              >
+                <option value="">Select a child...</option>
+                {childrenInCategory.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.firstName} {c.lastName}
+                  </option>
+                ))}
+              </Select>
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Payment type (leave blank for general school fees)
+              <Select
+                value={form.paymentTypeId}
+                onChange={(e) => setForm({ ...form, paymentTypeId: e.target.value })}
+              >
+                <option value="">General (oldest-first allocation)</option>
+                {paymentTypes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Amount
+              <Input
+                required
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                inputMode="decimal"
+                placeholder="e.g. 1400"
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Method
+              <Select
+                value={form.method}
+                onChange={(e) => setForm({ ...form, method: e.target.value })}
+              >
+                <option value="CASH">Cash</option>
+                <option value="EFT">EFT</option>
+                <option value="CARD">Card</option>
+                <option value="OTHER">Other</option>
+              </Select>
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Date
+              <Input
+                required
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Reference
+              <Input
+                value={form.reference}
+                onChange={(e) => setForm({ ...form, reference: e.target.value })}
+              />
+            </Label>
+            <Label className="flex flex-col gap-1 sm:col-span-2">
+              Notes
+              <Input
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              />
+            </Label>
+            <div className="sm:col-span-2">
+              <Button type="submit">Record payment</Button>
+            </div>
+          </form>
+        </Card>
       )}
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-      {success && <p className="mb-4 text-sm text-green-700">{success}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+      {success && <p className="mb-4 text-sm text-success">{success}</p>}
 
-      <h2 className="mb-3 text-lg font-medium">Payment history</h2>
+      <h2 className="font-display mb-3 text-lg font-medium text-foreground">Payment history</h2>
       <div className="mb-4 flex flex-wrap gap-3">
-        <select
-          className="rounded border border-neutral-300 px-3 py-2 text-sm"
+        <Select
+          className="w-auto"
           value={filterMethod}
           onChange={(e) => setFilterMethod(e.target.value)}
         >
@@ -252,9 +245,9 @@ export default function PaymentsPage() {
           <option value="EFT">EFT</option>
           <option value="CARD">Card</option>
           <option value="OTHER">Other</option>
-        </select>
-        <select
-          className="rounded border border-neutral-300 px-3 py-2 text-sm"
+        </Select>
+        <Select
+          className="w-auto"
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
         >
@@ -264,9 +257,9 @@ export default function PaymentsPage() {
               {c.name}
             </option>
           ))}
-        </select>
-        <select
-          className="rounded border border-neutral-300 px-3 py-2 text-sm"
+        </Select>
+        <Select
+          className="w-auto"
           value={filterChild}
           onChange={(e) => setFilterChild(e.target.value)}
         >
@@ -276,42 +269,42 @@ export default function PaymentsPage() {
               {c.firstName} {c.lastName}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : payments.length === 0 ? (
-        <p className="text-sm text-neutral-500">No payments found.</p>
+        <p className="text-sm text-muted-foreground">No payments found.</p>
       ) : (
-        <div className="overflow-x-auto rounded border border-neutral-200">
+        <Card as="div" className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left">
+            <thead className="bg-background text-left">
               <tr>
-                <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">Child</th>
-                <th className="px-3 py-2">Amount</th>
-                <th className="px-3 py-2">Method</th>
-                <th className="px-3 py-2">Receipt</th>
-                <th className="px-3 py-2">Recorded by</th>
+                <th className="px-3 py-2 text-muted-foreground">Date</th>
+                <th className="px-3 py-2 text-muted-foreground">Child</th>
+                <th className="px-3 py-2 text-muted-foreground">Amount</th>
+                <th className="px-3 py-2 text-muted-foreground">Method</th>
+                <th className="px-3 py-2 text-muted-foreground">Receipt</th>
+                <th className="px-3 py-2 text-muted-foreground">Recorded by</th>
               </tr>
             </thead>
             <tbody>
               {payments.map((p) => (
-                <tr key={p.id} className="border-t border-neutral-100">
-                  <td className="px-3 py-2">{new Date(p.date).toLocaleDateString()}</td>
-                  <td className="px-3 py-2">
+                <tr key={p.id} className="border-t border-border">
+                  <td className="px-3 py-2 text-foreground">{new Date(p.date).toLocaleDateString()}</td>
+                  <td className="px-3 py-2 text-foreground">
                     {p.child.firstName} {p.child.lastName}
                   </td>
-                  <td className="px-3 py-2">R{(p.amountCents / 100).toFixed(2)}</td>
-                  <td className="px-3 py-2">{p.method}</td>
-                  <td className="px-3 py-2">{p.receipt?.number ?? "-"}</td>
-                  <td className="px-3 py-2">{p.recordedBy.name}</td>
+                  <td className="px-3 py-2 text-foreground">R{(p.amountCents / 100).toFixed(2)}</td>
+                  <td className="px-3 py-2 text-foreground">{p.method}</td>
+                  <td className="px-3 py-2 text-foreground">{p.receipt?.number ?? "-"}</td>
+                  <td className="px-3 py-2 text-foreground">{p.recordedBy.name}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );

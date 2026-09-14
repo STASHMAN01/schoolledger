@@ -65,12 +65,14 @@ export function LinkButton({
 
 export function Card({
   className = "",
+  as = "div",
   ...props
-}: ComponentProps<"div">) {
+}: ComponentProps<"div"> & { as?: "div" | "button" }) {
+  const Comp = as as "div";
   return (
-    <div
+    <Comp
       className={`rounded-xl border border-border bg-surface shadow-sm ${className}`}
-      {...props}
+      {...(props as ComponentProps<"div">)}
     />
   );
 }

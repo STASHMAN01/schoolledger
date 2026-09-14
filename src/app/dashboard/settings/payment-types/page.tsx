@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
+import { Badge, Button, Card, Input, Label, PageHeader } from "@/components/ui";
 
 type PaymentType = {
   id: string;
@@ -82,89 +83,92 @@ export default function PaymentTypesPage() {
   }
 
   if (role !== "ADMIN") {
-    return <p className="text-sm text-neutral-500">Only an admin can manage payment types.</p>;
+    return <p className="text-sm text-muted-foreground">Only an admin can manage payment types.</p>;
   }
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-semibold">Payment types</h1>
+    <div className="animate-in">
+      <PageHeader title="Payment types" />
 
-      <form
-        onSubmit={addType}
-        className="mb-8 flex flex-wrap items-end gap-3 rounded border border-neutral-200 p-4"
-      >
-        <label className="flex flex-col gap-1 text-sm">
-          Name
-          <input
-            required
-            className="rounded border border-neutral-300 px-3 py-2"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Stationery"
-          />
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isRecurring}
-            onChange={(e) => setIsRecurring(e.target.checked)}
-          />
-          Recurring monthly
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Default amount (one-time types)
-          <input
-            className="w-40 rounded border border-neutral-300 px-3 py-2"
-            value={defaultAmount}
-            onChange={(e) => setDefaultAmount(e.target.value)}
-            placeholder="e.g. 500"
-            inputMode="decimal"
-            disabled={isRecurring}
-          />
-        </label>
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Add payment type
-        </button>
-      </form>
+      <Card className="mb-8 p-4">
+        <form onSubmit={addType} className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="pt-name">Name</Label>
+            <Input
+              id="pt-name"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Stationery"
+            />
+          </div>
+          <label className="flex items-center gap-2 pb-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+            />
+            Recurring monthly
+          </label>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="pt-amount">Default amount (one-time types)</Label>
+            <Input
+              id="pt-amount"
+              className="w-40"
+              value={defaultAmount}
+              onChange={(e) => setDefaultAmount(e.target.value)}
+              placeholder="e.g. 500"
+              inputMode="decimal"
+              disabled={isRecurring}
+            />
+          </div>
+          <Button type="submit">Add payment type</Button>
+        </form>
+      </Card>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left">
-            <tr>
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">Type</th>
-              <th className="px-3 py-2">Default amount</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {types.map((t) => (
-              <tr key={t.id} className="border-t border-neutral-100">
-                <td className="px-3 py-2">{t.name}</td>
-                <td className="px-3 py-2">{t.isRecurring ? "Recurring" : "One-time"}</td>
-                <td className="px-3 py-2">
-                  {t.defaultAmountCents !== null
-                    ? `R${(t.defaultAmountCents / 100).toFixed(2)}`
-                    : "-"}
-                </td>
-                <td className="px-3 py-2">{t.active ? "Active" : "Inactive"}</td>
-                <td className="px-3 py-2 text-right">
-                  <button
-                    onClick={() => toggleActive(t)}
-                    className="text-xs text-neutral-500 underline"
-                  >
-                    {t.active ? "Deactivate" : "Reactivate"}
-                  </button>
-                </td>
+        <Card className="overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-background text-left text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Name</th>
+                <th className="px-3 py-2 font-medium">Type</th>
+                <th className="px-3 py-2 font-medium">Default amount</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {types.map((t) => (
+                <tr key={t.id}>
+                  <td className="px-3 py-2 text-foreground">{t.name}</td>
+                  <td className="px-3 py-2 text-foreground">
+                    {t.isRecurring ? "Recurring" : "One-time"}
+                  </td>
+                  <td className="px-3 py-2 text-foreground">
+                    {t.defaultAmountCents !== null
+                      ? `R${(t.defaultAmountCents / 100).toFixed(2)}`
+                      : "-"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <Badge variant={t.active ? "success" : "neutral"}>
+                      {t.active ? "Active" : "Inactive"}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <Button variant="ghost" size="sm" onClick={() => toggleActive(t)}>
+                      {t.active ? "Deactivate" : "Reactivate"}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
       )}
     </div>
   );

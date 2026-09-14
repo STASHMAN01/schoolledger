@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useOrg } from "./OrgContext";
+import { Button } from "@/components/ui";
 
 /**
  * A persistent, impossible-to-miss banner once trial/subscription access
@@ -41,29 +42,26 @@ export function TrialBanner() {
       : "This school's subscription is not active.";
 
   return (
-    <div className="border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm text-amber-900">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
+    <div className="border-b border-accent/30 bg-accent-soft px-6 py-3 text-sm text-accent-soft-foreground">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
         <span>{reason} Access is paused until an admin subscribes.</span>
         {role === "ADMIN" && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => subscribe("monthly")}
-              disabled={loading !== null}
-              className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-50"
-            >
-              {loading === "monthly" ? "Redirecting..." : "Subscribe monthly"}
-            </button>
-            <button
+            <Button size="sm" onClick={() => subscribe("monthly")} disabled={loading !== null}>
+              {loading === "monthly" ? "Redirecting…" : "Subscribe monthly"}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => subscribe("yearly")}
               disabled={loading !== null}
-              className="rounded border border-neutral-900 px-3 py-1.5 disabled:opacity-50"
             >
-              {loading === "yearly" ? "Redirecting..." : "Subscribe yearly"}
-            </button>
+              {loading === "yearly" ? "Redirecting…" : "Subscribe yearly"}
+            </Button>
           </div>
         )}
       </div>
-      {error && <p className="mx-auto mt-1 max-w-5xl text-red-700">{error}</p>}
+      {error && <p className="mx-auto mt-1 max-w-6xl text-danger">{error}</p>}
     </div>
   );
 }

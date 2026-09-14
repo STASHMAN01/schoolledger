@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg, canManage } from "../OrgContext";
+import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
 type Category = { id: string; name: string; archived: boolean };
 type Child = {
@@ -107,103 +108,90 @@ export default function ChildrenPage() {
   }
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-semibold">Children</h1>
+    <div className="animate-in">
+      <PageHeader title="Children" />
 
       {canManage(role) && (
-        <form
-          onSubmit={addChild}
-          className="mb-8 grid grid-cols-1 gap-3 rounded border border-neutral-200 p-4 sm:grid-cols-2"
-        >
-          <label className="flex flex-col gap-1 text-sm">
-            Category
-            <select
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.categoryId}
-              onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-            >
-              <option value="">Select a category...</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Enrollment date
-            <input
-              required
-              type="date"
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.enrollmentDate}
-              onChange={(e) => setForm({ ...form, enrollmentDate: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            First name
-            <input
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.firstName}
-              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Last name
-            <input
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.lastName}
-              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Parent/guardian name
-            <input
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.parentName}
-              onChange={(e) => setForm({ ...form, parentName: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Parent phone (e.g. +27821234567)
-            <input
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.parentPhone}
-              onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            Parent email
-            <input
-              type="email"
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.parentEmail}
-              onChange={(e) => setForm({ ...form, parentEmail: e.target.value })}
-            />
-          </label>
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="rounded bg-neutral-900 px-4 py-2 text-white"
-            >
-              Add child
-            </button>
-          </div>
-        </form>
+        <Card as="div" className="mb-8 p-4">
+          <form onSubmit={addChild} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Label className="flex flex-col gap-1">
+              Category
+              <Select
+                required
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+              >
+                <option value="">Select a category...</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Enrollment date
+              <Input
+                required
+                type="date"
+                value={form.enrollmentDate}
+                onChange={(e) => setForm({ ...form, enrollmentDate: e.target.value })}
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              First name
+              <Input
+                required
+                value={form.firstName}
+                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Last name
+              <Input
+                required
+                value={form.lastName}
+                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Parent/guardian name
+              <Input
+                required
+                value={form.parentName}
+                onChange={(e) => setForm({ ...form, parentName: e.target.value })}
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Parent phone (e.g. +27821234567)
+              <Input
+                value={form.parentPhone}
+                onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
+              />
+            </Label>
+            <Label className="flex flex-col gap-1 sm:col-span-2">
+              Parent email
+              <Input
+                type="email"
+                value={form.parentEmail}
+                onChange={(e) => setForm({ ...form, parentEmail: e.target.value })}
+              />
+            </Label>
+            <div className="sm:col-span-2">
+              <Button type="submit">Add child</Button>
+            </div>
+          </form>
+        </Card>
       )}
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
       {siblingNotice && (
-        <p className="mb-4 text-sm text-amber-700">{siblingNotice}</p>
+        <p className="mb-4 text-sm text-accent-soft-foreground">{siblingNotice}</p>
       )}
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <select
-          className="rounded border border-neutral-300 px-3 py-2 text-sm"
+        <Select
+          className="max-w-xs"
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
         >
@@ -213,8 +201,8 @@ export default function ChildrenPage() {
               {c.name}
             </option>
           ))}
-        </select>
-        <label className="flex items-center gap-2 text-sm text-neutral-500">
+        </Select>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input
             type="checkbox"
             checked={showArchived}
@@ -225,13 +213,13 @@ export default function ChildrenPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : children.length === 0 ? (
-        <p className="text-sm text-neutral-500">No children found.</p>
+        <p className="text-sm text-muted-foreground">No children found.</p>
       ) : (
-        <div className="overflow-x-auto rounded border border-neutral-200">
+        <Card className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left">
+            <thead className="bg-background text-left">
               <tr>
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Category</th>
@@ -242,11 +230,11 @@ export default function ChildrenPage() {
             </thead>
             <tbody>
               {children.map((c) => (
-                <tr key={c.id} className="border-t border-neutral-100">
+                <tr key={c.id} className="border-t border-border">
                   <td className="px-3 py-2">
                     <Link
                       href={`/dashboard/children/${c.id}`}
-                      className="text-neutral-900 underline"
+                      className="text-foreground underline transition-standard hover:text-brand"
                     >
                       {c.firstName} {c.lastName}
                     </Link>
@@ -260,7 +248,7 @@ export default function ChildrenPage() {
                     <td className="px-3 py-2 text-right">
                       <button
                         onClick={() => toggleArchive(c)}
-                        className="text-xs text-neutral-500 underline"
+                        className="text-xs text-muted-foreground underline transition-standard hover:text-foreground"
                       >
                         {c.archived ? "Restore" : "Archive"}
                       </button>
@@ -270,7 +258,7 @@ export default function ChildrenPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );

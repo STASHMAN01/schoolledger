@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { Button, Card, Input, Label } from "@/components/ui";
 
 export function LoginForm() {
   const router = useRouter();
@@ -37,40 +38,54 @@ export function LoginForm() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <h1 className="mb-8 text-2xl font-semibold">Log in</h1>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          Email
-          <input
-            required
-            type="email"
-            className="rounded border border-neutral-300 px-3 py-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Password
-          <input
-            required
-            type="password"
-            className="rounded border border-neutral-300 px-3 py-2"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-2 rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50"
-        >
-          {loading ? "Logging in..." : "Log in"}
-        </button>
-      </form>
-      <p className="mt-6 text-sm text-neutral-500">
+      <div className="animate-in mb-8 flex flex-col items-center text-center">
+        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand font-display text-lg font-bold text-brand-foreground">
+          S
+        </div>
+        <h1 className="font-display text-2xl font-semibold text-foreground">
+          Welcome back
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Log in to manage your school&apos;s payments and statements.
+        </p>
+      </div>
+
+      <Card className="animate-in p-6">
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              required
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              required
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <Button type="submit" disabled={loading} className="mt-2">
+            {loading ? "Logging in…" : "Log in"}
+          </Button>
+        </form>
+      </Card>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         No account yet?{" "}
-        <Link href="/register" className="underline">
+        <Link href="/register" className="font-medium text-brand hover:underline">
           Set up your school
         </Link>
       </p>

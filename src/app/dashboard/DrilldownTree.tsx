@@ -23,38 +23,38 @@ export function DrilldownTree({ tree }: { tree: CategoryNode[] }) {
   }
 
   if (tree.length === 0) {
-    return <p className="text-sm text-neutral-500">Nothing here right now.</p>;
+    return <p className="text-sm text-muted-foreground">Nothing here right now.</p>;
   }
 
   return (
-    <div className="divide-y divide-neutral-100">
+    <div className="divide-y divide-border">
       {tree.map((category) => (
         <div key={category.categoryId}>
           <button
             onClick={() => toggle(openCategories, setOpenCategories, category.categoryId)}
-            className="flex w-full items-center justify-between py-2 text-left text-sm"
+            className="flex w-full items-center justify-between py-2 text-left text-sm text-foreground"
           >
             <span>{category.name}</span>
             <span className="font-medium">{formatCents(category.amountCents)}</span>
           </button>
           {openCategories.has(category.categoryId) && (
-            <div className="ml-4 border-l border-neutral-100 pl-4">
+            <div className="ml-4 border-l border-border pl-4">
               {category.paymentTypes.map((pt) => (
                 <div key={pt.paymentTypeId}>
                   <button
                     onClick={() => toggle(openTypes, setOpenTypes, pt.paymentTypeId)}
-                    className="flex w-full items-center justify-between py-2 text-left text-sm text-neutral-700"
+                    className="flex w-full items-center justify-between py-2 text-left text-sm text-muted-foreground"
                   >
                     <span>{pt.name}</span>
                     <span>{formatCents(pt.amountCents)}</span>
                   </button>
                   {openTypes.has(pt.paymentTypeId) && (
-                    <div className="ml-4 border-l border-neutral-100 pl-4">
+                    <div className="ml-4 border-l border-border pl-4">
                       {pt.children.map((c) => (
                         <Link
                           key={c.childId}
                           href={`/dashboard/children/${c.childId}`}
-                          className="flex items-center justify-between py-1.5 text-sm text-neutral-500 hover:text-neutral-900"
+                          className="transition-standard flex items-center justify-between py-1.5 text-sm text-muted-foreground hover:text-foreground"
                         >
                           <span className="underline">{c.name}</span>
                           <span>{formatCents(c.amountCents)}</span>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg, canManage } from "../OrgContext";
+import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
 type Category = {
   id: string;
@@ -82,15 +83,15 @@ export default function CategoriesPage() {
     return (
       <div key={category.id}>
         <div
-          className="flex items-center justify-between border-b border-neutral-100 py-2"
-          style={{ paddingLeft: depth * 20 }}
+          className="flex items-center justify-between border-b border-border py-2 px-4 last:border-b-0"
+          style={{ paddingLeft: depth * 20 + 16 }}
         >
           <div>
-            <span className={category.archived ? "text-neutral-400 line-through" : ""}>
+            <span className={category.archived ? "text-muted line-through" : "text-foreground"}>
               {category.name}
             </span>
             {category.monthlyFeeCents !== null && (
-              <span className="ml-2 text-xs text-neutral-500">
+              <span className="ml-2 text-xs text-muted-foreground">
                 R{(category.monthlyFeeCents / 100).toFixed(2)}/mo
               </span>
             )}
@@ -98,7 +99,7 @@ export default function CategoriesPage() {
           {canManage(role) && (
             <button
               onClick={() => toggleArchive(category)}
-              className="text-xs text-neutral-500 underline"
+              className="text-xs text-muted-foreground underline transition-standard hover:text-foreground"
             >
               {category.archived ? "Restore" : "Archive"}
             </button>
@@ -113,81 +114,75 @@ export default function CategoriesPage() {
   const activeCategories = categories.filter((c) => !c.archived);
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Categories</h1>
-        <label className="flex items-center gap-2 text-sm text-neutral-500">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-          />
-          Show archived
-        </label>
-      </div>
+    <div className="animate-in">
+      <PageHeader
+        title="Categories"
+        actions={
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            Show archived
+          </label>
+        }
+      />
 
       {canManage(role) && (
-        <form
-          onSubmit={addCategory}
-          className="mb-8 flex flex-wrap items-end gap-3 rounded border border-neutral-200 p-4"
-        >
-          <label className="flex flex-col gap-1 text-sm">
-            Name
-            <input
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Daycare, or Ducks Class"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Parent category (optional)
-            <select
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-            >
-              <option value="">None (top level)</option>
-              {activeCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Monthly fee (optional)
-            <input
-              className="w-32 rounded border border-neutral-300 px-3 py-2"
-              value={fee}
-              onChange={(e) => setFee(e.target.value)}
-              placeholder="e.g. 1400"
-              inputMode="decimal"
-            />
-          </label>
-          <button
-            type="submit"
-            className="rounded bg-neutral-900 px-4 py-2 text-white"
-          >
-            Add category
-          </button>
-        </form>
+        <Card as="div" className="mb-8 p-4">
+          <form onSubmit={addCategory} className="flex flex-wrap items-end gap-3">
+            <Label className="flex flex-col gap-1">
+              Name
+              <Input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Daycare, or Ducks Class"
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Parent category (optional)
+              <Select
+                value={parentId}
+                onChange={(e) => setParentId(e.target.value)}
+              >
+                <option value="">None (top level)</option>
+                {activeCategories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Monthly fee (optional)
+              <Input
+                className="w-32"
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+                placeholder="e.g. 1400"
+                inputMode="decimal"
+              />
+            </Label>
+            <Button type="submit">Add category</Button>
+          </form>
+        </Card>
       )}
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : roots.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-muted-foreground">
           No categories yet. Add your first one above — e.g. &quot;Daycare&quot;,
           then add sub-categories like &quot;Ducks Class&quot; underneath it.
         </p>
       ) : (
-        <div className="rounded border border-neutral-200">
+        <Card>
           {roots.map((c) => renderNode(c, 0))}
-        </div>
+        </Card>
       )}
     </div>
   );

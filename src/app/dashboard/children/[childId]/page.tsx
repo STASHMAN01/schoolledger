@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
+import { Card, Input } from "@/components/ui";
 
 type Entry = {
   id: string;
@@ -29,11 +30,11 @@ type ChildDetail = {
 type SiblingCandidate = { id: string; firstName: string; lastName: string };
 
 const statusColor: Record<string, string> = {
-  PAID: "text-green-700",
-  PARTIALLY_PAID: "text-amber-700",
-  OUTSTANDING: "text-red-700",
-  UPCOMING: "text-neutral-500",
-  CANCELLED: "text-neutral-400 line-through",
+  PAID: "text-success",
+  PARTIALLY_PAID: "text-accent",
+  OUTSTANDING: "text-danger",
+  UPCOMING: "text-muted",
+  CANCELLED: "text-muted line-through",
 };
 
 export default function ChildDetailPage() {
@@ -84,59 +85,66 @@ export default function ChildDetailPage() {
     selectedSiblingIds.length ? `&siblingIds=${selectedSiblingIds.join(",")}` : ""
   }`;
 
-  if (loading) return <p className="text-sm text-neutral-500">Loading...</p>;
-  if (!child) return <p className="text-sm text-neutral-500">Not found.</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+  if (!child) return <p className="text-sm text-muted-foreground">Not found.</p>;
 
   const totalDue = child.planEntries.reduce((sum, e) => sum + e.amountDueCents, 0);
   const totalPaid = child.planEntries.reduce((sum, e) => sum + e.amountPaidCents, 0);
   const outstanding = totalDue - totalPaid;
 
   return (
-    <div>
-      <Link href="/dashboard/children" className="text-sm text-neutral-500 underline">
+    <div className="animate-in">
+      <Link
+        href="/dashboard/children"
+        className="transition-standard text-sm text-muted-foreground underline hover:text-foreground"
+      >
         &larr; Back to children
       </Link>
-      <h1 className="mt-2 mb-1 text-2xl font-semibold">
+      <h1 className="font-display mt-2 mb-1 text-2xl font-semibold text-foreground">
         {child.firstName} {child.lastName}
       </h1>
-      <p className="mb-6 text-sm text-neutral-500">
+      <p className="mb-6 text-sm text-muted-foreground">
         {child.category.name} · Parent/guardian: {child.parentName}
       </p>
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded border border-neutral-200 p-4">
-          <p className="text-xs text-neutral-500">Total outstanding</p>
-          <p className="text-xl font-semibold">R{(outstanding / 100).toFixed(2)}</p>
-        </div>
-        <div className="rounded border border-neutral-200 p-4">
-          <p className="text-xs text-neutral-500">Total paid</p>
-          <p className="text-xl font-semibold">R{(totalPaid / 100).toFixed(2)}</p>
-        </div>
-        <div className="rounded border border-neutral-200 p-4">
-          <p className="text-xs text-neutral-500">Credit balance</p>
-          <p className="text-xl font-semibold">
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Total outstanding</p>
+          <p className="font-display mt-1 text-xl font-semibold text-foreground">
+            R{(outstanding / 100).toFixed(2)}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Total paid</p>
+          <p className="font-display mt-1 text-xl font-semibold text-foreground">
+            R{(totalPaid / 100).toFixed(2)}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Credit balance</p>
+          <p className="font-display mt-1 text-xl font-semibold text-foreground">
             R{((child.creditBalance?.amountCents ?? 0) / 100).toFixed(2)}
           </p>
-        </div>
+        </Card>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-end gap-4 rounded border border-neutral-200 p-4">
-        <label className="flex flex-col gap-1 text-sm">
+      <Card className="mb-6 flex flex-wrap items-end gap-4 p-4">
+        <label className="flex flex-col gap-1 text-sm text-muted-foreground">
           Statement year
-          <input
+          <Input
             type="number"
-            className="w-28 rounded border border-neutral-300 px-3 py-2"
+            className="w-28"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
           />
         </label>
         {siblings.length > 0 && (
           <div className="text-sm">
-            <p className="mb-1 text-neutral-500">
+            <p className="mb-1 text-muted-foreground">
               Same surname found — include in a joint statement?
             </p>
             {siblings.map((s) => (
-              <label key={s.id} className="mr-4 inline-flex items-center gap-1">
+              <label key={s.id} className="mr-4 inline-flex items-center gap-1 text-foreground">
                 <input
                   type="checkbox"
                   checked={selectedSiblingIds.includes(s.id)}
@@ -151,32 +159,32 @@ export default function ChildDetailPage() {
           href={statementUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded bg-neutral-900 px-4 py-2 text-sm text-white"
+          className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
         >
           View / download statement (PDF)
         </a>
-      </div>
+      </Card>
 
-      <div className="overflow-x-auto rounded border border-neutral-200">
+      <Card className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left">
+          <thead className="bg-background text-left">
             <tr>
-              <th className="px-3 py-2">Period</th>
-              <th className="px-3 py-2">Description</th>
-              <th className="px-3 py-2">Due</th>
-              <th className="px-3 py-2">Paid</th>
-              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2 text-muted-foreground">Period</th>
+              <th className="px-3 py-2 text-muted-foreground">Description</th>
+              <th className="px-3 py-2 text-muted-foreground">Due</th>
+              <th className="px-3 py-2 text-muted-foreground">Paid</th>
+              <th className="px-3 py-2 text-muted-foreground">Status</th>
             </tr>
           </thead>
           <tbody>
             {child.planEntries.map((e) => (
-              <tr key={e.id} className="border-t border-neutral-100">
-                <td className="px-3 py-2">
+              <tr key={e.id} className="border-t border-border">
+                <td className="px-3 py-2 text-foreground">
                   {e.month ? `${e.year}-${String(e.month).padStart(2, "0")}` : e.year}
                 </td>
-                <td className="px-3 py-2">{e.description}</td>
-                <td className="px-3 py-2">R{(e.amountDueCents / 100).toFixed(2)}</td>
-                <td className="px-3 py-2">R{(e.amountPaidCents / 100).toFixed(2)}</td>
+                <td className="px-3 py-2 text-foreground">{e.description}</td>
+                <td className="px-3 py-2 text-foreground">R{(e.amountDueCents / 100).toFixed(2)}</td>
+                <td className="px-3 py-2 text-foreground">R{(e.amountPaidCents / 100).toFixed(2)}</td>
                 <td className={`px-3 py-2 ${statusColor[e.status] ?? ""}`}>
                   {e.status.replace("_", " ")}
                 </td>
@@ -184,7 +192,7 @@ export default function ChildDetailPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

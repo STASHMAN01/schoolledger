@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../OrgContext";
+import { Button, Card, EmptyState, PageHeader, Textarea } from "@/components/ui";
 
 type Reminder = {
   childId: string;
@@ -72,42 +73,42 @@ export default function RemindersPage() {
   }
 
   return (
-    <div>
-      <h1 className="mb-2 text-2xl font-semibold">Payment reminders</h1>
-      <p className="mb-6 text-sm text-neutral-600">
-        Every child with an outstanding balance, with a ready-to-send message.
-        Nothing is sent automatically — click WhatsApp or Email to open it in
-        your own app with the message pre-filled, edit it first if you like,
-        then mark it as sent so you can see who&apos;s already been reminded.
-      </p>
+    <div className="animate-in">
+      <PageHeader
+        title="Payment reminders"
+        description="Every child with an outstanding balance, with a ready-to-send message. Nothing is sent automatically — click WhatsApp or Email to open it in your own app with the message pre-filled, edit it first if you like, then mark it as sent so you can see who's already been reminded."
+      />
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : reminders.length === 0 ? (
-        <p className="text-sm text-neutral-500">No outstanding balances — nothing to remind.</p>
+        <EmptyState
+          title="No outstanding balances"
+          description="Nothing to remind."
+        />
       ) : (
         <div className="flex flex-col gap-4">
           {reminders.map((r) => (
-            <div key={r.childId} className="rounded border border-neutral-200 p-4">
+            <Card key={r.childId} as="div" className="p-4">
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                  <span className="font-medium">{r.childName}</span>
-                  <span className="ml-2 text-sm text-neutral-500">{r.categoryName}</span>
+                  <span className="font-medium text-foreground">{r.childName}</span>
+                  <span className="ml-2 text-sm text-muted-foreground">{r.categoryName}</span>
                 </div>
-                <span className="font-medium text-red-700">
+                <span className="font-medium text-danger">
                   R{(r.outstandingCents / 100).toFixed(2)} outstanding
                 </span>
               </div>
-              <p className="mb-2 text-sm text-neutral-600">
+              <p className="mb-2 text-sm text-muted-foreground">
                 {r.parentName}
                 {r.parentPhone ? ` · ${r.parentPhone}` : ""}
                 {r.parentEmail ? ` · ${r.parentEmail}` : ""}
                 {!r.parentPhone && !r.parentEmail && " · no contact details on file"}
               </p>
-              <textarea
-                className="mb-2 w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+              <Textarea
+                className="mb-2"
                 rows={3}
                 value={messageFor(r)}
                 onChange={(e) =>
@@ -115,7 +116,7 @@ export default function RemindersPage() {
                 }
               />
               {r.lastReminderSentAt && (
-                <p className="mb-2 text-xs text-neutral-500">
+                <p className="mb-2 text-xs text-muted-foreground">
                   Last reminded {new Date(r.lastReminderSentAt).toLocaleDateString()}
                 </p>
               )}
@@ -127,7 +128,7 @@ export default function RemindersPage() {
                       target="_blank"
                       rel="noreferrer"
                       onClick={() => markSent(r.childId, "whatsapp")}
-                      className="rounded bg-green-600 px-3 py-1.5 text-white"
+                      className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg bg-success px-3 py-1.5 font-medium text-white hover:brightness-95"
                     >
                       WhatsApp
                     </a>
@@ -136,27 +137,25 @@ export default function RemindersPage() {
                     <a
                       href={mailLink(r.parentEmail, messageFor(r))}
                       onClick={() => markSent(r.childId, "email")}
-                      className="rounded bg-neutral-700 px-3 py-1.5 text-white"
+                      className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-3 py-1.5 font-medium text-brand-foreground hover:bg-brand-hover"
                     >
                       Email
                     </a>
                   )}
-                  <button
-                    onClick={() => copyMessage(r)}
-                    className="rounded border border-neutral-300 px-3 py-1.5"
-                  >
+                  <Button variant="secondary" size="sm" onClick={() => copyMessage(r)}>
                     Copy message
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => markSent(r.childId, "manual")}
                     disabled={busyId === r.childId}
-                    className="rounded border border-neutral-300 px-3 py-1.5 disabled:opacity-50"
                   >
                     Mark as sent
-                  </button>
+                  </Button>
                 </div>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
+import { Card } from "@/components/ui";
 
 type Entry = {
   id: string;
@@ -65,63 +66,74 @@ export default function EventDetailPage() {
     await load();
   }
 
-  if (loading) return <p className="text-sm text-neutral-500">Loading...</p>;
-  if (!event) return <p className="text-sm text-red-600">{error ?? "Not found."}</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+  if (!event) return <p className="text-sm text-danger">{error ?? "Not found."}</p>;
 
   return (
-    <div>
-      <Link href="/dashboard/events" className="mb-4 inline-block text-sm underline">
+    <div className="animate-in">
+      <Link
+        href="/dashboard/events"
+        className="transition-standard mb-4 inline-block text-sm text-muted-foreground underline hover:text-foreground"
+      >
         ← All events
       </Link>
-      <h1 className="mb-1 text-2xl font-semibold">{event.name}</h1>
-      <p className="mb-6 text-sm text-neutral-600">
+      <h1 className="font-display mb-1 text-2xl font-semibold text-foreground">{event.name}</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
         {new Date(event.eventDate).toLocaleDateString()} · R
         {(event.amountCents / 100).toFixed(2)} per child ·{" "}
         {event.categories.map((c) => c.name).join(", ")}
       </p>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
-      <table className="w-full text-sm">
-        <thead className="bg-neutral-50 text-left">
-          <tr>
-            <th className="px-3 py-2">Child</th>
-            <th className="px-3 py-2">Due</th>
-            <th className="px-3 py-2">Paid</th>
-            <th className="px-3 py-2">Status</th>
-            {canManage && <th className="px-3 py-2"></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {event.entries.map((entry) => (
-            <tr key={entry.id} className="border-t border-neutral-100">
-              <td className="px-3 py-2">
-                {entry.child.firstName} {entry.child.lastName}
-              </td>
-              <td className="px-3 py-2">R{(entry.amountDueCents / 100).toFixed(2)}</td>
-              <td className="px-3 py-2">R{(entry.amountPaidCents / 100).toFixed(2)}</td>
-              <td className="px-3 py-2">{entry.status}</td>
-              {canManage && (
-                <td className="px-3 py-2 text-right">
-                  {entry.amountPaidCents === 0 ? (
-                    <button
-                      onClick={() => removeChild(entry.child.id)}
-                      disabled={removingId === entry.child.id}
-                      className="text-xs text-red-600 underline disabled:opacity-50"
-                    >
-                      {removingId === entry.child.id ? "Removing..." : "Remove"}
-                    </button>
-                  ) : (
-                    <span className="text-xs text-neutral-400">Paid — can&apos;t remove</span>
-                  )}
-                </td>
-              )}
+      <Card className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-background text-left">
+            <tr>
+              <th className="px-3 py-2 text-muted-foreground">Child</th>
+              <th className="px-3 py-2 text-muted-foreground">Due</th>
+              <th className="px-3 py-2 text-muted-foreground">Paid</th>
+              <th className="px-3 py-2 text-muted-foreground">Status</th>
+              {canManage && <th className="px-3 py-2"></th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {event.entries.map((entry) => (
+              <tr key={entry.id} className="border-t border-border">
+                <td className="px-3 py-2 text-foreground">
+                  {entry.child.firstName} {entry.child.lastName}
+                </td>
+                <td className="px-3 py-2 text-foreground">
+                  R{(entry.amountDueCents / 100).toFixed(2)}
+                </td>
+                <td className="px-3 py-2 text-foreground">
+                  R{(entry.amountPaidCents / 100).toFixed(2)}
+                </td>
+                <td className="px-3 py-2 text-foreground">{entry.status}</td>
+                {canManage && (
+                  <td className="px-3 py-2 text-right">
+                    {entry.amountPaidCents === 0 ? (
+                      <button
+                        onClick={() => removeChild(entry.child.id)}
+                        disabled={removingId === entry.child.id}
+                        className="transition-standard text-xs text-danger underline disabled:opacity-50"
+                      >
+                        {removingId === entry.child.id ? "Removing..." : "Remove"}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted">Paid — can&apos;t remove</span>
+                    )}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
       {event.entries.length === 0 && (
-        <p className="mt-4 text-sm text-neutral-500">No children were charged for this event.</p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          No children were charged for this event.
+        </p>
       )}
     </div>
   );

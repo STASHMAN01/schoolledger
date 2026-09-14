@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../OrgContext";
+import { Button, Card, EmptyState, Input, Label, PageHeader } from "@/components/ui";
 
 type Category = { id: string; name: string; archived: boolean };
 type EventRow = {
@@ -89,113 +90,113 @@ export default function EventsPage() {
   }
 
   return (
-    <div>
-      <h1 className="mb-2 text-2xl font-semibold">Events</h1>
-      <p className="mb-6 text-sm text-neutral-600">
-        A one-time charge applied to every active child in one or more classes —
-        a trip, a fundraiser, anything outside the regular monthly fee. Once
-        created, you can remove an individual child from the charge if they&apos;re
-        not attending (as long as they haven&apos;t paid anything toward it yet).
-      </p>
+    <div className="animate-in">
+      <PageHeader
+        title="Events"
+        description="A one-time charge applied to every active child in one or more classes — a trip, a fundraiser, anything outside the regular monthly fee. Once created, you can remove an individual child from the charge if they're not attending (as long as they haven't paid anything toward it yet)."
+      />
 
       {canManage && (
-        <form
-          onSubmit={createEvent}
-          className="mb-8 grid grid-cols-1 gap-3 rounded border border-neutral-200 p-4 sm:grid-cols-2"
-        >
-          <label className="flex flex-col gap-1 text-sm">
-            Name
-            <input
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. September Trip"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Date
-            <input
-              required
-              type="date"
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Amount per child
-            <input
-              required
-              className="rounded border border-neutral-300 px-3 py-2"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              inputMode="decimal"
-              placeholder="e.g. 750"
-            />
-          </label>
-          <fieldset className="flex flex-col gap-1 text-sm">
-            <legend className="mb-1">Applies to</legend>
-            <div className="flex flex-wrap gap-3">
-              {categories.map((c) => (
-                <label key={c.id} className="flex items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={form.categoryIds.includes(c.id)}
-                    onChange={() => toggleCategory(c.id)}
-                  />
-                  {c.name}
-                </label>
-              ))}
-              {categories.length === 0 && (
-                <span className="text-neutral-500">No categories yet.</span>
-              )}
+        <Card as="div" className="mb-8 p-4">
+          <form onSubmit={createEvent} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Label className="flex flex-col gap-1">
+              Name
+              <Input
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. September Trip"
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Date
+              <Input
+                required
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </Label>
+            <Label className="flex flex-col gap-1">
+              Amount per child
+              <Input
+                required
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                inputMode="decimal"
+                placeholder="e.g. 750"
+              />
+            </Label>
+            <fieldset className="flex flex-col gap-1 text-sm">
+              <legend className="mb-1 font-medium text-muted-foreground">Applies to</legend>
+              <div className="flex flex-wrap gap-3">
+                {categories.map((c) => (
+                  <label key={c.id} className="flex items-center gap-1.5 text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={form.categoryIds.includes(c.id)}
+                      onChange={() => toggleCategory(c.id)}
+                    />
+                    {c.name}
+                  </label>
+                ))}
+                {categories.length === 0 && (
+                  <span className="text-muted-foreground">No categories yet.</span>
+                )}
+              </div>
+            </fieldset>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={submitting || form.categoryIds.length === 0}>
+                {submitting ? "Creating..." : "Create event"}
+              </Button>
             </div>
-          </fieldset>
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={submitting || form.categoryIds.length === 0}
-              className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50"
-            >
-              {submitting ? "Creating..." : "Create event"}
-            </button>
-          </div>
-        </form>
+          </form>
+        </Card>
       )}
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-      {success && <p className="mb-4 text-sm text-green-700">{success}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+      {success && <p className="mb-4 text-sm text-success">{success}</p>}
 
       {loading ? (
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : events.length === 0 ? (
-        <p className="text-sm text-neutral-500">No events yet.</p>
+        <EmptyState title="No events yet" description="Create your first event above." />
       ) : (
-        <div className="overflow-x-auto rounded border border-neutral-200">
+        <Card className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left">
+            <thead className="bg-background text-left">
               <tr>
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">Classes</th>
-                <th className="px-3 py-2">Children</th>
-                <th className="px-3 py-2">Collected</th>
-                <th className="px-3 py-2">Outstanding</th>
+                <th className="px-3 py-2 text-muted-foreground">Name</th>
+                <th className="px-3 py-2 text-muted-foreground">Date</th>
+                <th className="px-3 py-2 text-muted-foreground">Classes</th>
+                <th className="px-3 py-2 text-muted-foreground">Children</th>
+                <th className="px-3 py-2 text-muted-foreground">Collected</th>
+                <th className="px-3 py-2 text-muted-foreground">Outstanding</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody>
               {events.map((e) => (
-                <tr key={e.id} className="border-t border-neutral-100">
-                  <td className="px-3 py-2">{e.name}</td>
-                  <td className="px-3 py-2">{new Date(e.eventDate).toLocaleDateString()}</td>
-                  <td className="px-3 py-2">{e.categories.map((c) => c.name).join(", ")}</td>
-                  <td className="px-3 py-2">{e.childCount}</td>
-                  <td className="px-3 py-2">R{(e.totalPaidCents / 100).toFixed(2)}</td>
-                  <td className="px-3 py-2">R{(e.totalOutstandingCents / 100).toFixed(2)}</td>
+                <tr key={e.id} className="border-t border-border">
+                  <td className="px-3 py-2 text-foreground">{e.name}</td>
+                  <td className="px-3 py-2 text-foreground">
+                    {new Date(e.eventDate).toLocaleDateString()}
+                  </td>
+                  <td className="px-3 py-2 text-foreground">
+                    {e.categories.map((c) => c.name).join(", ")}
+                  </td>
+                  <td className="px-3 py-2 text-foreground">{e.childCount}</td>
+                  <td className="px-3 py-2 text-foreground">
+                    R{(e.totalPaidCents / 100).toFixed(2)}
+                  </td>
+                  <td className="px-3 py-2 text-foreground">
+                    R{(e.totalOutstandingCents / 100).toFixed(2)}
+                  </td>
                   <td className="px-3 py-2 text-right">
-                    <Link href={`/dashboard/events/${e.id}`} className="text-xs underline">
+                    <Link
+                      href={`/dashboard/events/${e.id}`}
+                      className="transition-standard text-xs text-muted-foreground underline hover:text-foreground"
+                    >
                       View
                     </Link>
                   </td>
@@ -203,7 +204,7 @@ export default function EventsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );
