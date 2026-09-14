@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getPrimaryMembership } from "@/lib/org";
 import { OrgProvider } from "./OrgContext";
 import { SignOutButton } from "./SignOutButton";
 import { TrialBanner } from "./TrialBanner";
+import { NavLinks } from "./NavLinks";
 import { hasActiveAccess } from "@/lib/billing/access";
 
 export default async function DashboardLayout({
@@ -35,49 +35,25 @@ export default async function DashboardLayout({
         trialEndsAt: org.trialEndsAt ? org.trialEndsAt.toISOString() : null,
       }}
     >
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-background">
         <TrialBanner />
-        <header className="border-b border-neutral-200">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-6">
-              <span className="font-semibold">{membership.organization.name}</span>
-              <nav className="flex gap-4 text-sm text-neutral-600">
-                <Link href="/dashboard" className="hover:text-neutral-900">
-                  Home
-                </Link>
-                <Link href="/dashboard/categories" className="hover:text-neutral-900">
-                  Categories
-                </Link>
-                <Link href="/dashboard/children" className="hover:text-neutral-900">
-                  Children
-                </Link>
-                <Link href="/dashboard/payments" className="hover:text-neutral-900">
-                  Payments
-                </Link>
-                <Link href="/dashboard/events" className="hover:text-neutral-900">
-                  Events
-                </Link>
-                <Link href="/dashboard/reminders" className="hover:text-neutral-900">
-                  Reminders
-                </Link>
-                <Link
-                  href="/dashboard/settings/payment-types"
-                  className="hover:text-neutral-900"
-                >
-                  Payment types
-                </Link>
-                <Link href="/dashboard/settings/billing" className="hover:text-neutral-900">
-                  Billing
-                </Link>
-                <Link href="/dashboard/settings/team" className="hover:text-neutral-900">
-                  Team
-                </Link>
-              </nav>
+        <header className="relative border-b border-border bg-surface">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-foreground">
+                {membership.organization.name.charAt(0).toUpperCase()}
+              </div>
+              <span className="font-display truncate text-sm font-semibold text-foreground sm:text-base">
+                {membership.organization.name}
+              </span>
             </div>
-            <SignOutButton />
+            <div className="flex items-center gap-2">
+              <NavLinks />
+              <SignOutButton />
+            </div>
           </div>
         </header>
-        <div className="mx-auto max-w-5xl px-6 py-8">{children}</div>
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
       </div>
     </OrgProvider>
   );

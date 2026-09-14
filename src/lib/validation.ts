@@ -111,6 +111,25 @@ export const acceptInviteSchema = z.object({
   password: passwordSchema.optional(),
 });
 
+// Treats "" the same as not provided for every optional profile field below,
+// so clearing a field in the form (rather than leaving it untouched) saves
+// as null instead of an empty string.
+const emptyStringToUndefined = (v: unknown) => (v === "" ? undefined : v);
+
+export const organizationProfileSchema = z.object({
+  name: organizationNameSchema,
+  addressLine1: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
+  addressLine2: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
+  province: z.preprocess(emptyStringToUndefined, z.string().trim().max(100).optional()),
+  logoUrl: z.preprocess(emptyStringToUndefined, z.string().trim().url("Enter a valid URL").max(2000).optional()),
+  letterheadUrl: z.preprocess(emptyStringToUndefined, z.string().trim().url("Enter a valid URL").max(2000).optional()),
+  bankName: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
+  // Never validated as numeric-only: real account numbers can carry
+  // branch/IBAN-style formatting depending on country.
+  bankAccountNumber: z.preprocess(emptyStringToUndefined, z.string().trim().max(64).optional()),
+  timezone: z.string().trim().min(1).max(100),
+});
+
 export const registerSchema = z.object({
   organizationName: organizationNameSchema,
   countryCode: countryCodeSchema,

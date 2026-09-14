@@ -1,26 +1,148 @@
 @import "tailwindcss";
 
+/* ── SchoolLedger design tokens ──────────────────────────────────────────
+ * Brand: a warm, trustworthy teal as primary (calm + financial trust,
+ * without the cold "generic B2B blue" or "childish pastel" extremes),
+ * paired with a soft amber accent for warmth (this app lives in preschools,
+ * not spreadsheets-for-spreadsheets'-sake). Neutrals are warm-tinted grays
+ * rather than pure gray, which reads friendlier at this scale of app.
+ * Both a light and dark palette are defined; the app defaults to light
+ * (most-requested for a data/forms-heavy admin tool) but respects system
+ * preference.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --background: #fafaf9;
+  --surface: #ffffff;
+  --foreground: #1c1917;
+  --muted: #78716c;
+  --muted-foreground: #57534e;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --brand: #0f766e;
+  --brand-hover: #0d5f59;
+  --brand-foreground: #ffffff;
+  --brand-soft: #ecfdf9;
+  --brand-soft-foreground: #0f766e;
+
+  --accent: #d97706;
+  --accent-soft: #fef3e2;
+  --accent-soft-foreground: #92400e;
+
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --danger-foreground: #ffffff;
+
+  --success: #16a34a;
+  --success-soft: #f0fdf4;
+
+  --ring: #0f766e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0c0a09;
+    --surface: #1c1917;
+    --foreground: #fafaf9;
+    --muted: #a8a29e;
+    --muted-foreground: #d6d3d1;
+    --border: #292524;
+    --border-strong: #44403c;
+
+    --brand: #2dd4bf;
+    --brand-hover: #5eead4;
+    --brand-foreground: #042f2e;
+    --brand-soft: #134e4a;
+    --brand-soft-foreground: #99f6e4;
+
+    --accent: #fbbf24;
+    --accent-soft: #451a03;
+    --accent-soft-foreground: #fde68a;
+
+    --danger: #f87171;
+    --danger-soft: #450a0a;
+    --danger-foreground: #450a0a;
+
+    --success: #4ade80;
+    --success-soft: #052e16;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-foreground: var(--brand-soft-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-foreground: var(--accent-soft-foreground);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-foreground: var(--danger-foreground);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-lexend);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: light dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-lexend), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Small, purposeful motion only — never decorative for its own sake.
+ * Respect reduced-motion preferences unconditionally. */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-in {
+    animation: fade-slide-in 0.28s ease-out both;
+  }
+  .transition-standard {
+    transition: all 0.15s ease;
+  }
+}
+
+@keyframes fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
+  }
 }
