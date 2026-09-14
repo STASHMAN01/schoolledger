@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../OrgContext";
 import { Button, Card, EmptyState, Input, Label, PageHeader } from "@/components/ui";
+import { formatCents } from "@/lib/formatMoney";
 
 type Category = { id: string; name: string; archived: boolean };
 type EventRow = {
@@ -26,7 +27,7 @@ const emptyForm = {
 };
 
 export default function EventsPage() {
-  const { organizationId, role } = useOrg();
+  const { organizationId, role, currencyCode } = useOrg();
   const canManage = role === "ADMIN" || role === "ACCOUNTANT";
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -187,10 +188,10 @@ export default function EventsPage() {
                   </td>
                   <td className="px-3 py-2 text-foreground">{e.childCount}</td>
                   <td className="px-3 py-2 text-foreground">
-                    R{(e.totalPaidCents / 100).toFixed(2)}
+                    {formatCents(e.totalPaidCents, currencyCode)}
                   </td>
                   <td className="px-3 py-2 text-foreground">
-                    R{(e.totalOutstandingCents / 100).toFixed(2)}
+                    {formatCents(e.totalOutstandingCents, currencyCode)}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Link

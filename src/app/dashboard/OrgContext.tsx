@@ -10,6 +10,7 @@ type OrgContextValue = {
   hasActiveAccess: boolean;
   subscriptionStatus: string;
   trialEndsAt: string | null;
+  currencyCode: string;
 };
 
 const OrgContext = createContext<OrgContextValue | null>(null);

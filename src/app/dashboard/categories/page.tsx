@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOrg, canManage } from "../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { formatCents } from "@/lib/formatMoney";
 
 type Category = {
   id: string;
@@ -24,7 +25,7 @@ function buildTree(categories: Category[], parentId: string | null): Category[] 
 }
 
 export default function CategoriesPage() {
-  const { organizationId, role } = useOrg();
+  const { organizationId, role, currencyCode } = useOrg();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export default function CategoriesPage() {
             </span>
             {category.monthlyFeeCents !== null && (
               <span className="ml-2 text-xs text-muted-foreground">
-                R{(category.monthlyFeeCents / 100).toFixed(2)}/mo
+                {formatCents(category.monthlyFeeCents, currencyCode)}/mo
               </span>
             )}
           </div>

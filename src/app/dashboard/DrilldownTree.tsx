@@ -11,7 +11,13 @@ import type { CategoryNode } from "@/lib/billing/dashboard";
  * expand into payment types, which expand into the individual children
  * behind that number — each level is just a click, nothing navigates away.
  */
-export function DrilldownTree({ tree }: { tree: CategoryNode[] }) {
+export function DrilldownTree({
+  tree,
+  currencyCode,
+}: {
+  tree: CategoryNode[];
+  currencyCode?: string;
+}) {
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
   const [openTypes, setOpenTypes] = useState<Set<string>>(new Set());
 
@@ -35,7 +41,7 @@ export function DrilldownTree({ tree }: { tree: CategoryNode[] }) {
             className="flex w-full items-center justify-between py-2 text-left text-sm text-foreground"
           >
             <span>{category.name}</span>
-            <span className="font-medium">{formatCents(category.amountCents)}</span>
+            <span className="font-medium">{formatCents(category.amountCents, currencyCode)}</span>
           </button>
           {openCategories.has(category.categoryId) && (
             <div className="ml-4 border-l border-border pl-4">
@@ -46,7 +52,7 @@ export function DrilldownTree({ tree }: { tree: CategoryNode[] }) {
                     className="flex w-full items-center justify-between py-2 text-left text-sm text-muted-foreground"
                   >
                     <span>{pt.name}</span>
-                    <span>{formatCents(pt.amountCents)}</span>
+                    <span>{formatCents(pt.amountCents, currencyCode)}</span>
                   </button>
                   {openTypes.has(pt.paymentTypeId) && (
                     <div className="ml-4 border-l border-border pl-4">
@@ -57,7 +63,7 @@ export function DrilldownTree({ tree }: { tree: CategoryNode[] }) {
                           className="transition-standard flex items-center justify-between py-1.5 text-sm text-muted-foreground hover:text-foreground"
                         >
                           <span className="underline">{c.name}</span>
-                          <span>{formatCents(c.amountCents)}</span>
+                          <span>{formatCents(c.amountCents, currencyCode)}</span>
                         </Link>
                       ))}
                     </div>

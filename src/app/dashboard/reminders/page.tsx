@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../OrgContext";
 import { Button, Card, EmptyState, PageHeader, Textarea } from "@/components/ui";
+import { formatCents } from "@/lib/formatMoney";
 
 type Reminder = {
   childId: string;
@@ -24,7 +25,7 @@ function mailLink(email: string, message: string) {
 }
 
 export default function RemindersPage() {
-  const { organizationId, role } = useOrg();
+  const { organizationId, role, currencyCode } = useOrg();
   const canSend = role !== "VIEWER";
 
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -98,7 +99,7 @@ export default function RemindersPage() {
                   <span className="ml-2 text-sm text-muted-foreground">{r.categoryName}</span>
                 </div>
                 <span className="font-medium text-danger">
-                  R{(r.outstandingCents / 100).toFixed(2)} outstanding
+                  {formatCents(r.outstandingCents, currencyCode)} outstanding
                 </span>
               </div>
               <p className="mb-2 text-sm text-muted-foreground">

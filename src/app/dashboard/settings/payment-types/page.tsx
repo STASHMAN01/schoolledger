@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
 import { Badge, Button, Card, Input, Label, PageHeader } from "@/components/ui";
+import { formatCents } from "@/lib/formatMoney";
 
 type PaymentType = {
   id: string;
@@ -14,7 +15,7 @@ type PaymentType = {
 };
 
 export default function PaymentTypesPage() {
-  const { organizationId, role } = useOrg();
+  const { organizationId, role, currencyCode } = useOrg();
   const [types, setTypes] = useState<PaymentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +152,7 @@ export default function PaymentTypesPage() {
                   </td>
                   <td className="px-3 py-2 text-foreground">
                     {t.defaultAmountCents !== null
-                      ? `R${(t.defaultAmountCents / 100).toFixed(2)}`
+                      ? formatCents(t.defaultAmountCents, currencyCode)
                       : "-"}
                   </td>
                   <td className="px-3 py-2">

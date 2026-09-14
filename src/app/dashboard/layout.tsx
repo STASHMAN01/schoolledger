@@ -33,6 +33,7 @@ export default async function DashboardLayout({
         hasActiveAccess: hasActiveAccess(org),
         subscriptionStatus: org.subscriptionStatus,
         trialEndsAt: org.trialEndsAt ? org.trialEndsAt.toISOString() : null,
+        currencyCode: org.currencyCode,
       }}
     >
       <div className="min-h-screen bg-background">

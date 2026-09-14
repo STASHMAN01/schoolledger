@@ -20,7 +20,7 @@ type DashboardData = {
 };
 
 export default function DashboardPage() {
-  const { organizationId, organizationName, hasActiveAccess } = useOrg();
+  const { organizationId, organizationName, hasActiveAccess, currencyCode } = useOrg();
   const { data: session } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export default function DashboardPage() {
             >
               <p className="text-xs text-muted-foreground">Outstanding</p>
               <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-                {formatCents(data.outstandingTotalCents)}
+                {formatCents(data.outstandingTotalCents, currencyCode)}
               </p>
               <p className="mt-1 text-xs text-muted">Click to break down</p>
             </Card>
@@ -83,7 +83,7 @@ export default function DashboardPage() {
             >
               <p className="text-xs text-muted-foreground">Paid this month</p>
               <p className="font-display mt-1 text-2xl font-semibold text-success">
-                {formatCents(data.paidThisMonthTotalCents)}
+                {formatCents(data.paidThisMonthTotalCents, currencyCode)}
               </p>
               <p className="mt-1 text-xs text-muted">Click to break down</p>
             </Card>
@@ -100,7 +100,7 @@ export default function DashboardPage() {
               <h2 className="mb-2 text-sm font-medium text-foreground">
                 Outstanding by category
               </h2>
-              <DrilldownTree tree={data.outstandingTree} />
+              <DrilldownTree tree={data.outstandingTree} currencyCode={currencyCode} />
             </Card>
           )}
 
@@ -109,7 +109,7 @@ export default function DashboardPage() {
               <h2 className="mb-2 text-sm font-medium text-foreground">
                 Paid this month by category
               </h2>
-              <DrilldownTree tree={data.paidThisMonthTree} />
+              <DrilldownTree tree={data.paidThisMonthTree} currencyCode={currencyCode} />
             </Card>
           )}
 
@@ -135,7 +135,7 @@ export default function DashboardPage() {
                       className="transition-standard flex items-center justify-between py-2 text-sm text-foreground hover:text-brand"
                     >
                       <span className="underline">{a.name}</span>
-                      <span>{formatCents(a.amountCents)}</span>
+                      <span>{formatCents(a.amountCents, currencyCode)}</span>
                     </Link>
                   ))
                 )}

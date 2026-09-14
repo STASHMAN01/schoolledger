@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Card, Input } from "@/components/ui";
+import { formatCents } from "@/lib/formatMoney";
 
 type Entry = {
   id: string;
@@ -38,7 +39,7 @@ const statusColor: Record<string, string> = {
 };
 
 export default function ChildDetailPage() {
-  const { organizationId } = useOrg();
+  const { organizationId, currencyCode } = useOrg();
   const params = useParams<{ childId: string }>();
   const [child, setChild] = useState<ChildDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -183,8 +184,8 @@ export default function ChildDetailPage() {
                   {e.month ? `${e.year}-${String(e.month).padStart(2, "0")}` : e.year}
                 </td>
                 <td className="px-3 py-2 text-foreground">{e.description}</td>
-                <td className="px-3 py-2 text-foreground">R{(e.amountDueCents / 100).toFixed(2)}</td>
-                <td className="px-3 py-2 text-foreground">R{(e.amountPaidCents / 100).toFixed(2)}</td>
+                <td className="px-3 py-2 text-foreground">{formatCents(e.amountDueCents, currencyCode)}</td>
+                <td className="px-3 py-2 text-foreground">{formatCents(e.amountPaidCents, currencyCode)}</td>
                 <td className={`px-3 py-2 ${statusColor[e.status] ?? ""}`}>
                   {e.status.replace("_", " ")}
                 </td>

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Card } from "@/components/ui";
+import { formatCents } from "@/lib/formatMoney";
 
 type Entry = {
   id: string;
@@ -24,7 +25,7 @@ type EventDetail = {
 };
 
 export default function EventDetailPage() {
-  const { organizationId, role } = useOrg();
+  const { organizationId, role, currencyCode } = useOrg();
   const params = useParams<{ eventId: string }>();
   const canManage = role === "ADMIN" || role === "ACCOUNTANT";
 
@@ -79,8 +80,8 @@ export default function EventDetailPage() {
       </Link>
       <h1 className="font-display mb-1 text-2xl font-semibold text-foreground">{event.name}</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        {new Date(event.eventDate).toLocaleDateString()} · R
-        {(event.amountCents / 100).toFixed(2)} per child ·{" "}
+        {new Date(event.eventDate).toLocaleDateString()} ·{" "}
+        {formatCents(event.amountCents, currencyCode)} per child ·{" "}
         {event.categories.map((c) => c.name).join(", ")}
       </p>
 
@@ -104,10 +105,10 @@ export default function EventDetailPage() {
                   {entry.child.firstName} {entry.child.lastName}
                 </td>
                 <td className="px-3 py-2 text-foreground">
-                  R{(entry.amountDueCents / 100).toFixed(2)}
+                  {formatCents(entry.amountDueCents, currencyCode)}
                 </td>
                 <td className="px-3 py-2 text-foreground">
-                  R{(entry.amountPaidCents / 100).toFixed(2)}
+                  {formatCents(entry.amountPaidCents, currencyCode)}
                 </td>
                 <td className="px-3 py-2 text-foreground">{entry.status}</td>
                 {canManage && (
