@@ -35,6 +35,7 @@ export default function ChildrenPage() {
   const [children, setChildren] = useState<Child[]>([]);
   const [filterCategory, setFilterCategory] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -68,6 +69,18 @@ export default function ChildrenPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reload when org/filters change, standard pattern
     loadChildren();
   }, [loadChildren]);
+
+  // Client-side name/parent search — cheap and instant since the category
+  // filter (and "show archived") already narrow the fetched set to
+  // something small, and it avoids a round-trip on every keystroke.
+  const searchLower = search.trim().toLowerCase();
+  const visibleChildren = searchLower
+    ? children.filter((c) =>
+        `${c.firstName} ${c.lastName} ${c.parentName}`
+          .toLowerCase()
+          .includes(searchLower)
+      )
+    : children;
 
   async function addChild(e: React.FormEvent) {
     e.preventDefault();
@@ -190,6 +203,13 @@ export default function ChildrenPage() {
       )}
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
+        <Input
+          className="max-w-xs"
+          type="search"
+          placeholder="Search by child or parent name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <Select
           className="max-w-xs"
           value={filterCategory}
@@ -214,8 +234,10 @@ export default function ChildrenPage() {
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : children.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No children found.</p>
+      ) : visibleChildren.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {search ? "No children match your search." : "No children found."}
+        </p>
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -229,7 +251,7 @@ export default function ChildrenPage() {
               </tr>
             </thead>
             <tbody>
-              {children.map((c) => (
+              {visibleChildren.map((c) => (
                 <tr key={c.id} className="border-t border-border">
                   <td className="px-3 py-2">
                     <Link
