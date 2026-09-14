@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../OrgContext";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { Button, Card, Input, Label, LinkButton, PageHeader, Select } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 
 type Category = { id: string; name: string };
@@ -300,6 +300,19 @@ export default function PaymentsPage() {
             </option>
           ))}
         </Select>
+        <LinkButton
+          variant="secondary"
+          size="sm"
+          href={`/api/organizations/${organizationId}/payments/export?${new URLSearchParams(
+            {
+              ...(filterMethod ? { method: filterMethod } : {}),
+              ...(filterCategory ? { categoryId: filterCategory } : {}),
+              ...(filterChild ? { childId: filterChild } : {}),
+            }
+          ).toString()}`}
+        >
+          Export CSV
+        </LinkButton>
       </div>
 
       {loading ? (
