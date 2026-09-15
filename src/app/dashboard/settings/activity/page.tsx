@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
-import { Badge, Button, Card, EmptyState, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, PageHeader, Select } from "@/components/ui";
 
 type AuditEntry = {
   id: string;
@@ -99,12 +99,18 @@ export default function ActivityLogPage() {
   // Minimised by default — the full log can get long fast, and most of the
   // time "what's the most recent thing that happened" is all anyone needs.
   const [expanded, setExpanded] = useState(false);
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [userFilter, setUserFilter] = useState("");
 
   const loadFirstPage = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/organizations/${organizationId}/audit`);
+      const params = new URLSearchParams();
+      if (userFilter) params.set("userId", userFilter);
+      const res = await fetch(
+        `/api/organizations/${organizationId}/audit?${params.toString()}`
+      );
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Could not load activity.");
@@ -112,13 +118,16 @@ export default function ActivityLogPage() {
       }
       setEntries(data.entries);
       setCursor(data.nextCursor);
+      // Only the unfiltered first load returns this — keep whatever we
+      // already have once a filter's applied rather than clearing it.
+      if (data.members) setMembers(data.members);
     } finally {
       setLoading(false);
     }
-  }, [organizationId]);
+  }, [organizationId, userFilter]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load + reload when the user filter changes
     loadFirstPage();
   }, [loadFirstPage]);
 
@@ -126,8 +135,10 @@ export default function ActivityLogPage() {
     if (!cursor) return;
     setLoadingMore(true);
     try {
+      const params = new URLSearchParams({ cursor });
+      if (userFilter) params.set("userId", userFilter);
       const res = await fetch(
-        `/api/organizations/${organizationId}/audit?cursor=${cursor}`
+        `/api/organizations/${organizationId}/audit?${params.toString()}`
       );
       const data = await res.json();
       if (res.ok) {
@@ -145,6 +156,26 @@ export default function ActivityLogPage() {
         title="Activity log"
         description="A record of changes made in this school's account — payments, children, settings, and more."
       />
+
+      {members.length > 0 && (
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            Filter by user
+          </label>
+          <Select
+            className="w-auto"
+            value={userFilter}
+            onChange={(e) => setUserFilter(e.target.value)}
+          >
+            <option value="">Everyone</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {error && <p className="text-sm text-danger">{error}</p>}

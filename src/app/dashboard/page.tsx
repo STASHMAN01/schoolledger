@@ -8,6 +8,9 @@ import { DrilldownTree } from "./DrilldownTree";
 import { formatCents } from "@/lib/formatMoney";
 import type { CategoryNode } from "@/lib/billing/dashboard";
 import { Card } from "@/components/ui";
+import { describeAuditAction } from "@/lib/auditLabel";
+
+type ActivityItem = { id: string; userName: string; label: string; createdAt: string };
 
 type DashboardData = {
   childrenCount: number;
@@ -16,10 +19,24 @@ type DashboardData = {
   paidThisMonthTotalCents: number;
   paidThisMonthTree: CategoryNode[];
   accountsDue: { childId: string; name: string; amountCents: number }[];
-  activity: { id: string; userName: string; label: string; createdAt: string }[];
+  activity: ActivityItem[];
   remindersSentCount: number;
   remindersUnsentCount: number;
 };
+
+type AuditApiEntry = {
+  id: string;
+  action: string;
+  metadata: unknown;
+  createdAt: string;
+  actor: { name: string } | null;
+};
+
+// The 5-item view uses whatever the dashboard endpoint already fetched
+// (cheap, no extra request). "This month" and "Lifetime" can both be
+// larger than that endpoint's own 20-row cap, so those call the same
+// paginated /audit endpoint the Settings → Activity log page uses.
+type ActivityView = "recent" | "month" | "lifetime";
 
 export default function DashboardPage() {
   const { organizationId, organizationName, hasActiveAccess, currencyCode } = useOrg();
@@ -29,6 +46,9 @@ export default function DashboardPage() {
   const [showOutstanding, setShowOutstanding] = useState(false);
   const [showPaid, setShowPaid] = useState(false);
   const [showAccountsDue, setShowAccountsDue] = useState(false);
+  const [activityView, setActivityView] = useState<ActivityView>("recent");
+  const [expandedActivity, setExpandedActivity] = useState<ActivityItem[] | null>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/organizations/${organizationId}/dashboard`);
@@ -45,6 +65,55 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
   }, [load, hasActiveAccess]);
+
+  async function loadExpandedActivity(view: "month" | "lifetime") {
+    setActivityLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (view === "month") {
+        const now = new Date();
+        const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+        params.set("since", startOfMonth.toISOString());
+      }
+      const res = await fetch(
+        `/api/organizations/${organizationId}/audit?${params.toString()}`
+      );
+      const json = await res.json();
+      if (res.ok) {
+        setExpandedActivity(
+          (json.entries as AuditApiEntry[]).map((e) => ({
+            id: e.id,
+            userName: e.actor?.name ?? "Someone",
+            label: describeAuditAction(e),
+            createdAt: e.createdAt,
+          }))
+        );
+      }
+    } finally {
+      setActivityLoading(false);
+    }
+  }
+
+  // Chevron button: recent (5 items) <-> this month.
+  function toggleActivityDropdown() {
+    setActivityView((v) => {
+      const next = v === "recent" ? "month" : "recent";
+      if (next === "month") loadExpandedActivity("month");
+      return next;
+    });
+  }
+
+  // Clicking the "Recent activity" label itself: this month/recent <-> lifetime.
+  function toggleActivityLifetime() {
+    setActivityView((v) => {
+      const next = v === "lifetime" ? "recent" : "lifetime";
+      if (next === "lifetime") loadExpandedActivity("lifetime");
+      return next;
+    });
+  }
+
+  const visibleActivity =
+    activityView === "recent" ? (data?.activity.slice(0, 5) ?? []) : (expandedActivity ?? []);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -169,12 +238,44 @@ export default function DashboardPage() {
           </Card>
 
           <Card className="p-4">
-            <h2 className="mb-2 text-sm font-medium text-foreground">Recent activity</h2>
-            {data.activity.length === 0 ? (
+            <div className="mb-2 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={toggleActivityLifetime}
+                className="text-sm font-medium text-foreground underline-offset-2 hover:underline"
+              >
+                Recent activity
+                {activityView === "lifetime" && " — lifetime"}
+                {activityView === "month" && " — this month"}
+              </button>
+              <button
+                type="button"
+                onClick={toggleActivityDropdown}
+                aria-label={activityView === "recent" ? "Show this month's activity" : "Show fewer"}
+                className="transition-standard rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+              >
+                <svg
+                  className={`h-3.5 w-3.5 transition-transform ${activityView !== "recent" ? "rotate-180" : ""}`}
+                  viewBox="0 0 12 12"
+                  fill="none"
+                >
+                  <path
+                    d="M2.5 4.5L6 8l3.5-3.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            {activityLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : visibleActivity.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nothing yet.</p>
             ) : (
               <ul className="flex flex-col gap-1.5">
-                {data.activity.map((a) => (
+                {visibleActivity.map((a) => (
                   <li key={a.id} className="text-sm text-muted-foreground">
                     <span className="font-medium text-foreground">{a.userName}</span>{" "}
                     {a.label}{" "}

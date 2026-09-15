@@ -19,9 +19,21 @@ export async function GET(req: NextRequest, { params }: Params) {
     await requireMembership(organizationId);
 
     const cursor = req.nextUrl.searchParams.get("cursor");
+    // "since" (ISO datetime) powers the dashboard's recent-activity card
+    // switching between "last 5", "this month", and "lifetime" — the
+    // month/lifetime views need more than the dashboard's own cheap
+    // 20-row fetch can guarantee, so they call this endpoint instead.
+    const since = req.nextUrl.searchParams.get("since");
+    // "userId" is the Activity log page's "sort by user" filter — any
+    // member, so an accountant can be filtered same as an admin.
+    const userId = req.nextUrl.searchParams.get("userId");
 
     const entries = await db.auditLog.findMany({
-      where: { organizationId },
+      where: {
+        organizationId,
+        ...(since ? { createdAt: { gte: new Date(since) } } : {}),
+        ...(userId ? { userId } : {}),
+      },
       orderBy: { createdAt: "desc" },
       take: PAGE_SIZE + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -32,6 +44,18 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     const hasMore = entries.length > PAGE_SIZE;
     const page = hasMore ? entries.slice(0, PAGE_SIZE) : entries;
+
+    // Only worth fetching the member list on a fresh (non-paginated,
+    // unfiltered) request — it's just for populating the "sort by user"
+    // dropdown, which only needs to be built once.
+    const members =
+      !cursor && !userId
+        ? await db.membership.findMany({
+            where: { organizationId },
+            include: { user: { select: { id: true, name: true } } },
+            orderBy: { createdAt: "asc" },
+          })
+        : null;
 
     return NextResponse.json({
       entries: page.map((e) => ({
@@ -44,6 +68,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         actor: e.user ? { name: e.user.name, email: e.user.email } : null,
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
+      ...(members ? { members: members.map((m) => ({ id: m.user.id, name: m.user.name })) } : {}),
     });
   } catch (err) {
     return handleApiError(err);
