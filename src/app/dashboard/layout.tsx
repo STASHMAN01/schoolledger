@@ -45,9 +45,18 @@ export default async function DashboardLayout({
         <header className="relative border-b border-border bg-surface">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-foreground">
-                {membership.organization.name.charAt(0).toUpperCase()}
-              </div>
+              {org.logoImage ? (
+                // eslint-disable-next-line @next/next/no-img-element -- base64 data: URL, next/image can't optimize these anyway
+                <img
+                  src={org.logoImage}
+                  alt={`${org.name} logo`}
+                  className="h-8 w-8 shrink-0 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-foreground">
+                  {membership.organization.name.charAt(0).toUpperCase()}
+                </div>
+              )}
               <span className="font-display truncate text-sm font-semibold text-foreground sm:text-base">
                 {membership.organization.name}
               </span>
@@ -62,6 +71,13 @@ export default async function DashboardLayout({
                   Platform
                 </Link>
               )}
+              <Link
+                href="/support"
+                title="Support & how to use TinyLedger"
+                className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+              >
+                Support
+              </Link>
               <ThemeToggle />
               <SignOutButton />
             </div>

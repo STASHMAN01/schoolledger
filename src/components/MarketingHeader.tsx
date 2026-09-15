@@ -27,6 +27,12 @@ export function MarketingHeader() {
           >
             Pricing
           </Link>
+          <Link
+            href="/support"
+            className="transition-standard hidden rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground sm:inline-block"
+          >
+            Support
+          </Link>
           <ThemeToggle />
           <LinkButton href="/login" variant="ghost" size="sm">
             Log in
