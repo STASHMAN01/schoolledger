@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Lexend } from "next/font/google";
+import { Inter, Lexend, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -22,6 +22,18 @@ const lexend = Lexend({
   display: "swap",
 });
 
+// IBM Plex Mono: reserved for money and tabular data — amounts, dates,
+// receipt/statement numbers, plan prices. This is a ledger; leaning into a
+// monospaced, tabular treatment for figures is a real product decision
+// (numbers in a column should actually line up), not a decorative font
+// pairing. Never used for prose.
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "TinyLedger — Accounting built for preschools",
   description:
@@ -36,7 +48,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${lexend.variable} h-full antialiased`}
+      className={`${inter.variable} ${lexend.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
