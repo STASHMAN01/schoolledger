@@ -17,6 +17,8 @@ type DashboardData = {
   paidThisMonthTree: CategoryNode[];
   accountsDue: { childId: string; name: string; amountCents: number }[];
   activity: { id: string; userName: string; label: string; createdAt: string }[];
+  remindersSentCount: number;
+  remindersUnsentCount: number;
 };
 
 export default function DashboardPage() {
@@ -93,6 +95,29 @@ export default function DashboardPage() {
                 {data.childrenCount}
               </p>
             </Card>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Link
+              href="/dashboard/reminders?filter=unsent"
+              className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
+            >
+              <p className="text-xs text-muted-foreground">Reminders unsent</p>
+              <p className="font-display mt-1 text-2xl font-semibold text-danger">
+                {data.remindersUnsentCount}
+              </p>
+              <p className="mt-1 text-xs text-muted">Owing parents never reminded — click to send</p>
+            </Link>
+            <Link
+              href="/dashboard/reminders?filter=sent"
+              className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
+            >
+              <p className="text-xs text-muted-foreground">Reminders sent</p>
+              <p className="font-display mt-1 text-2xl font-semibold text-foreground">
+                {data.remindersSentCount}
+              </p>
+              <p className="mt-1 text-xs text-muted">Owing parents already reminded at least once</p>
+            </Link>
           </div>
 
           {showOutstanding && (

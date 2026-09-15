@@ -61,6 +61,22 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .filter((a) => a.amountCents > 0)
       .sort((a, b) => b.amountCents - a.amountCents);
 
+    // Among children who currently owe money: how many have already been
+    // reminded at least once (lastReminderSentAt set) vs. never reminded.
+    // Feeds the "Reminders sent / unsent" shortcut buttons on this page.
+    const remindableChildIds = new Set(accountsDue.map((a) => a.childId));
+    const lastReminderByChild = new Map<string, Date | null>();
+    for (const e of outstandingEntries) {
+      if (!remindableChildIds.has(e.childId)) continue;
+      lastReminderByChild.set(e.childId, e.child.lastReminderSentAt);
+    }
+    let remindersSentCount = 0;
+    let remindersUnsentCount = 0;
+    for (const lastSent of lastReminderByChild.values()) {
+      if (lastSent) remindersSentCount++;
+      else remindersUnsentCount++;
+    }
+
     const now = new Date();
     const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const startOfNextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
@@ -99,6 +115,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       paidThisMonthTotalCents: paidThisMonthRows.reduce((s, r) => s + r.amountCents, 0),
       paidThisMonthTree: buildDrilldownTree(paidThisMonthRows),
       accountsDue,
+      remindersSentCount,
+      remindersUnsentCount,
       activity: recentAudit.map((a) => ({
         id: a.id,
         userName: a.user?.name ?? "Someone",

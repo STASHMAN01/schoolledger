@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useOrg } from "../OrgContext";
 import { Button, Card, EmptyState, PageHeader, Textarea } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
@@ -25,8 +26,21 @@ function mailLink(email: string, message: string) {
 }
 
 export default function RemindersPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading...</p>}>
+      <RemindersPageInner />
+    </Suspense>
+  );
+}
+
+function RemindersPageInner() {
   const { organizationId, role, currencyCode } = useOrg();
   const canSend = role !== "VIEWER";
+  const searchParams = useSearchParams();
+  const filterParam = searchParams.get("filter"); // "sent" | "unsent" | null
+  const [filter, setFilter] = useState<"all" | "sent" | "unsent">(
+    filterParam === "sent" || filterParam === "unsent" ? filterParam : "all"
+  );
 
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +77,12 @@ export default function RemindersPage() {
     return editedMessages[r.childId] ?? r.message;
   }
 
+  const visibleReminders = reminders.filter((r) => {
+    if (filter === "sent") return Boolean(r.lastReminderSentAt);
+    if (filter === "unsent") return !r.lastReminderSentAt;
+    return true;
+  });
+
   async function copyMessage(r: Reminder) {
     try {
       await navigator.clipboard.writeText(messageFor(r));
@@ -82,6 +102,24 @@ export default function RemindersPage() {
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
+      {!loading && reminders.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2 text-sm">
+          {(["all", "unsent", "sent"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`transition-standard rounded-lg px-3 py-1.5 font-medium ${
+                filter === f
+                  ? "bg-brand-soft text-brand-soft-foreground"
+                  : "bg-surface text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {f === "all" ? "All" : f === "unsent" ? "Never reminded" : "Already reminded"}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : reminders.length === 0 ? (
@@ -89,9 +127,14 @@ export default function RemindersPage() {
           title="No outstanding balances"
           description="Nothing to remind."
         />
+      ) : visibleReminders.length === 0 ? (
+        <EmptyState
+          title="Nothing here"
+          description={filter === "sent" ? "No one has been reminded yet." : "Everyone owing has already been reminded."}
+        />
       ) : (
         <div className="flex flex-col gap-4">
-          {reminders.map((r) => (
+          {visibleReminders.map((r) => (
             <Card key={r.childId} as="div" className="p-4">
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
                 <div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useOrg } from "./OrgContext";
 
 const LINKS = [
@@ -30,7 +30,36 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 export function NavLinks() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const { role } = useOrg();
+
+  // Native <details> has no click-outside-to-close behavior, which Dylan
+  // flagged as a bug (clicking anywhere else left the Settings menu open).
+  // This listens for any pointerdown outside the menu and closes it, and
+  // also closes on route change / Escape for good measure.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setSettingsOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [settingsOpen]);
+
+  // Note: no separate "close on route change" effect — each link inside
+  // the menu already closes it directly via its own onClick (see below),
+  // and adding a pathname-watching effect just to call setState is an
+  // anti-pattern (cascading renders) for no extra benefit here.
   const adminOnlySettings = [
     "/dashboard/settings/billing",
     "/dashboard/settings/team",
@@ -56,35 +85,39 @@ export function NavLinks() {
             {l.label}
           </Link>
         ))}
-        <div className="relative">
-          <details className="group">
-            <summary
-              className={`transition-standard flex cursor-pointer list-none items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium ${
-                pathname.startsWith("/dashboard/settings")
-                  ? "bg-brand-soft text-brand-soft-foreground"
-                  : "text-muted-foreground hover:bg-background hover:text-foreground"
-              }`}
+        <div ref={settingsRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen((v) => !v)}
+            aria-expanded={settingsOpen}
+            className={`transition-standard flex cursor-pointer list-none items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium ${
+              pathname.startsWith("/dashboard/settings")
+                ? "bg-brand-soft text-brand-soft-foreground"
+                : "text-muted-foreground hover:bg-background hover:text-foreground"
+            }`}
+          >
+            Settings
+            <svg
+              className={`h-3.5 w-3.5 transition-transform ${settingsOpen ? "rotate-180" : ""}`}
+              viewBox="0 0 12 12"
+              fill="none"
             >
-              Settings
-              <svg
-                className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
-                viewBox="0 0 12 12"
-                fill="none"
-              >
-                <path
-                  d="M2.5 4.5L6 8l3.5-3.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </summary>
+              <path
+                d="M2.5 4.5L6 8l3.5-3.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          {settingsOpen && (
             <div className="animate-in absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg">
               {settingsVisible.map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
+                  onClick={() => setSettingsOpen(false)}
                   className={`block px-3 py-2 text-sm ${
                     isActive(pathname, l.href)
                       ? "bg-brand-soft text-brand-soft-foreground"
@@ -95,7 +128,7 @@ export function NavLinks() {
                 </Link>
               ))}
             </div>
-          </details>
+          )}
         </div>
       </nav>
 
