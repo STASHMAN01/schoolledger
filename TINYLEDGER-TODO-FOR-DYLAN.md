@@ -6,11 +6,15 @@ else (code, features, design, polish) I'm handling without you. I'll keep
 this file updated as things get added or checked off; you don't need to
 do anything on this list unless/until you're ready to.
 
-## 1. Email sending for "forgot password" (pending)
+## 1. Email sending for "forgot password" and "Send all reminders" (pending)
 
 Right now, password-reset requests work but the email doesn't actually
-send — it's just logged quietly on the server. To turn on real email
-sending:
+send — it's just logged quietly on the server. The new "Send all
+reminders" button on the Reminders page (bulk-emails every parent with
+an outstanding balance, once two admins/accountants approve it) uses
+the exact same email setup, so it's also silently a no-op until you do
+this — the approval flow works, it just won't actually land in anyone's
+inbox yet. One setup step turns both on. To turn on real email sending:
 
 1. Go to https://myaccount.google.com/apppasswords (turn on 2-Step
    Verification first if it asks — required for App Passwords).
@@ -81,7 +85,8 @@ just tell me the address.
 
 ---
 
-_Last updated: 2026-09-15. Nothing above is urgent — the app works fully
+_Last updated: 2026-09-15 (send-all-reminders cross-reference added).
+Nothing above is urgent — the app works fully
 without any of it (trial signups, all features, the platform dashboard).
 These are just the specific moments where a human with account access
 has to be the one to click "confirm," or a decision only you can make._
