@@ -183,7 +183,7 @@ export default function GeneralSettingsPage() {
               </datalist>
               <p className="mt-1 text-xs text-muted-foreground">
                 Used for reminder scheduling and statement dates. Country/currency
-                are set once at signup and can't be changed here.
+                are set once at signup and can&apos;t be changed here.
               </p>
             </div>
           </div>
