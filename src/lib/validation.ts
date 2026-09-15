@@ -128,10 +128,10 @@ const emptyStringToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
 // An uploaded logo/letterhead, as a base64 data: URL — see Organization's
 // logoImage/letterheadImage comment for why this is stored directly rather
-// than in separate blob storage. ~1MB of base64 text (the length cap below)
-// comfortably covers a raw image capped at ~700KB client-side (base64
-// inflates by ~4/3), leaving headroom before either field alone approaches
-// a serverless function's request-body limit.
+// than in separate blob storage. The upload UI (general/page.tsx) always
+// resizes/re-compresses an image client-side before it ever reaches this
+// schema — this max is a server-side safety net for that, not something a
+// person is expected to hit or work around themselves.
 const imageDataUrlSchema = z
   .string()
   .trim()
@@ -139,7 +139,7 @@ const imageDataUrlSchema = z
     /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+=*$/,
     "That doesn't look like an image file."
   )
-  .max(1_400_000, "Image is too large — please use a smaller file (under ~700KB).");
+  .max(1_400_000, "Image is too large. Please try uploading it again.");
 
 export const organizationProfileSchema = z.object({
   name: organizationNameSchema,

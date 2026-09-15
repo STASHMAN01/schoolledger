@@ -40,17 +40,86 @@ const COMMON_TIMEZONES = [
   "UTC",
 ];
 
+// The stored/serialized cap — matches validation.ts's imageDataUrlSchema.
 // Kept well under any serverless request-body ceiling even with both
-// images attached at once — see validation.ts's imageDataUrlSchema comment.
-const MAX_IMAGE_BYTES = 700 * 1024;
+// images attached at once, and the logo specifically is embedded straight
+// into the page on every load (it's in the header), so a multi-megabyte
+// file would slow the whole app down for everyone, not just whoever
+// uploaded it. Rather than making people find/shrink a smaller file
+// themselves, every upload is automatically resized and re-compressed
+// client-side to comfortably fit — see compressImageToDataUrl below.
+const MAX_DATA_URL_CHARS = 1_300_000;
+// Soft target well under the hard cap, so there's room for the format/
+// quality search below to land under MAX_DATA_URL_CHARS on the first
+// candidate that fits, rather than needing to skim right against the edge.
+const TARGET_DATA_URL_CHARS = 900_000;
 
-function readImageAsDataUrl(file: File): Promise<string> {
+function loadImageElement(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error("Could not read file."));
-    reader.readAsDataURL(file);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read that file — it may not be a valid image."));
+    };
+    img.src = url;
   });
+}
+
+function drawToDataUrl(
+  img: HTMLImageElement,
+  maxDimension: number,
+  mimeType: string,
+  quality?: number
+): string {
+  const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not process that image in this browser.");
+  // JPEG has no alpha channel — flatten onto white first so a logo with a
+  // transparent background doesn't end up with a black one instead.
+  if (mimeType === "image/jpeg") {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL(mimeType, quality);
+}
+
+// Resizes/re-compresses an uploaded image down to something that comfortably
+// fits as an inline data: URL, without the person needing to do anything
+// themselves. Tries progressively smaller PNG renders first (preserving
+// transparency, which matters for a logo) and only falls back to JPEG —
+// which compresses far better but flattens transparency to white — if PNG
+// genuinely can't get small enough. JPEG's quality/size tradeoff means this
+// converges for essentially any real photo or logo file.
+async function compressImageToDataUrl(file: File): Promise<string> {
+  const img = await loadImageElement(file);
+  const preferPng = file.type === "image/png" || file.type === "image/gif";
+
+  if (preferPng) {
+    for (const dim of [1400, 1000, 700, 500, 350]) {
+      const dataUrl = drawToDataUrl(img, dim, "image/png");
+      if (dataUrl.length <= TARGET_DATA_URL_CHARS) return dataUrl;
+    }
+  }
+
+  for (const dim of [1600, 1300, 1000, 800, 600, 450]) {
+    for (const quality of [0.85, 0.7, 0.55, 0.4]) {
+      const dataUrl = drawToDataUrl(img, dim, "image/jpeg", quality);
+      if (dataUrl.length <= TARGET_DATA_URL_CHARS) return dataUrl;
+    }
+  }
+
+  // Last resort — small and low-quality, but should never actually be
+  // reached for a normal logo/letterhead image.
+  return drawToDataUrl(img, 300, "image/jpeg", 0.4);
 }
 
 function ImageUploadField({
@@ -67,6 +136,7 @@ function ImageUploadField({
   onChange: (dataUrl: string | null) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [compressing, setCompressing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File | undefined) {
@@ -76,16 +146,20 @@ function ImageUploadField({
       setError("Please choose an image file.");
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
-      setError(
-        `That image is too large (${Math.round(file.size / 1024)}KB) — please use one under ${Math.round(MAX_IMAGE_BYTES / 1024)}KB.`
-      );
-      return;
-    }
+    setCompressing(true);
     try {
-      onChange(await readImageAsDataUrl(file));
-    } catch {
-      setError("Could not read that file — please try again.");
+      const dataUrl = await compressImageToDataUrl(file);
+      if (dataUrl.length > MAX_DATA_URL_CHARS) {
+        // Practically unreachable — compressImageToDataUrl's last resort is
+        // tiny — but never silently save something over the server's cap.
+        setError("Could not shrink that image enough — please try a simpler/smaller file.");
+        return;
+      }
+      onChange(dataUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that file — please try again.");
+    } finally {
+      setCompressing(false);
     }
   }
 
@@ -112,11 +186,12 @@ function ImageUploadField({
                 type="button"
                 variant="secondary"
                 size="sm"
+                disabled={compressing}
                 onClick={() => inputRef.current?.click()}
               >
-                {value ? "Replace" : "Upload"}
+                {compressing ? "Processing…" : value ? "Replace" : "Upload"}
               </Button>
-              {value && (
+              {value && !compressing && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
                   Remove
                 </Button>
@@ -387,7 +462,7 @@ export default function GeneralSettingsPage() {
           <div className="flex flex-col gap-6">
             <ImageUploadField
               label="Logo"
-              helpText={`Shown in the app and on statements. PNG, JPG, WebP or GIF, under ${Math.round(MAX_IMAGE_BYTES / 1024)}KB.`}
+              helpText="Shown in the app and on statements. Any PNG, JPG, WebP or GIF — it's automatically resized to keep pages fast."
               value={logoImage}
               disabled={!isAdmin}
               onChange={(dataUrl) => {
@@ -397,7 +472,7 @@ export default function GeneralSettingsPage() {
             />
             <ImageUploadField
               label="Letterhead"
-              helpText={`Printed at the top of PDF statements. Same file types, under ${Math.round(MAX_IMAGE_BYTES / 1024)}KB.`}
+              helpText="Printed at the top of PDF statements. Same file types — also resized automatically."
               value={letterheadImage}
               disabled={!isAdmin}
               onChange={(dataUrl) => {
