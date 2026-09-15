@@ -110,6 +110,7 @@ model Organization {
   auditLogs     AuditLog[]
   events        Event[]
   deletionRequests DeletionRequest[]
+  reminderSendRequests ReminderSendRequest[]
 
   @@map("organizations")
 }
@@ -140,6 +141,7 @@ model User {
   auditLogs   AuditLog[]
   payments    Payment[] @relation("RecordedBy")
   deletionApprovals DeletionApproval[]
+  reminderSendApprovals ReminderSendApproval[]
 
   @@map("users")
 }
@@ -517,4 +519,47 @@ model DeletionApproval {
 
   @@unique([deletionRequestId, userId])
   @@map("deletion_approvals")
+}
+
+// "Send all reminders" — the same request → 2-people-approve → execute
+// shape as DeletionRequest/DeletionApproval above, but for a different
+// action (emailing every parent with an outstanding balance) and a
+// different approval pool: any 2 *distinct* ADMIN or ACCOUNTANT people
+// (any combination, "director" already maps to ADMIN elsewhere in this
+// app) — never a Viewer — per the org owner's own spec. Reuses
+// DeletionRequestStatus since the three states (PENDING/APPROVED/
+// CANCELLED) mean exactly the same thing here.
+model ReminderSendRequest {
+  id                String                @id @default(cuid())
+  organizationId    String
+  status            DeletionRequestStatus @default(PENDING)
+  requestedByUserId String
+  // How many reminders were outstanding at request time — shown in the
+  // approval queue so an approver knows roughly what they're approving
+  // without needing to separately open the Reminders page first. The
+  // actual send recomputes the live list at execution time rather than
+  // trusting this snapshot, since it could be stale by the time the 2nd
+  // approval lands.
+  reminderCountAtRequest Int
+  createdAt         DateTime              @default(now())
+  resolvedAt        DateTime?
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvals    ReminderSendApproval[]
+
+  @@index([organizationId, status])
+  @@map("reminder_send_requests")
+}
+
+model ReminderSendApproval {
+  id                     String   @id @default(cuid())
+  reminderSendRequestId  String
+  userId                 String
+  createdAt              DateTime @default(now())
+
+  reminderSendRequest ReminderSendRequest @relation(fields: [reminderSendRequestId], references: [id], onDelete: Cascade)
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reminderSendRequestId, userId])
+  @@map("reminder_send_approvals")
 }

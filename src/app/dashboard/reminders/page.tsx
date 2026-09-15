@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useOrg } from "../OrgContext";
 import { Button, Card, EmptyState, PageHeader, Textarea } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
+import { useConfirmDialog } from "@/components/useConfirmDialog";
+import { canHandleReminderSend, REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
 
 type Reminder = {
   childId: string;
@@ -33,9 +35,19 @@ export default function RemindersPage() {
   );
 }
 
+type SendRequest = {
+  id: string;
+  reminderCountAtRequest: number;
+  approvalsCount: number;
+  approvedByMe: boolean;
+  requestedByMe: boolean;
+};
+
 function RemindersPageInner() {
   const { organizationId, role, currencyCode } = useOrg();
   const canSend = role !== "VIEWER";
+  const canHandleSendAll = canHandleReminderSend(role);
+  const { confirm, dialog } = useConfirmDialog();
   const searchParams = useSearchParams();
   const filterParam = searchParams.get("filter"); // "sent" | "unsent" | null
   const [filter, setFilter] = useState<"all" | "sent" | "unsent">(
@@ -48,6 +60,12 @@ function RemindersPageInner() {
   const [editedMessages, setEditedMessages] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const [sendRequest, setSendRequest] = useState<SendRequest | null>(null);
+  const [sendRequestLoading, setSendRequestLoading] = useState(true);
+  const [sendBusy, setSendBusy] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendResult, setSendResult] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/organizations/${organizationId}/reminders`);
@@ -57,10 +75,105 @@ function RemindersPageInner() {
     setLoading(false);
   }, [organizationId]);
 
+  const loadSendRequest = useCallback(async () => {
+    setSendRequestLoading(true);
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/reminders/send-request`);
+      const data = await res.json();
+      if (res.ok) setSendRequest(data.request);
+    } finally {
+      setSendRequestLoading(false);
+    }
+  }, [organizationId]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
-  }, [load]);
+    loadSendRequest();
+  }, [load, loadSendRequest]);
+
+  async function requestSendAll() {
+    const confirmed = await confirm({
+      title: "Send all reminders?",
+      description:
+        "Are you sure you have recorded everything correctly before sending? This will email every parent with an outstanding balance once a second admin or accountant approves it.",
+      confirmLabel: "Yes, request it",
+    });
+    if (!confirmed) return;
+    setSendBusy(true);
+    setSendError(null);
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/reminders/send-request`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSendError(data.error ?? "Could not request this.");
+        return;
+      }
+      setSendRequest(data.request);
+    } finally {
+      setSendBusy(false);
+    }
+  }
+
+  async function approveSendAll() {
+    if (!sendRequest) return;
+    setSendBusy(true);
+    setSendError(null);
+    try {
+      const res = await fetch(
+        `/api/organizations/${organizationId}/reminders/send-request/${sendRequest.id}/approve`,
+        { method: "POST" }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setSendError(data.error ?? "Could not approve.");
+        return;
+      }
+      if (data.executed) {
+        setSendResult(
+          `Sent ${data.sentCount} reminder email${data.sentCount === 1 ? "" : "s"}.` +
+            (data.skippedNoEmailCount
+              ? ` ${data.skippedNoEmailCount} skipped (no email on file, or email isn't set up yet).`
+              : "") +
+            (data.failedCount ? ` ${data.failedCount} failed to send.` : "")
+        );
+        setSendRequest(null);
+        await load();
+      } else {
+        setSendRequest((r) => (r ? { ...r, approvalsCount: data.approvalCount, approvedByMe: true } : r));
+      }
+    } finally {
+      setSendBusy(false);
+    }
+  }
+
+  async function cancelSendAll() {
+    if (!sendRequest) return;
+    const confirmed = await confirm({
+      title: "Cancel this request?",
+      description: "No reminder emails will be sent.",
+      confirmLabel: "Cancel request",
+    });
+    if (!confirmed) return;
+    setSendBusy(true);
+    setSendError(null);
+    try {
+      const res = await fetch(
+        `/api/organizations/${organizationId}/reminders/send-request/${sendRequest.id}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setSendError(data.error ?? "Could not cancel.");
+        return;
+      }
+      setSendRequest(null);
+    } finally {
+      setSendBusy(false);
+    }
+  }
 
   async function markSent(childId: string, channel: "whatsapp" | "email" | "manual") {
     setBusyId(childId);
@@ -100,7 +213,57 @@ function RemindersPageInner() {
         description="Every child with an outstanding balance, with a ready-to-send message. Nothing is sent automatically — click WhatsApp or Email to open it in your own app with the message pre-filled, edit it first if you like, then mark it as sent so you can see who's already been reminded."
       />
 
+      {dialog}
+
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+
+      {canHandleSendAll && !sendRequestLoading && (
+        <Card className="mb-4 p-4">
+          {sendResult ? (
+            <p className="text-sm text-foreground">{sendResult}</p>
+          ) : sendRequest ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Send-all requested ({sendRequest.approvalsCount}/{REQUIRED_REMINDER_SEND_APPROVALS}{" "}
+                  approvals)
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Covers {sendRequest.reminderCountAtRequest} outstanding account
+                  {sendRequest.reminderCountAtRequest === 1 ? "" : "s"} as of when it was
+                  requested — the live list is re-checked right before sending.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {!sendRequest.approvedByMe && (
+                  <Button size="sm" onClick={approveSendAll} disabled={sendBusy}>
+                    Approve &amp; send
+                  </Button>
+                )}
+                <Button variant="secondary" size="sm" onClick={cancelSendAll} disabled={sendBusy}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-muted-foreground">
+                Email every parent above with an outstanding balance in one go — needs{" "}
+                {REQUIRED_REMINDER_SEND_APPROVALS} approvals from admins or accountants.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={requestSendAll}
+                disabled={sendBusy || reminders.length === 0}
+              >
+                Send all…
+              </Button>
+            </div>
+          )}
+          {sendError && <p className="mt-2 text-xs text-danger">{sendError}</p>}
+        </Card>
+      )}
 
       {!loading && reminders.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2 text-sm">

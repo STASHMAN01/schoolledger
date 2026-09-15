@@ -38,6 +38,10 @@ const VERB_LABELS: Record<string, string> = {
   deletionApproved: "approved deletion of",
   deletionCancelled: "cancelled a deletion request for",
   restoredFromTrash: "restored from trash",
+  sendAllRequested: "requested sending reminders to everyone owing",
+  sendAllApproved: "approved sending reminders to everyone owing",
+  sendAllExecuted: "sent reminders to everyone owing",
+  sendAllCancelled: "cancelled a request to send reminders to everyone owing",
 };
 
 const ENTITY_BADGE: Record<string, "brand" | "accent" | "success" | "danger" | "neutral"> = {

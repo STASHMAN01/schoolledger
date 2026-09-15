@@ -96,6 +96,16 @@ export function describeAuditAction(row: AuditRow): string {
       return `cancelled a deletion request for ${m.targetLabel ?? "a child's records"}`;
     case "payment.deletionCancelled":
       return `cancelled a deletion request for a payment (${m.targetLabel ?? ""})`;
+    case "reminders.sendAllRequested":
+      return `requested sending reminders to everyone owing (${typeof m.reminderCountAtRequest === "number" ? m.reminderCountAtRequest : ""} accounts)`;
+    case "reminders.sendAllApproved":
+      return `approved sending reminders to everyone owing`;
+    case "reminders.sendAllExecuted": {
+      const sent = typeof m.sentCount === "number" ? m.sentCount : 0;
+      return `sent ${sent} reminder email${sent === 1 ? "" : "s"} to everyone owing`;
+    }
+    case "reminders.sendAllCancelled":
+      return "cancelled a request to send reminders to everyone owing";
     default:
       return row.action;
   }
