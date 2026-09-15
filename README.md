@@ -1,4 +1,4 @@
-# SchoolLedger (working name)
+# TinyLedger
 
 Web SaaS for preschools and small schools to manage categories/classes,
 children, payments, statements, and billing. See `PHASES.md` for the build

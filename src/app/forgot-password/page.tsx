@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
       <div className="animate-in mb-8 flex flex-col items-center text-center">
         <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand font-display text-lg font-bold text-brand-foreground">
-          S
+          T
         </div>
         <h1 className="font-display text-2xl font-semibold text-foreground">
           Reset your password

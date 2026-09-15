@@ -20,7 +20,7 @@ type Overview = {
 // Platform revenue is always USD from Stripe's own price objects here
 // (this app's per-school currencyCode is a separate, unrelated concept —
 // what a school charges parents in ZAR/USD/etc has nothing to do with
-// what that school pays SchoolLedger).
+// what that school pays TinyLedger).
 function formatUsd(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }

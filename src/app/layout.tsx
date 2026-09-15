@@ -23,8 +23,9 @@ const lexend = Lexend({
 });
 
 export const metadata: Metadata = {
-  title: "SchoolLedger",
-  description: "Payments and statements for preschools and small schools.",
+  title: "TinyLedger — Accounting built for preschools",
+  description:
+    "TinyLedger is fee and payment tracking built for preschools, nurseries, and crèches: enrollments, recurring fees, payment history, and statements in one place.",
 };
 
 export default function RootLayout({

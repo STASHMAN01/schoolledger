@@ -1,4 +1,4 @@
-# Terms of Service — SchoolLedger (working name)
+# Terms of Service — TinyLedger (working name)
 
 **Status: DRAFT — not yet reviewed by a lawyer. Do not publish this or
 start charging customers until a lawyer has reviewed it, the bracketed
@@ -12,7 +12,7 @@ _Last updated: [DATE]_
 
 These Terms of Service ("**Terms**") are an agreement between
 **[YOUR REGISTERED BUSINESS NAME]** ("**we**", "**us**"), the provider of
-SchoolLedger (the "**Service**"), and the school or organization that
+TinyLedger (the "**Service**"), and the school or organization that
 creates an account ("**you**", "**the school**", "**Customer**"). By
 creating an account or using the Service, you accept these Terms on behalf
 of your school, and you confirm you're authorized to do so.

@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 
 const PUBLIC_PATHS = [
+  "/",
+  "/pricing",
   "/login",
   "/register",
   "/forgot-password",
