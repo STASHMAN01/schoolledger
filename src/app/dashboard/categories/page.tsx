@@ -5,6 +5,7 @@ import { useOrg, canManage } from "../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
+import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
 
 type Category = {
   id: string;
@@ -12,6 +13,7 @@ type Category = {
   parentId: string | null;
   monthlyFeeCents: number | null;
   archived: boolean;
+  deletionRequest: DeletionRequestInfo | null;
 };
 
 function inputToCents(value: string): number | null {
@@ -109,12 +111,25 @@ export default function CategoriesPage() {
             )}
           </div>
           {canManage(role) && (
-            <button
-              onClick={() => toggleArchive(category)}
-              className="text-xs text-muted-foreground underline transition-standard hover:text-foreground"
-            >
-              {category.archived ? "Restore" : "Archive"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => toggleArchive(category)}
+                className="text-xs text-muted-foreground underline transition-standard hover:text-foreground"
+              >
+                {category.archived ? "Restore" : "Archive"}
+              </button>
+              <DeletionControl
+                organizationId={organizationId}
+                targetType="CATEGORY"
+                targetId={category.id}
+                targetLabel={category.name}
+                deletionRequest={category.deletionRequest}
+                canRequest={canManage(role)}
+                isAdmin={role === "ADMIN"}
+                onChanged={load}
+                confirm={confirm}
+              />
+            </div>
           )}
         </div>
         {children.map((c) => renderNode(c, depth + 1))}

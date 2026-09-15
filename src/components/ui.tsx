@@ -165,6 +165,53 @@ export function PageHeader({
   );
 }
 
+// A collapsible section for long settings-style forms — closed by default
+// so a page reads as a list of named buttons to open rather than one long
+// scroll of fields the visitor has to hunt through. Built on native
+// <details>/<summary> (same pattern as the "Settings" nav dropdown) so it
+// needs no JS state and stays keyboard/screen-reader accessible for free.
+export function Disclosure({
+  title,
+  description,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="group rounded-xl border border-border bg-surface"
+    >
+      <summary className="transition-standard flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 hover:bg-background">
+        <div>
+          <h2 className="font-display text-sm font-semibold text-foreground">{title}</h2>
+          {description && (
+            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+          )}
+        </div>
+        <svg
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+          viewBox="0 0 12 12"
+          fill="none"
+        >
+          <path
+            d="M2.5 4.5L6 8l3.5-3.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </summary>
+      <div className="border-t border-border px-5 py-5">{children}</div>
+    </details>
+  );
+}
+
 export function EmptyState({
   title,
   description,

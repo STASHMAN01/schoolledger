@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         );
       }
       const parent = await db.category.findFirst({
-        where: { id: body.parentId, organizationId },
+        where: { id: body.parentId, organizationId, deletedAt: null },
       });
       if (!parent) {
         return NextResponse.json(

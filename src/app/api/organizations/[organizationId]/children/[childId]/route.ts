@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (body.categoryId) {
       const category = await db.category.findFirst({
-        where: { id: body.categoryId, organizationId },
+        where: { id: body.categoryId, organizationId, deletedAt: null },
       });
       if (!category) {
         return NextResponse.json(

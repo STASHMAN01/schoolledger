@@ -126,18 +126,43 @@ export const acceptPlatformInviteSchema = z.object({
 // as null instead of an empty string.
 const emptyStringToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
+// An uploaded logo/letterhead, as a base64 data: URL — see Organization's
+// logoImage/letterheadImage comment for why this is stored directly rather
+// than in separate blob storage. ~1MB of base64 text (the length cap below)
+// comfortably covers a raw image capped at ~700KB client-side (base64
+// inflates by ~4/3), leaving headroom before either field alone approaches
+// a serverless function's request-body limit.
+const imageDataUrlSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+=*$/,
+    "That doesn't look like an image file."
+  )
+  .max(1_400_000, "Image is too large — please use a smaller file (under ~700KB).");
+
 export const organizationProfileSchema = z.object({
   name: organizationNameSchema,
   addressLine1: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
   addressLine2: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
   province: z.preprocess(emptyStringToUndefined, z.string().trim().max(100).optional()),
-  logoUrl: z.preprocess(emptyStringToUndefined, z.string().trim().url("Enter a valid URL").max(2000).optional()),
-  letterheadUrl: z.preprocess(emptyStringToUndefined, z.string().trim().url("Enter a valid URL").max(2000).optional()),
+  // null explicitly clears an uploaded image (the "Remove" button);
+  // undefined/omitted leaves whatever's already stored untouched.
+  logoImage: z.preprocess(emptyStringToUndefined, imageDataUrlSchema.optional().nullable()),
+  letterheadImage: z.preprocess(emptyStringToUndefined, imageDataUrlSchema.optional().nullable()),
+  contactName: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
+  contactEmail: z.preprocess(emptyStringToUndefined, emailSchema.optional()),
+  contactPhone: z.preprocess(emptyStringToUndefined, z.string().trim().max(40).optional()),
   bankName: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
   // Never validated as numeric-only: real account numbers can carry
   // branch/IBAN-style formatting depending on country.
   bankAccountNumber: z.preprocess(emptyStringToUndefined, z.string().trim().max(64).optional()),
   timezone: z.string().trim().min(1).max(100),
+});
+
+export const deletionRequestSchema = z.object({
+  targetType: z.enum(["CATEGORY", "CHILD"]),
+  targetId: z.string().cuid(),
 });
 
 export const forgotPasswordSchema = z.object({

@@ -10,14 +10,43 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId); // any role may view
+    const { userId } = await requireMembership(organizationId); // any role may view
 
+    // deletedAt is a stronger, separate state than `archived` — a category
+    // pending/awaiting trash purge never shows up here, "show archived" or
+    // not; it only appears in Settings → Trash.
     const categories = await db.category.findMany({
-      where: { organizationId },
+      where: { organizationId, deletedAt: null },
       orderBy: [{ parentId: "asc" }, { name: "asc" }],
     });
 
-    return NextResponse.json({ categories });
+    const pendingRequests = await db.deletionRequest.findMany({
+      where: {
+        organizationId,
+        targetType: "CATEGORY",
+        status: "PENDING",
+        targetId: { in: categories.map((c) => c.id) },
+      },
+      include: { approvals: true },
+    });
+    const requestByCategoryId = new Map(pendingRequests.map((r) => [r.targetId, r]));
+
+    return NextResponse.json({
+      categories: categories.map((c) => {
+        const request = requestByCategoryId.get(c.id);
+        return {
+          ...c,
+          deletionRequest: request
+            ? {
+                id: request.id,
+                approvalsCount: request.approvals.length,
+                approvedByMe: request.approvals.some((a) => a.userId === userId),
+                requestedByMe: request.requestedByUserId === userId,
+              }
+            : null,
+        };
+      }),
+    });
   } catch (err) {
     return handleApiError(err);
   }
@@ -39,7 +68,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       // crafted parentId could be used to probe/link into another
       // school's category tree.
       const parent = await db.category.findFirst({
-        where: { id: body.parentId, organizationId },
+        where: { id: body.parentId, organizationId, deletedAt: null },
       });
       if (!parent) {
         return NextResponse.json(

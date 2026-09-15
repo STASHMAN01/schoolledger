@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useOrg, canManage } from "../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
+import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
 
 type Category = { id: string; name: string; archived: boolean };
 type Child = {
@@ -18,6 +19,7 @@ type Child = {
   exitDate: string | null;
   archived: boolean;
   category: { id: string; name: string };
+  deletionRequest: DeletionRequestInfo | null;
 };
 
 const emptyForm = {
@@ -280,12 +282,25 @@ export default function ChildrenPage() {
                   </td>
                   {canManage(role) && (
                     <td className="px-3 py-2 text-right">
-                      <button
-                        onClick={() => toggleArchive(c)}
-                        className="text-xs text-muted-foreground underline transition-standard hover:text-foreground"
-                      >
-                        {c.archived ? "Restore" : "Archive"}
-                      </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <button
+                          onClick={() => toggleArchive(c)}
+                          className="text-xs text-muted-foreground underline transition-standard hover:text-foreground"
+                        >
+                          {c.archived ? "Restore" : "Archive"}
+                        </button>
+                        <DeletionControl
+                          organizationId={organizationId}
+                          targetType="CHILD"
+                          targetId={c.id}
+                          targetLabel={`${c.firstName} ${c.lastName}`}
+                          deletionRequest={c.deletionRequest}
+                          canRequest={role === "ADMIN"}
+                          isAdmin={role === "ADMIN"}
+                          onChanged={loadChildren}
+                          confirm={confirm}
+                        />
+                      </div>
                     </td>
                   )}
                 </tr>

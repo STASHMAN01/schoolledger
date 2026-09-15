@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Button, Card } from "@/components/ui";
 
-type ConfirmOptions = {
+export type ConfirmOptions = {
   title: string;
   description: string;
   confirmLabel?: string;

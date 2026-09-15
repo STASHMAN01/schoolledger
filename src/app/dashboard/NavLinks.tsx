@@ -19,6 +19,7 @@ const SETTINGS_LINKS = [
   { href: "/dashboard/settings/payment-types", label: "Payment types" },
   { href: "/dashboard/settings/team", label: "Team" },
   { href: "/dashboard/settings/activity", label: "Activity log" },
+  { href: "/dashboard/settings/trash", label: "Trash" },
   { href: "/dashboard/settings/billing", label: "Billing" },
 ];
 
@@ -30,8 +31,13 @@ export function NavLinks() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { role } = useOrg();
+  const adminOnlySettings = [
+    "/dashboard/settings/billing",
+    "/dashboard/settings/team",
+    "/dashboard/settings/trash",
+  ];
   const settingsVisible = SETTINGS_LINKS.filter(
-    (l) => role === "ADMIN" || (l.href !== "/dashboard/settings/billing" && l.href !== "/dashboard/settings/team")
+    (l) => role === "ADMIN" || !adminOnlySettings.includes(l.href)
   );
 
   return (

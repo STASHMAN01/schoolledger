@@ -49,6 +49,17 @@ enum InviteStatus {
   EXPIRED
 }
 
+enum DeletionTargetType {
+  CATEGORY
+  CHILD
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  APPROVED
+  CANCELLED
+}
+
 model Organization {
   id                String   @id @default(cuid())
   name              String
@@ -57,8 +68,17 @@ model Organization {
   addressLine1      String?
   addressLine2      String?
   province           String?
-  logoUrl           String?
-  letterheadUrl     String?
+  logoUrl           String? // deprecated — superseded by logoImage (direct upload), kept so no column is dropped
+  letterheadUrl     String? // deprecated — superseded by letterheadImage (direct upload), kept so no column is dropped
+  // Uploaded images, stored as data: URLs (base64) directly in the row —
+  // small enough (capped client- and server-side, see validation.ts) that
+  // this avoids standing up separate blob storage/credentials for what is,
+  // for a preschool's logo and letterhead, a handful of small images.
+  logoImage         String?  @db.Text
+  letterheadImage   String?  @db.Text
+  contactName       String? // a real person to contact about the account (not necessarily an app user)
+  contactEmail      String?
+  contactPhone      String?
   bankName          String?
   // Never store full bank account numbers in plaintext beyond what's needed
   // to print on a statement. Kept optional and separate from anything else
@@ -88,6 +108,7 @@ model Organization {
   creditBalances CreditBalance[]
   auditLogs     AuditLog[]
   events        Event[]
+  deletionRequests DeletionRequest[]
 
   @@map("organizations")
 }
@@ -117,6 +138,7 @@ model User {
   memberships Membership[]
   auditLogs   AuditLog[]
   payments    Payment[] @relation("RecordedBy")
+  deletionApprovals DeletionApproval[]
 
   @@map("users")
 }
@@ -168,6 +190,11 @@ model Category {
   name           String
   monthlyFeeCents Int?      // null = inherits nothing; leaf categories should set this
   archived       Boolean   @default(false)
+  // Set once a deletion request against this category has 2 admin
+  // approvals (see DeletionRequest). A deleted category is hidden from
+  // every normal view — stronger than `archived` — and is only visible in
+  // Settings → Trash until it's purged (or restored) 30 days later.
+  deletedAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -202,6 +229,9 @@ model Child {
   // nudged without re-checking the audit log for each child.
   lastReminderSentAt DateTime?
   archived       Boolean   @default(false)
+  // See Category.deletedAt — same soft-trash mechanism, gated the same way
+  // by a 2-admin-approved DeletionRequest.
+  deletedAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -428,4 +458,49 @@ model AuditLog {
 
   @@index([organizationId, createdAt])
   @@map("audit_logs")
+}
+
+// A category or child record can only be permanently removed through this
+// two-person approval flow — no single person (not even one admin acting
+// alone) can delete either kind of record. Once REQUIRED_APPROVALS
+// (src/lib/deletion.ts) distinct admins have each recorded a
+// DeletionApproval, the target's `deletedAt` is set and it drops out of
+// every normal view (Settings → Trash lists it, restorable, until purged
+// 30 days later).
+model DeletionRequest {
+  id                String                 @id @default(cuid())
+  organizationId    String
+  targetType        DeletionTargetType
+  targetId          String
+  // Snapshot of the target's display name at request time, so the
+  // approval queue and trash list still read sensibly even though the
+  // underlying row may itself be gone by the time someone looks.
+  targetLabel       String
+  status            DeletionRequestStatus  @default(PENDING)
+  requestedByUserId String
+  createdAt         DateTime               @default(now())
+  resolvedAt        DateTime?
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvals    DeletionApproval[]
+
+  @@index([organizationId, status])
+  @@index([targetType, targetId])
+  @@map("deletion_requests")
+}
+
+// One row per admin who has approved a given request. The unique
+// constraint is what actually prevents one admin's approval from being
+// (accidentally or otherwise) counted twice.
+model DeletionApproval {
+  id                String   @id @default(cuid())
+  deletionRequestId String
+  userId            String
+  createdAt         DateTime @default(now())
+
+  deletionRequest DeletionRequest @relation(fields: [deletionRequestId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([deletionRequestId, userId])
+  @@map("deletion_approvals")
 }

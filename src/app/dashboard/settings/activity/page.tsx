@@ -34,6 +34,10 @@ const VERB_LABELS: Record<string, string> = {
   generated: "generated",
   sent: "sent",
   subscriptionUpdated: "updated the subscription",
+  deletionRequested: "requested deletion of",
+  deletionApproved: "approved deletion of",
+  deletionCancelled: "cancelled a deletion request for",
+  restoredFromTrash: "restored from trash",
 };
 
 const ENTITY_BADGE: Record<string, "brand" | "accent" | "success" | "danger" | "neutral"> = {
@@ -65,6 +69,26 @@ function formatWhen(iso: string): string {
   });
 }
 
+function ActivityRow({ entry }: { entry: AuditEntry }) {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3">
+      <Badge variant={ENTITY_BADGE[entry.entityType] ?? "neutral"}>
+        {entry.entityType}
+      </Badge>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-foreground">
+          <span className="font-medium">{entry.actor ? entry.actor.name : "System"}</span>{" "}
+          {describeAction(entry.action)}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {formatWhen(entry.createdAt)}
+          {entry.actor && ` · ${entry.actor.email}`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ActivityLogPage() {
   const { organizationId } = useOrg();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
@@ -72,6 +96,9 @@ export default function ActivityLogPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Minimised by default — the full log can get long fast, and most of the
+  // time "what's the most recent thing that happened" is all anyone needs.
+  const [expanded, setExpanded] = useState(false);
 
   const loadFirstPage = useCallback(async () => {
     setLoading(true);
@@ -129,36 +156,44 @@ export default function ActivityLogPage() {
         />
       )}
 
-      {!loading && entries.length > 0 && (
-        <Card className="divide-y divide-border">
-          {entries.map((entry) => (
-            <div key={entry.id} className="flex items-start gap-3 px-4 py-3">
-              <Badge variant={ENTITY_BADGE[entry.entityType] ?? "neutral"}>
-                {entry.entityType}
-              </Badge>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground">
-                  <span className="font-medium">
-                    {entry.actor ? entry.actor.name : "System"}
-                  </span>{" "}
-                  {describeAction(entry.action)}
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {formatWhen(entry.createdAt)}
-                  {entry.actor && ` · ${entry.actor.email}`}
-                </p>
-              </div>
-            </div>
-          ))}
-        </Card>
+      {!loading && entries.length > 0 && !expanded && (
+        <>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Most recent
+          </p>
+          <Card>
+            <ActivityRow entry={entries[0]} />
+          </Card>
+          <button
+            onClick={() => setExpanded(true)}
+            className="mt-3 text-sm font-medium text-brand underline transition-standard hover:brightness-90"
+          >
+            Show all activity →
+          </button>
+        </>
       )}
 
-      {cursor && (
-        <div className="mt-4 flex justify-center">
-          <Button variant="secondary" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? "Loading…" : "Load more"}
-          </Button>
-        </div>
+      {!loading && entries.length > 0 && expanded && (
+        <>
+          <button
+            onClick={() => setExpanded(false)}
+            className="mb-3 text-sm font-medium text-muted-foreground underline transition-standard hover:text-foreground"
+          >
+            ← Show only the most recent
+          </button>
+          <Card className="divide-y divide-border">
+            {entries.map((entry) => (
+              <ActivityRow key={entry.id} entry={entry} />
+            ))}
+          </Card>
+          {cursor && (
+            <div className="mt-4 flex justify-center">
+              <Button variant="secondary" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? "Loading…" : "Load more"}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

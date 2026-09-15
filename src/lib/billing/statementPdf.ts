@@ -30,7 +30,31 @@ type StatementOrg = {
   bankName: string | null;
   bankAccountNumber: string | null;
   currencyCode: string;
+  // A data: URL (base64), same format the school profile upload stores —
+  // see Organization.letterheadImage. Optional/absent on any org that
+  // hasn't uploaded one yet.
+  letterheadImage?: string | null;
 };
+
+// Parses a "data:image/png;base64,AAAA..." string into raw bytes plus which
+// pdf-lib embed method applies. Returns null for anything malformed rather
+// than throwing — a bad/legacy value should degrade to "no letterhead", not
+// break statement generation for the whole school.
+function parseImageDataUrl(
+  dataUrl: string
+): { bytes: Buffer; kind: "png" | "jpg" } | null {
+  const match = /^data:image\/(png|jpe?g|webp|gif);base64,(.+)$/.exec(dataUrl);
+  if (!match) return null;
+  const [, subtype, base64] = match;
+  // pdf-lib only embeds PNG/JPEG directly; webp/gif letterheads are skipped
+  // rather than mis-decoded.
+  if (subtype !== "png" && subtype !== "jpg" && subtype !== "jpeg") return null;
+  try {
+    return { bytes: Buffer.from(base64, "base64"), kind: subtype === "png" ? "png" : "jpg" };
+  } catch {
+    return null;
+  }
+}
 
 const PAGE_WIDTH = 595.28; // A4 at 72dpi
 const PAGE_HEIGHT = 841.89;
@@ -81,7 +105,29 @@ export async function generateStatementPdf(
     });
   }
 
-  // --- Header / letterhead-lite ---
+  // --- Header / letterhead ---
+  if (org.letterheadImage) {
+    const parsed = parseImageDataUrl(org.letterheadImage);
+    if (parsed) {
+      try {
+        const image =
+          parsed.kind === "png"
+            ? await pdf.embedPng(parsed.bytes)
+            : await pdf.embedJpg(parsed.bytes);
+        const maxWidth = 160;
+        const maxHeight = 60;
+        const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+        const w = image.width * scale;
+        const h = image.height * scale;
+        page.drawImage(image, { x: MARGIN, y: y - h, width: w, height: h });
+        y -= h + 10;
+      } catch {
+        // Corrupt/unsupported bytes despite passing the regex check above —
+        // skip the image rather than fail the whole statement.
+      }
+    }
+  }
+
   text(org.name, { size: 18, f: bold });
   y -= 18;
   const addressParts = [org.addressLine1, org.addressLine2, org.province].filter(Boolean);

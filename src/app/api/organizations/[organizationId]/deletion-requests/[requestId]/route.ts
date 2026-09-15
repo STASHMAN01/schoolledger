@@ -1,0 +1,56 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { requireMembership } from "@/lib/tenant";
+import { logAudit } from "@/lib/audit";
+import { handleApiError } from "@/lib/apiError";
+import { isHighPositionRole } from "@/lib/deletion";
+
+type Params = { params: Promise<{ organizationId: string; requestId: string }> };
+
+// Withdraw a pending deletion request — either the person who asked for it
+// (they changed their mind) or any admin (they disagree with the request)
+// can do this. Nothing is deleted either way; the request just stops being
+// actionable.
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  try {
+    const { organizationId, requestId } = await params;
+    const { userId, role } = await requireMembership(organizationId);
+
+    const request = await db.deletionRequest.findFirst({
+      where: { id: requestId, organizationId },
+    });
+    if (!request) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+    if (request.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "This request has already been resolved." },
+        { status: 400 }
+      );
+    }
+    if (!isHighPositionRole(role) && request.requestedByUserId !== userId) {
+      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
+    }
+
+    await db.deletionRequest.update({
+      where: { id: requestId },
+      data: { status: "CANCELLED", resolvedAt: new Date() },
+    });
+
+    await logAudit({
+      organizationId,
+      userId,
+      action:
+        request.targetType === "CATEGORY"
+          ? "category.deletionCancelled"
+          : "child.deletionCancelled",
+      entityType: request.targetType === "CATEGORY" ? "Category" : "Child",
+      entityId: request.targetId,
+      metadata: { targetLabel: request.targetLabel },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}

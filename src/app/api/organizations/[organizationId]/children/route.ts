@@ -11,22 +11,51 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId); // any role may view
+    const { userId } = await requireMembership(organizationId); // any role may view
 
     const categoryId = req.nextUrl.searchParams.get("categoryId") ?? undefined;
     const includeArchived = req.nextUrl.searchParams.get("archived") === "true";
 
+    // deletedAt (trashed, pending purge) is always excluded regardless of
+    // the archived filter — same reasoning as categories.
     const children = await db.child.findMany({
       where: {
         organizationId,
         categoryId: categoryId || undefined,
         archived: includeArchived ? true : false,
+        deletedAt: null,
       },
       include: { category: true },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
 
-    return NextResponse.json({ children });
+    const pendingRequests = await db.deletionRequest.findMany({
+      where: {
+        organizationId,
+        targetType: "CHILD",
+        status: "PENDING",
+        targetId: { in: children.map((c) => c.id) },
+      },
+      include: { approvals: true },
+    });
+    const requestByChildId = new Map(pendingRequests.map((r) => [r.targetId, r]));
+
+    return NextResponse.json({
+      children: children.map((c) => {
+        const request = requestByChildId.get(c.id);
+        return {
+          ...c,
+          deletionRequest: request
+            ? {
+                id: request.id,
+                approvalsCount: request.approvals.length,
+                approvedByMe: request.approvals.some((a) => a.userId === userId),
+                requestedByMe: request.requestedByUserId === userId,
+              }
+            : null,
+        };
+      }),
+    });
   } catch (err) {
     return handleApiError(err);
   }
@@ -47,7 +76,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     // categories.parentId: never trust a foreign-key id from the client
     // without re-checking it's inside the caller's own tenant.
     const category = await db.category.findFirst({
-      where: { id: body.categoryId, organizationId },
+      where: { id: body.categoryId, organizationId, deletedAt: null },
     });
     if (!category) {
       return NextResponse.json(

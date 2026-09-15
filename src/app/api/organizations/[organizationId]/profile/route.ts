@@ -52,8 +52,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
         addressLine1: org.addressLine1,
         addressLine2: org.addressLine2,
         province: org.province,
-        logoUrl: org.logoUrl,
-        letterheadUrl: org.letterheadUrl,
+        logoImage: org.logoImage,
+        letterheadImage: org.letterheadImage,
+        contactName: org.contactName,
+        contactEmail: org.contactEmail,
+        contactPhone: org.contactPhone,
         bankName: org.bankName,
         bankAccountNumber: bankAccountNumberDisplay,
         hasBankAccountNumber: Boolean(org.bankAccountNumber),
@@ -79,8 +82,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         addressLine1: body.addressLine1 ?? null,
         addressLine2: body.addressLine2 ?? null,
         province: body.province ?? null,
-        logoUrl: body.logoUrl ?? null,
-        letterheadUrl: body.letterheadUrl ?? null,
+        // Explicit null (from the "Remove" button) clears the image;
+        // omitted (undefined, the field was never touched) leaves it as-is.
+        ...(body.logoImage !== undefined ? { logoImage: body.logoImage } : {}),
+        ...(body.letterheadImage !== undefined
+          ? { letterheadImage: body.letterheadImage }
+          : {}),
+        contactName: body.contactName ?? null,
+        contactEmail: body.contactEmail ?? null,
+        contactPhone: body.contactPhone ?? null,
         bankName: body.bankName ?? null,
         // Only overwrite the stored (encrypted) account number when the
         // form actually sent a new value — the GET route only ever returns

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useOrg } from "../../OrgContext";
-import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
+import { Button, Card, Disclosure, Input, Label } from "@/components/ui";
 
 type Profile = {
   name: string;
@@ -11,8 +11,11 @@ type Profile = {
   addressLine1: string | null;
   addressLine2: string | null;
   province: string | null;
-  logoUrl: string | null;
-  letterheadUrl: string | null;
+  logoImage: string | null;
+  letterheadImage: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
   bankName: string | null;
   bankAccountNumber: string | null;
   hasBankAccountNumber: boolean;
@@ -37,6 +40,104 @@ const COMMON_TIMEZONES = [
   "UTC",
 ];
 
+// Kept well under any serverless request-body ceiling even with both
+// images attached at once — see validation.ts's imageDataUrlSchema comment.
+const MAX_IMAGE_BYTES = 700 * 1024;
+
+function readImageAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function ImageUploadField({
+  label,
+  helpText,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  helpText: string;
+  value: string | null;
+  disabled: boolean;
+  onChange: (dataUrl: string | null) => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File | undefined) {
+    setError(null);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError(
+        `That image is too large (${Math.round(file.size / 1024)}KB) — please use one under ${Math.round(MAX_IMAGE_BYTES / 1024)}KB.`
+      );
+      return;
+    }
+    try {
+      onChange(await readImageAsDataUrl(file));
+    } catch {
+      setError("Could not read that file — please try again.");
+    }
+  }
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="mt-2 flex items-center gap-4">
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element -- data: URL, not a Next-optimizable remote image
+          <img
+            src={value}
+            alt={label}
+            className="h-16 max-w-[160px] rounded-lg border border-border object-contain"
+          />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border-strong text-xs text-muted">
+            None
+          </div>
+        )}
+        {!disabled && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => inputRef.current?.click()}
+              >
+                {value ? "Replace" : "Upload"}
+              </Button>
+              {value && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
+                  Remove
+                </Button>
+              )}
+            </div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => handleFile(e.target.files?.[0])}
+            />
+          </div>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">{helpText}</p>
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
 export default function GeneralSettingsPage() {
   const { organizationId, role } = useOrg();
   const isAdmin = role === "ADMIN";
@@ -50,8 +151,13 @@ export default function GeneralSettingsPage() {
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
   const [province, setProvince] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
-  const [letterheadUrl, setLetterheadUrl] = useState("");
+  const [logoImage, setLogoImage] = useState<string | null>(null);
+  const [logoTouched, setLogoTouched] = useState(false);
+  const [letterheadImage, setLetterheadImage] = useState<string | null>(null);
+  const [letterheadTouched, setLetterheadTouched] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [bankName, setBankName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [bankAccountTouched, setBankAccountTouched] = useState(false);
@@ -68,8 +174,13 @@ export default function GeneralSettingsPage() {
       setAddressLine1(org.addressLine1 ?? "");
       setAddressLine2(org.addressLine2 ?? "");
       setProvince(org.province ?? "");
-      setLogoUrl(org.logoUrl ?? "");
-      setLetterheadUrl(org.letterheadUrl ?? "");
+      setLogoImage(org.logoImage ?? null);
+      setLogoTouched(false);
+      setLetterheadImage(org.letterheadImage ?? null);
+      setLetterheadTouched(false);
+      setContactName(org.contactName ?? "");
+      setContactEmail(org.contactEmail ?? "");
+      setContactPhone(org.contactPhone ?? "");
       setBankName(org.bankName ?? "");
       setBankAccountNumber(isAdmin ? org.bankAccountNumber ?? "" : "");
       setTimezone(org.timezone);
@@ -96,8 +207,11 @@ export default function GeneralSettingsPage() {
           addressLine1,
           addressLine2,
           province,
-          logoUrl,
-          letterheadUrl,
+          ...(logoTouched ? { logoImage } : {}),
+          ...(letterheadTouched ? { letterheadImage } : {}),
+          contactName,
+          contactEmail,
+          contactPhone,
           bankName,
           // Only send the account number if the admin actually typed
           // something new — see the route's comment on why "omitted" and
@@ -128,10 +242,17 @@ export default function GeneralSettingsPage() {
 
   return (
     <div className="animate-in max-w-2xl">
-      <PageHeader
-        title="School profile"
-        description="This information appears on statements and receipts sent to parents."
-      />
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-semibold text-foreground">
+            School profile
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This information appears on statements and receipts sent to parents.
+            Click a section below to open it.
+          </p>
+        </div>
+      </div>
 
       {!isAdmin && (
         <Card className="mb-6 p-4 text-sm text-muted-foreground">
@@ -139,11 +260,8 @@ export default function GeneralSettingsPage() {
         </Card>
       )}
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-6">
-        <Card className="p-5">
-          <h2 className="font-display mb-4 text-sm font-semibold text-foreground">
-            Basics
-          </h2>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <Disclosure title="Basics" defaultOpen>
           <div className="flex flex-col gap-4">
             <div>
               <Label htmlFor="name">School name</Label>
@@ -187,12 +305,50 @@ export default function GeneralSettingsPage() {
               </p>
             </div>
           </div>
-        </Card>
+        </Disclosure>
 
-        <Card className="p-5">
-          <h2 className="font-display mb-4 text-sm font-semibold text-foreground">
-            Address
-          </h2>
+        <Disclosure
+          title="Contact details"
+          description="Who to reach about this account — doesn't need to be a person with a login."
+        >
+          <div className="flex flex-col gap-4">
+            <div>
+              <Label htmlFor="contactName">Contact name</Label>
+              <Input
+                id="contactName"
+                disabled={!isAdmin}
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="contactEmail">Contact email</Label>
+                <Input
+                  id="contactEmail"
+                  type="email"
+                  disabled={!isAdmin}
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="contactPhone">Contact phone</Label>
+                <Input
+                  id="contactPhone"
+                  disabled={!isAdmin}
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+        </Disclosure>
+
+        <Disclosure title="Address">
           <div className="flex flex-col gap-4">
             <div>
               <Label htmlFor="addressLine1">Address line 1</Label>
@@ -225,53 +381,39 @@ export default function GeneralSettingsPage() {
               />
             </div>
           </div>
-        </Card>
+        </Disclosure>
 
-        <Card className="p-5">
-          <h2 className="font-display mb-4 text-sm font-semibold text-foreground">
-            Branding
-          </h2>
-          <div className="flex flex-col gap-4">
-            <div>
-              <Label htmlFor="logoUrl">Logo URL</Label>
-              <Input
-                id="logoUrl"
-                type="url"
-                disabled={!isAdmin}
-                placeholder="https://…"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="letterheadUrl">Letterhead image URL</Label>
-              <Input
-                id="letterheadUrl"
-                type="url"
-                disabled={!isAdmin}
-                placeholder="https://…"
-                value={letterheadUrl}
-                onChange={(e) => setLetterheadUrl(e.target.value)}
-                className="mt-1"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Printed at the top of PDF statements. Host an image anywhere
-                public (e.g. your website) and paste its URL — no file upload
-                yet.
-              </p>
-            </div>
+        <Disclosure title="Branding" description="Your logo and letterhead, printed on statements.">
+          <div className="flex flex-col gap-6">
+            <ImageUploadField
+              label="Logo"
+              helpText={`Shown in the app and on statements. PNG, JPG, WebP or GIF, under ${Math.round(MAX_IMAGE_BYTES / 1024)}KB.`}
+              value={logoImage}
+              disabled={!isAdmin}
+              onChange={(dataUrl) => {
+                setLogoImage(dataUrl);
+                setLogoTouched(true);
+              }}
+            />
+            <ImageUploadField
+              label="Letterhead"
+              helpText={`Printed at the top of PDF statements. Same file types, under ${Math.round(MAX_IMAGE_BYTES / 1024)}KB.`}
+              value={letterheadImage}
+              disabled={!isAdmin}
+              onChange={(dataUrl) => {
+                setLetterheadImage(dataUrl);
+                setLetterheadTouched(true);
+              }}
+            />
           </div>
-        </Card>
+        </Disclosure>
 
-        <Card className="p-5">
-          <h2 className="font-display mb-4 text-sm font-semibold text-foreground">
-            Bank details
-          </h2>
-          <p className="mb-4 text-xs text-muted-foreground">
-            Printed on statements so parents know where to pay. Stored encrypted —
-            {isAdmin ? " only admins can view or change it." : " only visible to admins."}
-          </p>
+        <Disclosure
+          title="Bank details"
+          description={
+            isAdmin ? "Printed on statements. Only admins can view or change it." : "Only visible to admins."
+          }
+        >
           <div className="flex flex-col gap-4">
             <div>
               <Label htmlFor="bankName">Bank name</Label>
@@ -302,7 +444,7 @@ export default function GeneralSettingsPage() {
               />
             </div>
           </div>
-        </Card>
+        </Disclosure>
 
         {error && <p className="text-sm text-danger">{error}</p>}
         {saved && <p className="text-sm text-success">Saved.</p>}
