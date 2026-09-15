@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../OrgContext";
 import { Button, Card, Input, Label, LinkButton, PageHeader, Select } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
+import { useConfirmDialog } from "@/components/useConfirmDialog";
 
 type Category = { id: string; name: string };
 type Child = { id: string; firstName: string; lastName: string; categoryId: string };
@@ -35,6 +36,7 @@ export default function PaymentsPage() {
   const canRecord = role === "ADMIN" || role === "ACCOUNTANT";
   const canVoid = role === "ADMIN";
   const [voidingId, setVoidingId] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
@@ -127,11 +129,15 @@ export default function PaymentsPage() {
   }
 
   async function voidPayment(payment: Payment) {
-    const confirmed = window.confirm(
-      `Void the ${formatCents(payment.amountCents, currencyCode)} payment for ${payment.child.firstName} ${payment.child.lastName}` +
+    const confirmed = await confirm({
+      title: "Void this payment?",
+      description:
+        `${formatCents(payment.amountCents, currencyCode)} for ${payment.child.firstName} ${payment.child.lastName}` +
         (payment.receipt ? ` (receipt ${payment.receipt.number})` : "") +
-        `? This reverses it — the amount becomes outstanding again. This can't be undone.`
-    );
+        ` — this reverses it and the amount becomes outstanding again. This can't be undone.`,
+      confirmLabel: "Void payment",
+      variant: "danger",
+    });
     if (!confirmed) return;
     setVoidingId(payment.id);
     setError(null);
@@ -155,6 +161,7 @@ export default function PaymentsPage() {
 
   return (
     <div className="animate-in">
+      {confirmDialog}
       <PageHeader title="Payments" />
 
       {canRecord && (

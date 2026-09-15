@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Card } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
+import { useConfirmDialog } from "@/components/useConfirmDialog";
 
 type Entry = {
   id: string;
@@ -33,6 +34,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,7 +53,13 @@ export default function EventDetailPage() {
   }, [load]);
 
   async function removeChild(childId: string) {
-    if (!confirm("Remove this child from the event? Their charge will be deleted.")) return;
+    const confirmed = await confirm({
+      title: "Remove this child from the event?",
+      description: "Their charge for this event will be deleted. This can't be undone.",
+      confirmLabel: "Remove",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     setError(null);
     setRemovingId(childId);
     const res = await fetch(
@@ -72,6 +80,7 @@ export default function EventDetailPage() {
 
   return (
     <div className="animate-in">
+      {confirmDialog}
       <Link
         href="/dashboard/events"
         className="transition-standard mb-4 inline-block text-sm text-muted-foreground underline hover:text-foreground"

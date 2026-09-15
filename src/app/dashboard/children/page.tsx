@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg, canManage } from "../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { useConfirmDialog } from "@/components/useConfirmDialog";
 
 type Category = { id: string; name: string; archived: boolean };
 type Child = {
@@ -40,6 +41,7 @@ export default function ChildrenPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [siblingNotice, setSiblingNotice] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const loadCategories = useCallback(async () => {
     const res = await fetch(`/api/organizations/${organizationId}/categories`);
@@ -113,6 +115,15 @@ export default function ChildrenPage() {
   }
 
   async function toggleArchive(child: Child) {
+    if (!child.archived) {
+      const confirmed = await confirm({
+        title: "Archive this child?",
+        description: `${child.firstName} ${child.lastName} will be hidden from the active children list. Their payment history is kept, and you can restore them any time.`,
+        confirmLabel: "Archive",
+        variant: "danger",
+      });
+      if (!confirmed) return;
+    }
     const url = child.archived
       ? `/api/organizations/${organizationId}/children/${child.id}/restore`
       : `/api/organizations/${organizationId}/children/${child.id}`;
@@ -122,6 +133,7 @@ export default function ChildrenPage() {
 
   return (
     <div className="animate-in">
+      {confirmDialog}
       <PageHeader title="Children" />
 
       {canManage(role) && (

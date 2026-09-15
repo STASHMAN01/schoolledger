@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useOrg, canManage } from "../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
+import { useConfirmDialog } from "@/components/useConfirmDialog";
 
 type Category = {
   id: string;
@@ -30,6 +31,7 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState<string>("");
@@ -71,6 +73,15 @@ export default function CategoriesPage() {
   }
 
   async function toggleArchive(category: Category) {
+    if (!category.archived) {
+      const confirmed = await confirm({
+        title: "Archive this category?",
+        description: `"${category.name}" will be hidden from the active category list (its children and history are kept, and you can restore it any time).`,
+        confirmLabel: "Archive",
+        variant: "danger",
+      });
+      if (!confirmed) return;
+    }
     const url = category.archived
       ? `/api/organizations/${organizationId}/categories/${category.id}/restore`
       : `/api/organizations/${organizationId}/categories/${category.id}`;
@@ -116,6 +127,7 @@ export default function CategoriesPage() {
 
   return (
     <div className="animate-in">
+      {confirmDialog}
       <PageHeader
         title="Categories"
         actions={
