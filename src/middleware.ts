@@ -5,6 +5,8 @@ import { auth } from "@/lib/auth";
 const PUBLIC_PATHS = [
   "/login",
   "/register",
+  "/forgot-password",
+  "/reset-password",
   "/api/auth",
   "/api/webhooks",
   // Invite links must work for someone who has never logged in — the

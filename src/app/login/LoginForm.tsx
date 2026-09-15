@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Button, Card, Input, Label } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export function LoginForm() {
   const router = useRouter();
@@ -65,11 +66,18 @@ export function LoginForm() {
             />
           </div>
           <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-brand hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <PasswordInput
               id="password"
               required
-              type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

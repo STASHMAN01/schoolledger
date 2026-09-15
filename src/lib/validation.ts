@@ -140,6 +140,15 @@ export const organizationProfileSchema = z.object({
   timezone: z.string().trim().min(1).max(100),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: passwordSchema,
+});
+
 export const registerSchema = z.object({
   organizationName: organizationNameSchema,
   countryCode: countryCodeSchema,

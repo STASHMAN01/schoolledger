@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 const COUNTRIES = [
   { code: "ZA", currency: "ZAR", label: "South Africa" },
@@ -19,12 +20,17 @@ export default function RegisterPage() {
   const [adminName, setAdminName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/register", {
@@ -133,10 +139,9 @@ export default function RegisterPage() {
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordInput
               id="password"
               required
-              type="password"
               minLength={10}
               autoComplete="new-password"
               value={password}
@@ -146,6 +151,21 @@ export default function RegisterPage() {
             <p className="mt-1 text-xs text-muted-foreground">
               At least 10 characters.
             </p>
+          </div>
+          <div>
+            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <PasswordInput
+              id="confirmPassword"
+              required
+              minLength={10}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="mt-1"
+            />
+            {confirmPassword.length > 0 && confirmPassword !== password && (
+              <p className="mt-1 text-xs text-danger">Passwords don&apos;t match.</p>
+            )}
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" disabled={loading} className="mt-2">

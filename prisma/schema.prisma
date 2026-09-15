@@ -390,6 +390,25 @@ model PlatformInvite {
   @@map("platform_invites")
 }
 
+// "Forgot password" flow. Same shape/security model as PlatformInvite's
+// token: only the SHA-256 hash is stored, the raw token lives only in the
+// emailed link and is never persisted, and it's single-use + short-lived
+// (usedAt set, or expiresAt passed, both make it dead). Deliberately not a
+// column on User (a user could in theory have more than one outstanding
+// request; each one gets its own row and old ones don't need cleanup logic
+// beyond "the where clause ignores them").
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
 // Append-only trail: who did what, when. Required both for the "Frank
 // viewed records" activity feed the product spec asks for, and for being
 // able to answer "who accessed/changed this record" if a customer or

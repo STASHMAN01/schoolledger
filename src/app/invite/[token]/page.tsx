@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { Button, Card, Input, Label } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 
 type InviteInfo = {
   organizationName: string;
@@ -22,6 +23,7 @@ export default function InviteAcceptPage() {
   const [notFound, setNotFound] = useState(false);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,8 +59,12 @@ export default function InviteAcceptPage() {
 
   async function acceptAsNewAccount(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
+    setSubmitting(true);
     const res = await fetch("/api/invites/accept", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -132,15 +138,30 @@ export default function InviteAcceptPage() {
             </div>
             <div>
               <Label htmlFor="invite-password">Set a password</Label>
-              <Input
+              <PasswordInput
                 id="invite-password"
                 required
-                type="password"
                 minLength={10}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="mt-1"
               />
+            </div>
+            <div>
+              <Label htmlFor="invite-confirm-password">Confirm password</Label>
+              <PasswordInput
+                id="invite-confirm-password"
+                required
+                minLength={10}
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1"
+              />
+              {confirmPassword.length > 0 && confirmPassword !== password && (
+                <p className="mt-1 text-xs text-danger">Passwords don&apos;t match.</p>
+              )}
             </div>
             <Button type="submit" disabled={submitting} className="mt-2">
               {submitting ? "Joining..." : "Create account & join"}
