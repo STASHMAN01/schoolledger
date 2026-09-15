@@ -16,11 +16,46 @@ type StatementChild = {
     year: number;
     month: number | null;
     description: string;
+    // The PaymentType this charge belongs to (e.g. "School Fees",
+    // "Registration") — combined with the month at render time into a
+    // specific label like "Jan Fees" instead of the generic stored
+    // description, per the org owner's own instruction.
+    paymentTypeName: string;
     amountDueCents: number;
     amountPaidCents: number;
     status: string;
+    // Every date money was actually applied against this charge — can be
+    // more than one for a charge paid off in installments. Empty when
+    // nothing's been paid yet.
+    paidDates: Date[];
   }[];
 };
+
+const MONTH_ABBR = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+// Turns a charge's period + payment type into a specific, readable label —
+// "Jan Fees" rather than the generic "School Fees — 2026-01" stored on the
+// row itself. One-time charges (month === null, e.g. Registration or an
+// event) keep their own description as-is since there's no month to fold in.
+function chargeLabel(entry: Pick<StatementChild["entries"][number], "month" | "description" | "paymentTypeName">) {
+  if (entry.month == null) return entry.description;
+  const monthName = MONTH_ABBR[entry.month - 1] ?? `M${entry.month}`;
+  // "School Fees" -> "Fees" reads less redundant once it's prefixed with
+  // the month ("Jan Fees" beats "Jan School Fees"); any other payment
+  // type name is used in full ("Jan Aftercare", "Jan Trip Deposit").
+  const typeName = entry.paymentTypeName.replace(/^school\s+/i, "");
+  return `${monthName} ${typeName}`;
+}
+
+function formatPaidDates(dates: Date[]): string {
+  if (dates.length === 0) return "—";
+  return dates
+    .map((d) => d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }))
+    .join(", ");
+}
 
 type StatementOrg = {
   name: string;
@@ -106,6 +141,12 @@ export async function generateStatementPdf(
   }
 
   // --- Header / letterhead ---
+  // When a letterhead is uploaded, it already carries the school's name
+  // (and usually a logo/tagline) — printing the name again in plain text
+  // right underneath it just looked redundant and generic, per the org
+  // owner's own note. So the plain-text name only appears as a fallback
+  // for schools that haven't uploaded a letterhead yet.
+  let letterheadDrawn = false;
   if (org.letterheadImage) {
     const parsed = parseImageDataUrl(org.letterheadImage);
     if (parsed) {
@@ -114,13 +155,14 @@ export async function generateStatementPdf(
           parsed.kind === "png"
             ? await pdf.embedPng(parsed.bytes)
             : await pdf.embedJpg(parsed.bytes);
-        const maxWidth = 160;
-        const maxHeight = 60;
+        const maxWidth = PAGE_WIDTH - MARGIN * 2;
+        const maxHeight = 90;
         const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
         const w = image.width * scale;
         const h = image.height * scale;
         page.drawImage(image, { x: MARGIN, y: y - h, width: w, height: h });
-        y -= h + 10;
+        y -= h + 16;
+        letterheadDrawn = true;
       } catch {
         // Corrupt/unsupported bytes despite passing the regex check above —
         // skip the image rather than fail the whole statement.
@@ -128,23 +170,54 @@ export async function generateStatementPdf(
     }
   }
 
-  text(org.name, { size: 18, f: bold });
-  y -= 18;
-  const addressParts = [org.addressLine1, org.addressLine2, org.province].filter(Boolean);
-  if (addressParts.length) {
-    text(addressParts.join(", "), { size: 9, color: rgb(0.35, 0.35, 0.35) });
-    y -= 14;
+  if (!letterheadDrawn) {
+    text(org.name, { size: 18, f: bold });
+    y -= 20;
+    const addressParts = [org.addressLine1, org.addressLine2, org.province].filter(Boolean);
+    if (addressParts.length) {
+      text(addressParts.join(", "), { size: 9, color: rgb(0.4, 0.4, 0.4) });
+      y -= 14;
+    }
   }
   if (org.bankName || org.bankAccountNumber) {
     text(
       `Banking details: ${org.bankName ?? ""} ${org.bankAccountNumber ?? ""}`.trim(),
-      { size: 9, color: rgb(0.35, 0.35, 0.35) }
+      { size: 9, color: rgb(0.4, 0.4, 0.4) }
     );
     y -= 14;
   }
-  y -= 6;
-  text(`Statement — ${year}`, { size: 13, f: bold });
-  y -= 24;
+  y -= 8;
+  page.drawLine({
+    start: { x: MARGIN, y: y + 6 },
+    end: { x: PAGE_WIDTH - MARGIN, y: y + 6 },
+    thickness: 1.2,
+    color: rgb(0.15, 0.15, 0.15),
+  });
+  y -= 12;
+  text(`Statement of account — ${year}`, { size: 14, f: bold });
+  y -= 26;
+
+  const COL = { charge: MARGIN, due: MARGIN + 175, paid: MARGIN + 245, paidOn: MARGIN + 315, status: MARGIN + 440 };
+
+  function drawTableHeader() {
+    text("Charge", { size: 9, f: bold, x: COL.charge });
+    text("Due", { size: 9, f: bold, x: COL.due });
+    text("Paid", { size: 9, f: bold, x: COL.paid });
+    text("Paid on", { size: 9, f: bold, x: COL.paidOn });
+    text("Status", { size: 9, f: bold, x: COL.status });
+    y -= 6;
+    page.drawLine({
+      start: { x: MARGIN, y },
+      end: { x: PAGE_WIDTH - MARGIN, y },
+      thickness: 0.5,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+    y -= 14;
+  }
+
+  function truncate(value: string, max: number) {
+    return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  }
 
   let grandTotalDue = 0;
   let grandTotalPaid = 0;
@@ -160,20 +233,7 @@ export async function generateStatementPdf(
     });
     y -= 18;
 
-    // Table header
-    text("Period", { size: 9, f: bold, x: MARGIN });
-    text("Description", { size: 9, f: bold, x: MARGIN + 70 });
-    text("Due", { size: 9, f: bold, x: MARGIN + 320 });
-    text("Paid", { size: 9, f: bold, x: MARGIN + 390 });
-    text("Status", { size: 9, f: bold, x: MARGIN + 460 });
-    y -= 6;
-    page.drawLine({
-      start: { x: MARGIN, y },
-      end: { x: PAGE_WIDTH - MARGIN, y },
-      thickness: 0.5,
-      color: rgb(0.7, 0.7, 0.7),
-    });
-    y -= 14;
+    drawTableHeader();
 
     // Oldest to latest, per spec — entries are expected pre-sorted by the
     // caller (year, month asc); one-time charges (month === null) are
@@ -182,15 +242,15 @@ export async function generateStatementPdf(
     let childTotalPaid = 0;
 
     for (const entry of child.entries) {
+      const isNewPage = y < MARGIN + 30;
       newPageIfNeeded(30);
-      const period = entry.month
-        ? `${entry.year}-${String(entry.month).padStart(2, "0")}`
-        : `${entry.year}`;
-      text(period, { size: 9, x: MARGIN });
-      text(entry.description.slice(0, 40), { size: 9, x: MARGIN + 70 });
-      text(money(entry.amountDueCents, org.currencyCode), { size: 9, x: MARGIN + 320 });
-      text(money(entry.amountPaidCents, org.currencyCode), { size: 9, x: MARGIN + 390 });
-      text(statusLabel(entry.status), { size: 9, x: MARGIN + 460 });
+      if (isNewPage) drawTableHeader(); // repeat the header after a page break
+
+      text(truncate(chargeLabel(entry), 32), { size: 9, x: COL.charge });
+      text(money(entry.amountDueCents, org.currencyCode), { size: 9, x: COL.due });
+      text(money(entry.amountPaidCents, org.currencyCode), { size: 9, x: COL.paid });
+      text(truncate(formatPaidDates(entry.paidDates), 26), { size: 8, x: COL.paidOn });
+      text(statusLabel(entry.status), { size: 8.5, x: COL.status });
       y -= 16;
 
       childTotalDue += entry.amountDueCents;
@@ -247,6 +307,25 @@ export async function generateStatementPdf(
       )}`,
       { size: 11, f: bold }
     );
+  }
+
+  // A small "generated on" footer on every page reads as more of a real
+  // financial document and less like a printed screenshot — cheap
+  // polish, but it's exactly the kind of detail that made the old layout
+  // feel generic.
+  const generatedOn = new Date().toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+  for (const p of pdf.getPages()) {
+    p.drawText(`Generated ${generatedOn} · ${org.name}`, {
+      x: MARGIN,
+      y: MARGIN - 20,
+      size: 7.5,
+      font,
+      color: rgb(0.6, 0.6, 0.6),
+    });
   }
 
   return pdf.save();
