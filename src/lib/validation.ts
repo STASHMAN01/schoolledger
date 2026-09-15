@@ -63,6 +63,32 @@ export const childSchema = z.object({
   enrollmentDate: z.coerce.date(),
   exitDate: z.preprocess(emptyToUndefined, z.coerce.date().optional().nullable()),
   feeOverrideCents: moneyCentsSchema.optional().nullable(),
+  childIdNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
+  parentIdNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
+});
+
+// One row of a children CSV bulk-import. Deliberately looser than
+// childSchema on contact info (a whole batch shouldn't fail — or every
+// row silently need both phone and email — just because one parent only
+// gave a phone number), and category/enrollment date are optional here
+// because the import UI lets the person pick a default for the whole
+// file when a row doesn't specify its own.
+export const childImportRowSchema = z.object({
+  firstName: z.string().trim().min(1, "Missing child first name"),
+  lastName: z.string().trim().min(1, "Missing child last name"),
+  parentName: z.string().trim().min(1, "Missing parent name"),
+  parentPhone: z.preprocess(emptyToUndefined, phoneE164Schema.optional()),
+  parentEmail: z.preprocess(emptyToUndefined, emailSchema.optional()),
+  categoryName: z.preprocess(emptyToUndefined, z.string().trim().max(120).optional()),
+  enrollmentDate: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
+  childIdNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
+  parentIdNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
+});
+
+export const childImportSchema = z.object({
+  defaultCategoryId: z.string().cuid(),
+  defaultEnrollmentDate: z.coerce.date(),
+  rows: z.array(z.record(z.string(), z.string())).min(1).max(1000),
 });
 
 export const paymentTypeSchema = z.object({

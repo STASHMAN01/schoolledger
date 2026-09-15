@@ -224,6 +224,13 @@ model Child {
   enrollmentDate DateTime
   exitDate       DateTime?
   feeOverrideCents Int?
+  // Government/national ID numbers — both optional, per the org owner's
+  // own spec for the CSV bulk-import feature ("parents id and childs id
+  // which is optional btw"). Free text, not validated against any
+  // specific country's ID format for the same reason phone numbers use a
+  // loose check: this product works across countries.
+  childIdNumber  String?
+  parentIdNumber String?
   // Set whenever an admin/accountant/manager marks a payment reminder as
   // sent for this child (see /dashboard/reminders) — purely informational,
   // lets whoever's doing month-end reminders see who's already been

@@ -33,6 +33,11 @@ export function describeAuditAction(row: AuditRow): string {
       return "archived a child";
     case "child.restored":
       return "restored a child";
+    case "children.imported": {
+      const count = typeof m.created === "number" ? m.created : 0;
+      const failed = typeof m.failed === "number" && m.failed > 0 ? ` (${m.failed} row${m.failed === 1 ? "" : "s"} skipped)` : "";
+      return `imported ${count} ${count === 1 ? "child" : "children"} from a CSV${failed}`;
+    }
     case "paymentType.created":
       return `added payment type "${m.name ?? ""}"`;
     case "paymentType.updated":

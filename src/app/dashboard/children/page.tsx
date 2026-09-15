@@ -6,6 +6,7 @@ import { useOrg, canManage } from "../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
+import { ImportChildrenCsv } from "@/components/ImportChildrenCsv";
 
 type Category = { id: string; name: string; archived: boolean };
 type Child = {
@@ -136,7 +137,18 @@ export default function ChildrenPage() {
   return (
     <div className="animate-in">
       {confirmDialog}
-      <PageHeader title="Children" />
+      <PageHeader
+        title="Children"
+        actions={
+          canManage(role) ? (
+            <ImportChildrenCsv
+              organizationId={organizationId}
+              categories={categories}
+              onImported={loadChildren}
+            />
+          ) : undefined
+        }
+      />
 
       {canManage(role) && (
         <Card as="div" className="mb-8 p-4">
