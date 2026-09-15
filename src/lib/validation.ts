@@ -111,6 +111,16 @@ export const acceptInviteSchema = z.object({
   password: passwordSchema.optional(),
 });
 
+export const createPlatformInviteSchema = z.object({
+  email: emailSchema,
+});
+
+export const acceptPlatformInviteSchema = z.object({
+  token: z.string().min(1),
+  name: z.string().trim().min(1).max(200).optional(),
+  password: passwordSchema.optional(),
+});
+
 // Treats "" the same as not provided for every optional profile field below,
 // so clearing a field in the form (rather than leaving it untouched) saves
 // as null instead of an empty string.

@@ -12,6 +12,10 @@ const PUBLIC_PATHS = [
   // (see src/app/api/invites/*), not a session.
   "/invite",
   "/api/invites",
+  // Platform-admin invite links must work the same way, for the same
+  // reason — the token itself is what's checked, not a session.
+  "/platform/join",
+  "/api/platform/join",
 ];
 
 function isPublicPath(pathname: string) {

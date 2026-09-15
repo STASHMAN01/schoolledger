@@ -127,7 +127,7 @@ export function NavLinks() {
                 href={l.href}
                 onClick={() => setMobileOpen(false)}
                 className={`rounded-lg px-3 py-2 text-sm font-medium ${
-                  isActive(pathname, l.href, "exact" in l ? l.exact : false)
+                  isActive(pathname, l.href, "exact" in l ? Boolean(l.exact) : false)
                     ? "bg-brand-soft text-brand-soft-foreground"
                     : "text-muted-foreground hover:bg-background hover:text-foreground"
                 }`}

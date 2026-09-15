@@ -102,6 +102,15 @@ model User {
   // Incremented on password change / suspicious activity to invalidate
   // existing sessions/JWTs (checked in the NextAuth jwt callback).
   tokenVersion  Int      @default(0)
+  // Grants access to /platform — the SaaS owner's cross-tenant dashboard
+  // (subscriber counts, MRR, trials, countries). Completely separate from
+  // any per-organization Role: this has nothing to do with, and grants no
+  // access to, any individual school's children/payments data. The very
+  // first platform admin (the product owner) is instead recognized via the
+  // PLATFORM_ADMIN_EMAILS env var (see src/lib/platformAdmin.ts) so there's
+  // no chicken-and-egg problem bootstrapping this flag from zero; this
+  // column is only for admins invited after that via /platform/team.
+  isPlatformAdmin Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -363,6 +372,22 @@ model CreditBalance {
 
   @@index([organizationId])
   @@map("credit_balances")
+}
+
+// Pending invitations to become a platform admin (owner of the whole SaaS,
+// not any one school). Same token-hash-only pattern as Invite — see that
+// model's comment — and deliberately its own table rather than reusing
+// Invite, since a platform invite has no organizationId at all.
+model PlatformInvite {
+  id              String       @id @default(cuid())
+  email           String
+  tokenHash       String       @unique
+  status          InviteStatus @default(PENDING)
+  invitedByUserId String
+  expiresAt       DateTime
+  createdAt       DateTime     @default(now())
+
+  @@map("platform_invites")
 }
 
 // Append-only trail: who did what, when. Required both for the "Frank

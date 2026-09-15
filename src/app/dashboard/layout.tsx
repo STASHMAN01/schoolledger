@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getPrimaryMembership } from "@/lib/org";
 import { OrgProvider } from "./OrgContext";
@@ -6,6 +7,7 @@ import { SignOutButton } from "./SignOutButton";
 import { TrialBanner } from "./TrialBanner";
 import { NavLinks } from "./NavLinks";
 import { hasActiveAccess } from "@/lib/billing/access";
+import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
 
 export default async function DashboardLayout({
   children,
@@ -23,6 +25,7 @@ export default async function DashboardLayout({
   }
 
   const org = membership.organization;
+  const isPlatformAdmin = await checkIsPlatformAdmin(session.user.id);
 
   return (
     <OrgProvider
@@ -50,6 +53,14 @@ export default async function DashboardLayout({
             </div>
             <div className="flex items-center gap-2">
               <NavLinks />
+              {isPlatformAdmin && (
+                <Link
+                  href="/platform"
+                  className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+                >
+                  Platform
+                </Link>
+              )}
               <SignOutButton />
             </div>
           </div>
