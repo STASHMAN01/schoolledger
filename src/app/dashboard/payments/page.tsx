@@ -5,6 +5,7 @@ import { useOrg } from "../OrgContext";
 import { Button, Card, Input, Label, LinkButton, PageHeader, Select } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
+import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
 
 type Category = { id: string; name: string };
 type Child = { id: string; firstName: string; lastName: string; categoryId: string };
@@ -18,6 +19,7 @@ type Payment = {
   child: { id: string; firstName: string; lastName: string };
   recordedBy: { id: string; name: string };
   receipt: { number: string } | null;
+  deletionRequest: DeletionRequestInfo | null;
 };
 
 const emptyForm = {
@@ -34,8 +36,8 @@ const emptyForm = {
 export default function PaymentsPage() {
   const { organizationId, role, currencyCode } = useOrg();
   const canRecord = role === "ADMIN" || role === "ACCOUNTANT";
-  const canVoid = role === "ADMIN";
-  const [voidingId, setVoidingId] = useState<string | null>(null);
+  const canRequestDeletion = role === "ADMIN" || role === "ACCOUNTANT";
+  const isAdmin = role === "ADMIN";
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -126,37 +128,6 @@ export default function PaymentsPage() {
     );
     setForm({ ...emptyForm, categoryId: form.categoryId });
     await loadPayments();
-  }
-
-  async function voidPayment(payment: Payment) {
-    const confirmed = await confirm({
-      title: "Void this payment?",
-      description:
-        `${formatCents(payment.amountCents, currencyCode)} for ${payment.child.firstName} ${payment.child.lastName}` +
-        (payment.receipt ? ` (receipt ${payment.receipt.number})` : "") +
-        ` — this reverses it and the amount becomes outstanding again. This can't be undone.`,
-      confirmLabel: "Void payment",
-      variant: "danger",
-    });
-    if (!confirmed) return;
-    setVoidingId(payment.id);
-    setError(null);
-    setSuccess(null);
-    try {
-      const res = await fetch(
-        `/api/organizations/${organizationId}/payments/${payment.id}/void`,
-        { method: "POST" }
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Could not void payment.");
-        return;
-      }
-      setSuccess("Payment voided.");
-      await loadPayments();
-    } finally {
-      setVoidingId(null);
-    }
   }
 
   return (
@@ -337,7 +308,7 @@ export default function PaymentsPage() {
                 <th className="px-3 py-2 text-muted-foreground">Method</th>
                 <th className="px-3 py-2 text-muted-foreground">Receipt</th>
                 <th className="px-3 py-2 text-muted-foreground">Recorded by</th>
-                {canVoid && <th className="px-3 py-2 text-muted-foreground" />}
+                <th className="px-3 py-2 text-muted-foreground" />
               </tr>
             </thead>
             <tbody>
@@ -351,19 +322,19 @@ export default function PaymentsPage() {
                   <td className="px-3 py-2 text-foreground">{p.method}</td>
                   <td className="px-3 py-2 text-foreground">{p.receipt?.number ?? "-"}</td>
                   <td className="px-3 py-2 text-foreground">{p.recordedBy.name}</td>
-                  {canVoid && (
-                    <td className="px-3 py-2 text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => voidPayment(p)}
-                        disabled={voidingId === p.id}
-                      >
-                        {voidingId === p.id ? "Voiding…" : "Void"}
-                      </Button>
-                    </td>
-                  )}
+                  <td className="px-3 py-2 text-right">
+                    <DeletionControl
+                      organizationId={organizationId}
+                      targetType="PAYMENT"
+                      targetId={p.id}
+                      targetLabel={`${formatCents(p.amountCents, currencyCode)} payment for ${p.child.firstName} ${p.child.lastName}`}
+                      deletionRequest={p.deletionRequest}
+                      canRequest={canRequestDeletion}
+                      isAdmin={isAdmin}
+                      onChanged={loadPayments}
+                      confirm={confirm}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

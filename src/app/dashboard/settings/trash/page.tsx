@@ -15,12 +15,25 @@ type TrashItem = {
 
 type PendingRequest = {
   id: string;
-  targetType: "CATEGORY" | "CHILD";
+  targetType: "CATEGORY" | "CHILD" | "PAYMENT";
   targetId: string;
   targetLabel: string;
+  reason: string;
   createdAt: string;
   requestedBy: string;
   approvals: string[];
+};
+
+const TARGET_TYPE_LABEL: Record<PendingRequest["targetType"], string> = {
+  CATEGORY: "Category",
+  CHILD: "Child",
+  PAYMENT: "Payment",
+};
+
+const TARGET_TYPE_BADGE: Record<PendingRequest["targetType"], "accent" | "brand" | "danger"> = {
+  CATEGORY: "accent",
+  CHILD: "brand",
+  PAYMENT: "danger",
 };
 
 export default function TrashPage() {
@@ -111,7 +124,7 @@ export default function TrashPage() {
     <div className="animate-in max-w-3xl">
       <PageHeader
         title="Trash"
-        description={`Deleted categories and children are kept here for 30 days before they're gone for good. Deleting either always needs ${REQUIRED_DELETION_APPROVALS} admins to approve first.`}
+        description={`Deleted categories and children are kept here for 30 days before they're gone for good. Deleting any record — including a payment — always needs ${REQUIRED_DELETION_APPROVALS} admins to approve first, with a reason on record.`}
       />
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
@@ -130,8 +143,8 @@ export default function TrashPage() {
                 <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
                     <p className="text-sm text-foreground">
-                      <Badge variant={r.targetType === "CATEGORY" ? "accent" : "brand"}>
-                        {r.targetType === "CATEGORY" ? "Category" : "Child"}
+                      <Badge variant={TARGET_TYPE_BADGE[r.targetType]}>
+                        {TARGET_TYPE_LABEL[r.targetType]}
                       </Badge>{" "}
                       <span className="font-medium">{r.targetLabel}</span>
                     </p>
@@ -140,6 +153,9 @@ export default function TrashPage() {
                       {REQUIRED_DELETION_APPROVALS} approved
                       {r.approvals.length > 0 && ` (${r.approvals.join(", ")})`}
                     </p>
+                    {r.reason && (
+                      <p className="mt-0.5 text-xs text-muted">Reason: &quot;{r.reason}&quot;</p>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <button

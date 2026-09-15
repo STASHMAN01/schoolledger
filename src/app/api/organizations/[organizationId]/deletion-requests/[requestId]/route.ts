@@ -37,14 +37,17 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       data: { status: "CANCELLED", resolvedAt: new Date() },
     });
 
+    const entityType =
+      request.targetType === "CATEGORY"
+        ? "Category"
+        : request.targetType === "CHILD"
+          ? "Child"
+          : "Payment";
     await logAudit({
       organizationId,
       userId,
-      action:
-        request.targetType === "CATEGORY"
-          ? "category.deletionCancelled"
-          : "child.deletionCancelled",
-      entityType: request.targetType === "CATEGORY" ? "Category" : "Child",
+      action: `${entityType.toLowerCase()}.deletionCancelled`,
+      entityType,
       entityId: request.targetId,
       metadata: { targetLabel: request.targetLabel },
     });

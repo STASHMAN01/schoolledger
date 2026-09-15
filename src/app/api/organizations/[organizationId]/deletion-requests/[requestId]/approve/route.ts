@@ -4,6 +4,7 @@ import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { REQUIRED_DELETION_APPROVALS, isHighPositionRole } from "@/lib/deletion";
+import { statusForEntry } from "@/lib/billing/allocation";
 
 type Params = { params: Promise<{ organizationId: string; requestId: string }> };
 
@@ -60,16 +61,80 @@ export async function POST(_req: NextRequest, { params }: Params) {
       }
 
       // Second (or later) distinct admin approval — execute the deletion.
+      let paymentReversal: {
+        creditClawedBackCents: number;
+        creditShortfallCents: number;
+        allocatedTotalCents: number;
+      } | null = null;
+
       if (request.targetType === "CATEGORY") {
         await tx.category.updateMany({
           where: { id: request.targetId, organizationId, deletedAt: null },
           data: { deletedAt: new Date() },
         });
-      } else {
+      } else if (request.targetType === "CHILD") {
         await tx.child.updateMany({
           where: { id: request.targetId, organizationId, deletedAt: null },
           data: { deletedAt: new Date() },
         });
+      } else {
+        // PAYMENT — there's no soft-delete/trash for payments (unlike
+        // categories/children): this is a true reversal, same as the old
+        // ADMIN-only "void" action used to do directly, just now gated
+        // behind the same 2-admin-approval + mandatory-reason flow as
+        // everything else. Every FinancialPlanEntry this payment was
+        // allocated against gets its amountPaidCents rolled back and
+        // status recomputed, any leftover CreditBalance is clawed back
+        // (never below zero), and only then is the Payment row deleted.
+        const payment = await tx.payment.findUnique({
+          where: { id: request.targetId },
+          include: { allocations: true },
+        });
+        if (payment) {
+          for (const alloc of payment.allocations) {
+            const entry = await tx.financialPlanEntry.findUnique({
+              where: { id: alloc.financialPlanEntryId },
+            });
+            if (!entry) continue;
+            const newPaid = Math.max(0, entry.amountPaidCents - alloc.amountCents);
+            await tx.financialPlanEntry.update({
+              where: { id: entry.id },
+              data: {
+                amountPaidCents: newPaid,
+                status: statusForEntry(entry.amountDueCents, newPaid),
+              },
+            });
+          }
+
+          const allocatedTotalCents = payment.allocations.reduce(
+            (sum, a) => sum + a.amountCents,
+            0
+          );
+          const creditFromThisPaymentCents = payment.amountCents - allocatedTotalCents;
+
+          let creditClawedBackCents = 0;
+          let creditShortfallCents = 0;
+          if (creditFromThisPaymentCents > 0) {
+            const credit = await tx.creditBalance.findUnique({
+              where: { childId: payment.childId },
+            });
+            const available = credit?.amountCents ?? 0;
+            creditClawedBackCents = Math.min(available, creditFromThisPaymentCents);
+            creditShortfallCents = creditFromThisPaymentCents - creditClawedBackCents;
+            if (credit && creditClawedBackCents > 0) {
+              await tx.creditBalance.update({
+                where: { childId: payment.childId },
+                data: { amountCents: { decrement: creditClawedBackCents } },
+              });
+            }
+          }
+
+          await tx.payment.delete({ where: { id: payment.id } });
+          paymentReversal = { creditClawedBackCents, creditShortfallCents, allocatedTotalCents };
+        }
+        // If the payment is already gone (e.g. somehow removed another
+        // way), there's nothing left to reverse — fall through and still
+        // resolve the request rather than leaving it stuck pending.
       }
 
       await tx.deletionRequest.update({
@@ -77,25 +142,25 @@ export async function POST(_req: NextRequest, { params }: Params) {
         data: { status: "APPROVED", resolvedAt: new Date() },
       });
 
-      return { executed: true, approvalCount };
+      return { executed: true, approvalCount, paymentReversal };
     });
 
+    const entityType =
+      request.targetType === "CATEGORY" ? "Category" : request.targetType === "CHILD" ? "Child" : "Payment";
     await logAudit({
       organizationId,
       userId,
-      action: result.executed
-        ? request.targetType === "CATEGORY"
-          ? "category.deleted"
-          : "child.deleted"
-        : request.targetType === "CATEGORY"
-          ? "category.deletionApproved"
-          : "child.deletionApproved",
-      entityType: request.targetType === "CATEGORY" ? "Category" : "Child",
+      action: `${entityType.toLowerCase()}.${result.executed ? "deleted" : "deletionApproved"}`,
+      entityType,
       entityId: request.targetId,
       metadata: {
         targetLabel: request.targetLabel,
+        reason: request.reason,
         approvalCount: result.approvalCount,
         deletionRequestId: request.id,
+        ...(result.executed && "paymentReversal" in result && result.paymentReversal
+          ? { paymentReversal: result.paymentReversal }
+          : {}),
       },
     });
 

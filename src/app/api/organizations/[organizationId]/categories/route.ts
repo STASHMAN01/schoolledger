@@ -42,6 +42,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
                 approvalsCount: request.approvals.length,
                 approvedByMe: request.approvals.some((a) => a.userId === userId),
                 requestedByMe: request.requestedByUserId === userId,
+                reason: request.reason,
               }
             : null,
         };

@@ -12,7 +12,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId); // any role may view
+    const { userId } = await requireMembership(organizationId); // any role may view
 
     const method = req.nextUrl.searchParams.get("method") ?? undefined;
     const categoryId = req.nextUrl.searchParams.get("categoryId") ?? undefined;
@@ -35,7 +35,38 @@ export async function GET(req: NextRequest, { params }: Params) {
       take: 200,
     });
 
-    return NextResponse.json({ payments });
+    // Same "request → 2 admins approve → executed" flow as categories and
+    // children (see DeletionControl.tsx) — voiding a payment is no longer
+    // instant, so every payment row needs to know if it already has a
+    // pending request against it.
+    const pendingRequests = await db.deletionRequest.findMany({
+      where: {
+        organizationId,
+        targetType: "PAYMENT",
+        status: "PENDING",
+        targetId: { in: payments.map((p) => p.id) },
+      },
+      include: { approvals: true },
+    });
+    const requestByPaymentId = new Map(pendingRequests.map((r) => [r.targetId, r]));
+
+    return NextResponse.json({
+      payments: payments.map((p) => {
+        const request = requestByPaymentId.get(p.id);
+        return {
+          ...p,
+          deletionRequest: request
+            ? {
+                id: request.id,
+                approvalsCount: request.approvals.length,
+                approvedByMe: request.approvals.some((a) => a.userId === userId),
+                requestedByMe: request.requestedByUserId === userId,
+                reason: request.reason,
+              }
+            : null,
+        };
+      }),
+    });
   } catch (err) {
     return handleApiError(err);
   }

@@ -5,6 +5,7 @@ import { deletionRequestSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { isHighPositionRole } from "@/lib/deletion";
+import { formatCents } from "@/lib/formatMoney";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -41,6 +42,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         targetType: r.targetType,
         targetId: r.targetId,
         targetLabel: r.targetLabel,
+        reason: r.reason,
         createdAt: r.createdAt,
         requestedBy: requesterName.get(r.requestedByUserId) ?? "Someone",
         approvals: r.approvals.map((a) => a.user.name),
@@ -72,6 +74,12 @@ export async function POST(req: NextRequest, { params }: Params) {
         { status: 403 }
       );
     }
+    if (body.targetType === "PAYMENT" && role === "MANAGER") {
+      return NextResponse.json(
+        { error: "Only an admin or accountant can request deletion of a payment." },
+        { status: 403 }
+      );
+    }
 
     const existingPending = await db.deletionRequest.findFirst({
       where: {
@@ -90,7 +98,16 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     let targetLabel: string;
 
-    if (body.targetType === "CATEGORY") {
+    if (body.targetType === "PAYMENT") {
+      const payment = await db.payment.findFirst({
+        where: { id: body.targetId, organizationId },
+        include: { child: true, organization: { select: { currencyCode: true } } },
+      });
+      if (!payment) {
+        return NextResponse.json({ error: "Payment not found." }, { status: 404 });
+      }
+      targetLabel = `${formatCents(payment.amountCents, payment.organization.currencyCode)} payment for ${payment.child.firstName} ${payment.child.lastName} on ${payment.date.toISOString().slice(0, 10)}`;
+    } else if (body.targetType === "CATEGORY") {
       const category = await db.category.findFirst({
         where: { id: body.targetId, organizationId, deletedAt: null },
       });
@@ -125,20 +142,20 @@ export async function POST(req: NextRequest, { params }: Params) {
         targetType: body.targetType,
         targetId: body.targetId,
         targetLabel,
+        reason: body.reason,
         requestedByUserId: userId,
       },
     });
 
+    const entityType =
+      body.targetType === "CATEGORY" ? "Category" : body.targetType === "CHILD" ? "Child" : "Payment";
     await logAudit({
       organizationId,
       userId,
-      action:
-        body.targetType === "CATEGORY"
-          ? "category.deletionRequested"
-          : "child.deletionRequested",
-      entityType: body.targetType === "CATEGORY" ? "Category" : "Child",
+      action: `${entityType.toLowerCase()}.deletionRequested`,
+      entityType,
       entityId: body.targetId,
-      metadata: { targetLabel, deletionRequestId: request.id },
+      metadata: { targetLabel, reason: body.reason, deletionRequestId: request.id },
     });
 
     return NextResponse.json({ deletionRequest: request }, { status: 201 });

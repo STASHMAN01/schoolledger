@@ -161,8 +161,16 @@ export const organizationProfileSchema = z.object({
 });
 
 export const deletionRequestSchema = z.object({
-  targetType: z.enum(["CATEGORY", "CHILD"]),
+  targetType: z.enum(["CATEGORY", "CHILD", "PAYMENT"]),
   targetId: z.string().cuid(),
+  // Not optional — every deletion request must say why, per the org
+  // owner's explicit instruction ("the user has to give a reason why they
+  // are deleting this is not optional").
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Please explain why this is being deleted.")
+    .max(500, "Keep the reason under 500 characters."),
 });
 
 export const forgotPasswordSchema = z.object({

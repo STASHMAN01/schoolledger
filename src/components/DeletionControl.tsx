@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { REQUIRED_DELETION_APPROVALS } from "@/lib/deletion";
+import { Button, Card, Textarea } from "@/components/ui";
 import type { ConfirmOptions } from "@/components/useConfirmDialog";
 
 export type DeletionRequestInfo = {
@@ -9,13 +10,16 @@ export type DeletionRequestInfo = {
   approvalsCount: number;
   approvedByMe: boolean;
   requestedByMe: boolean;
+  reason?: string;
 };
 
 /**
- * The "Delete" control for a category or child row: requests deletion,
- * or — while a request is pending — shows how many admins have approved
- * it and offers Approve/Cancel to whoever's allowed. No single click ever
- * deletes anything; see prisma/schema.prisma's DeletionRequest comment.
+ * The "Delete" control for a category, child, or payment row: requests
+ * deletion, or — while a request is pending — shows how many admins have
+ * approved it and offers Approve/Cancel to whoever's allowed. No single
+ * click ever deletes anything; see prisma/schema.prisma's DeletionRequest
+ * comment. Requesting always requires a written reason — not optional,
+ * per the org owner's own instruction.
  */
 export function DeletionControl({
   organizationId,
@@ -29,7 +33,7 @@ export function DeletionControl({
   confirm,
 }: {
   organizationId: string;
-  targetType: "CATEGORY" | "CHILD";
+  targetType: "CATEGORY" | "CHILD" | "PAYMENT";
   targetId: string;
   targetLabel: string;
   deletionRequest: DeletionRequestInfo | null;
@@ -40,28 +44,26 @@ export function DeletionControl({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [reason, setReason] = useState("");
 
-  async function requestDeletion() {
-    const confirmed = await confirm({
-      title: `Delete "${targetLabel}"?`,
-      description: `This needs approval from ${REQUIRED_DELETION_APPROVALS} admins before anything happens. Once approved it moves to Trash for 30 days (restorable), then it's gone for good.`,
-      confirmLabel: "Request deletion",
-      variant: "danger",
-    });
-    if (!confirmed) return;
+  async function submitRequest() {
+    if (!reason.trim()) return;
     setBusy(true);
     setError(null);
     try {
       const res = await fetch(`/api/organizations/${organizationId}/deletion-requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetType, targetId }),
+        body: JSON.stringify({ targetType, targetId, reason: reason.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Could not request deletion.");
         return;
       }
+      setPromptOpen(false);
+      setReason("");
       await onChanged();
     } finally {
       setBusy(false);
@@ -115,13 +117,63 @@ export function DeletionControl({
   if (!deletionRequest) {
     if (!canRequest) return null;
     return (
-      <button
-        onClick={requestDeletion}
-        disabled={busy}
-        className="text-xs text-danger underline transition-standard hover:brightness-90 disabled:opacity-50"
-      >
-        Delete…
-      </button>
+      <>
+        <button
+          onClick={() => setPromptOpen(true)}
+          disabled={busy}
+          className="text-xs text-danger underline transition-standard hover:brightness-90 disabled:opacity-50"
+        >
+          Delete…
+        </button>
+        {promptOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            onClick={() => !busy && setPromptOpen(false)}
+          >
+            <Card className="animate-in w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+              <h2 className="font-display text-base font-semibold text-foreground">
+                Delete &quot;{targetLabel}&quot;?
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This needs approval from {REQUIRED_DELETION_APPROVALS} admins before anything
+                happens.
+              </p>
+              <label className="mt-4 block text-xs font-medium text-muted-foreground">
+                Reason for deleting (required)
+              </label>
+              <Textarea
+                className="mt-1"
+                rows={3}
+                autoFocus
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. duplicate entry, entered in error…"
+              />
+              {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+              <div className="mt-4 flex justify-end gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPromptOpen(false)}
+                  disabled={busy}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={submitRequest}
+                  disabled={busy || !reason.trim()}
+                >
+                  Request deletion
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -150,6 +202,11 @@ export function DeletionControl({
           </button>
         )}
       </div>
+      {deletionRequest.reason && (
+        <p className="max-w-[220px] text-right text-xs text-muted">
+          &quot;{deletionRequest.reason}&quot;
+        </p>
+      )}
       {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );

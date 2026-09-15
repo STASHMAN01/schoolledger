@@ -52,6 +52,7 @@ enum InviteStatus {
 enum DeletionTargetType {
   CATEGORY
   CHILD
+  PAYMENT
 }
 
 enum DeletionRequestStatus {
@@ -476,6 +477,12 @@ model DeletionRequest {
   // approval queue and trash list still read sensibly even though the
   // underlying row may itself be gone by the time someone looks.
   targetLabel       String
+  // Why this deletion was requested — mandatory going forward (enforced by
+  // deletionRequestSchema in validation.ts), never optional. The default
+  // "" only exists so this column can be added to the live table without a
+  // destructive migration; every request created after this field shipped
+  // always has a real, non-empty reason.
+  reason            String                 @default("") @db.Text
   status            DeletionRequestStatus  @default(PENDING)
   requestedByUserId String
   createdAt         DateTime               @default(now())
