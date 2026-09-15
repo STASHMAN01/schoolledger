@@ -68,9 +68,20 @@ I'll walk you through this step by step when you say you're ready —
 it's the same "I can't type in a live secret key for you" situation as
 #1.
 
+## 4. Real support email (whenever you're ready)
+
+There's now a Support page (linked from the top of both the marketing
+site and the dashboard) with a "How to use TinyLedger" guide and a
+contact email. Right now that email is a placeholder —
+`support@tinyledger.app` — which doesn't go anywhere real yet. When
+you've decided what address you want customers writing to (could just
+be your own Gmail for now), tell me and I'll swap the one line in
+`src/lib/support.ts` — no account setup needed on your end for this one,
+just tell me the address.
+
 ---
 
 _Last updated: 2026-09-15. Nothing above is urgent — the app works fully
 without any of it (trial signups, all features, the platform dashboard).
 These are just the specific moments where a human with account access
-has to be the one to click "confirm."_
+has to be the one to click "confirm," or a decision only you can make._
