@@ -7,15 +7,17 @@ import type { ComponentProps, ReactNode } from "react";
 // inconsistent page to page. Keep these dumb and presentational; pages own
 // all state/logic.
 
+// Buttons get a small hover lift + press-down (motion-safe only, and
+// skipped whenever disabled) — real feedback that a control is
+// interactive, not just a color swap. `disabled:transform-none` keeps a
+// disabled button inert even if a parent still triggers :hover.
+const MOTION = "motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0 disabled:transform-none";
+
 const buttonVariants = {
-  primary:
-    "bg-brand text-brand-foreground hover:bg-brand-hover disabled:opacity-50 disabled:pointer-events-none",
-  secondary:
-    "bg-surface text-foreground border border-border-strong hover:bg-background disabled:opacity-50 disabled:pointer-events-none",
-  ghost:
-    "text-foreground hover:bg-background disabled:opacity-50 disabled:pointer-events-none",
-  danger:
-    "bg-danger text-danger-foreground hover:brightness-95 disabled:opacity-50 disabled:pointer-events-none",
+  primary: `bg-brand text-brand-foreground hover:bg-brand-hover disabled:opacity-50 disabled:pointer-events-none ${MOTION}`,
+  secondary: `bg-surface text-foreground border border-border-strong hover:bg-background disabled:opacity-50 disabled:pointer-events-none ${MOTION}`,
+  ghost: `text-foreground hover:bg-background disabled:opacity-50 disabled:pointer-events-none ${MOTION}`,
+  danger: `bg-danger text-danger-foreground hover:brightness-95 disabled:opacity-50 disabled:pointer-events-none ${MOTION}`,
 } as const;
 
 const buttonSizes = {

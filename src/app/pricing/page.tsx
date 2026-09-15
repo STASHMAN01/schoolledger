@@ -27,6 +27,8 @@ const INCLUDED = [
   "Parent statements & CSV export",
   "Multi-currency support",
   "Team invites with roles",
+  "Events & trip payment collection",
+  "Automated payment reminders",
   "Audit log",
   "Email support",
 ];

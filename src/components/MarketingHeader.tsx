@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LinkButton } from "@/components/ui";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function MarketingHeader() {
   return (
@@ -26,6 +27,7 @@ export function MarketingHeader() {
           >
             Pricing
           </Link>
+          <ThemeToggle />
           <LinkButton href="/login" variant="ghost" size="sm">
             Log in
           </LinkButton>

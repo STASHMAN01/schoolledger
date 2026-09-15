@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { LinkButton } from "@/components/ui";
 import { MarketingHeader } from "@/components/MarketingHeader";
 import { MarketingFooter } from "@/components/MarketingFooter";
+import { Reveal } from "@/components/Reveal";
 
 // A real (fictional) excerpt of what the product actually produces —
 // standing in for the "dashboard screenshot" hero image without being one.
@@ -147,20 +148,21 @@ export default async function RootPage() {
         {/* Who it's for — a row list, not a card grid. */}
         <section className="border-t border-border">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-            <h2 className="font-display max-w-sm text-xl font-semibold text-foreground sm:text-2xl">
-              Built for early-years admin, not general ledgers
-            </h2>
+            <Reveal>
+              <h2 className="font-display max-w-sm text-xl font-semibold text-foreground sm:text-2xl">
+                Built for early-years admin, not general ledgers
+              </h2>
+            </Reveal>
             <div className="mt-8 divide-y divide-border border-t border-border">
-              {WHO_ITS_FOR.map((item) => (
-                <div
-                  key={item.label}
-                  className="grid gap-2 py-5 sm:grid-cols-[220px_1fr] sm:gap-8"
-                >
-                  <span className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {item.label}
-                  </span>
-                  <p className="text-sm text-foreground sm:text-base">{item.description}</p>
-                </div>
+              {WHO_ITS_FOR.map((item, i) => (
+                <Reveal key={item.label} delay={i * 60}>
+                  <div className="grid gap-2 py-5 sm:grid-cols-[220px_1fr] sm:gap-8">
+                    <span className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {item.label}
+                    </span>
+                    <p className="text-sm text-foreground sm:text-base">{item.description}</p>
+                  </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -169,22 +171,26 @@ export default async function RootPage() {
         {/* Features — a spec list, not an icon grid. */}
         <section id="features" className="border-t border-border bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-                What&apos;s included
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                One plan. Every feature. No add-ons to hunt for later.
-              </p>
-            </div>
+            <Reveal>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+                  What&apos;s included
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  One plan. Every feature. No add-ons to hunt for later.
+                </p>
+              </div>
+            </Reveal>
             <dl className="mt-8 grid gap-x-12 gap-y-8 border-t border-border pt-8 sm:grid-cols-2">
-              {FEATURES.map((feature) => (
-                <div key={feature.term}>
-                  <dt className="font-display text-sm font-semibold text-foreground">
-                    {feature.term}
-                  </dt>
-                  <dd className="mt-1.5 text-sm text-muted-foreground">{feature.definition}</dd>
-                </div>
+              {FEATURES.map((feature, i) => (
+                <Reveal key={feature.term} delay={(i % 2) * 60}>
+                  <div>
+                    <dt className="font-display text-sm font-semibold text-foreground">
+                      {feature.term}
+                    </dt>
+                    <dd className="mt-1.5 text-sm text-muted-foreground">{feature.definition}</dd>
+                  </div>
+                </Reveal>
               ))}
             </dl>
           </div>
@@ -195,29 +201,31 @@ export default async function RootPage() {
             centered-heading block. */}
         <section className="bg-foreground text-background">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-            <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-16">
-              <div>
-                <h2 className="font-display max-w-md text-2xl font-semibold sm:text-3xl">
-                  $50 a month, or $450 a year.
-                </h2>
-                <p className="mt-3 max-w-md text-sm text-background/70">
-                  Paying yearly saves $150 — the equivalent of three months
-                  free. Every feature either way; no tier to upgrade into
-                  later.
-                </p>
+            <Reveal>
+              <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-16">
+                <div>
+                  <h2 className="font-display max-w-md text-2xl font-semibold sm:text-3xl">
+                    $50 a month, or $450 a year.
+                  </h2>
+                  <p className="mt-3 max-w-md text-sm text-background/70">
+                    Paying yearly saves $150 — the equivalent of three months
+                    free. Every feature either way; no tier to upgrade into
+                    later.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                  <LinkButton href="/register" size="md" className="px-6 py-3 text-base">
+                    Start your free trial
+                  </LinkButton>
+                  <Link
+                    href="/pricing"
+                    className="text-sm font-medium text-background underline decoration-background/40 underline-offset-4 hover:decoration-background"
+                  >
+                    Compare plans →
+                  </Link>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                <LinkButton href="/register" size="md" className="px-6 py-3 text-base">
-                  Start your free trial
-                </LinkButton>
-                <Link
-                  href="/pricing"
-                  className="text-sm font-medium text-background underline decoration-background/40 underline-offset-4 hover:decoration-background"
-                >
-                  Compare plans →
-                </Link>
-              </div>
-            </div>
+            </Reveal>
           </div>
         </section>
       </main>

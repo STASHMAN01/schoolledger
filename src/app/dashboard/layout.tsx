@@ -8,6 +8,7 @@ import { TrialBanner } from "./TrialBanner";
 import { NavLinks } from "./NavLinks";
 import { hasActiveAccess } from "@/lib/billing/access";
 import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function DashboardLayout({
   children,
@@ -61,6 +62,7 @@ export default async function DashboardLayout({
                   Platform
                 </Link>
               )}
+              <ThemeToggle />
               <SignOutButton />
             </div>
           </div>

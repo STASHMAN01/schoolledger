@@ -50,6 +50,19 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${lexend.variable} ${plexMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Applies a saved light/dark choice before first paint, so there's
+            no flash of the wrong theme between the server-rendered (system-
+            preference) page and the client reading localStorage. Inline and
+            blocking on purpose — this has to run before the browser paints
+            anything. Fails silently (e.g. localStorage blocked) and just
+            falls back to the system preference already baked into the CSS. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>
