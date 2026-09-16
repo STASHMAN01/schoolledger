@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { buildReminderMessage } from "@/lib/billing/reminders";
+import { DEFAULT_REMINDER_TEMPLATE } from "@/lib/billing/reminderTemplates";
 import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -19,23 +20,27 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const organization = await db.organization.findUnique({
       where: { id: organizationId },
-      select: { name: true, currencyCode: true },
+      select: { name: true, currencyCode: true, reminderMessageTemplate: true },
     });
     if (!organization) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
+    const template = organization.reminderMessageTemplate ?? DEFAULT_REMINDER_TEMPLATE;
     const outstanding = await getOutstandingReminders(organizationId);
 
     const reminders = outstanding.map((r) => ({
       ...r,
-      message: buildReminderMessage({
-        schoolName: organization.name,
-        parentName: r.parentName,
-        childName: r.childName,
-        outstandingCents: r.outstandingCents,
-        currencyCode: organization.currencyCode,
-      }),
+      message: buildReminderMessage(
+        {
+          schoolName: organization.name,
+          parentName: r.parentName,
+          childName: r.childName,
+          outstandingCents: r.outstandingCents,
+          currencyCode: organization.currencyCode,
+        },
+        template
+      ),
     }));
 
     return NextResponse.json({ reminders });

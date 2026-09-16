@@ -87,6 +87,13 @@ model Organization {
   // schema change later (encryption handled at the field level in app code).
   bankAccountNumber String?
   timezone          String   @default("Africa/Johannesburg")
+  // The org's chosen reminder message wording, with {{childName}} /
+  // {{parentName}} / {{schoolName}} / {{amount}} placeholder tokens — see
+  // src/lib/billing/reminderTemplates.ts, which owns the built-in options,
+  // rendering, and the "must contain the 3 required placeholders" rule.
+  // Null means "use the default built-in template" (REMINDER_TEMPLATES[0])
+  // rather than duplicating that default text into the database.
+  reminderMessageTemplate String? @db.Text
   stripeCustomerId  String?  @unique
   stripeSubscriptionId String? @unique
   stripePriceId     String?

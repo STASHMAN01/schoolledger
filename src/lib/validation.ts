@@ -199,6 +199,23 @@ export const deletionRequestSchema = z.object({
     .max(500, "Keep the reason under 500 characters."),
 });
 
+// The three placeholder tokens below are enforced here (not just as a UI
+// hint) because this schema is what actually gets saved and later used to
+// build every outbound reminder — see reminderTemplates.ts, which owns the
+// canonical placeholder list so this can't silently drift out of sync
+// with it.
+export const reminderTemplateSchema = z.object({
+  template: z
+    .string()
+    .trim()
+    .min(1, "The message can't be empty.")
+    .max(2000, "Keep the message under 2000 characters.")
+    .refine(
+      (t) => t.includes("{{childName}}") && t.includes("{{parentName}}") && t.includes("{{amount}}"),
+      "The message must include {{childName}}, {{parentName}}, and {{amount}}."
+    ),
+});
+
 export const forgotPasswordSchema = z.object({
   email: emailSchema,
 });

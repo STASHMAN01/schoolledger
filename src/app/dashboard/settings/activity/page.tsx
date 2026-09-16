@@ -42,6 +42,7 @@ const VERB_LABELS: Record<string, string> = {
   sendAllApproved: "approved sending reminders to everyone owing",
   sendAllExecuted: "sent reminders to everyone owing",
   sendAllCancelled: "cancelled a request to send reminders to everyone owing",
+  templateUpdated: "updated the reminder message template",
 };
 
 const ENTITY_BADGE: Record<string, "brand" | "accent" | "success" | "danger" | "neutral"> = {

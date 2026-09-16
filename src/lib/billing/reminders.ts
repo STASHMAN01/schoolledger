@@ -1,4 +1,5 @@
 import { formatMoneyCents } from "@/lib/money";
+import { DEFAULT_REMINDER_TEMPLATE, renderReminderTemplate } from "./reminderTemplates";
 
 // Pure, DB-free helpers only in this file, deliberately — see
 // reminders.test.ts. getOutstandingReminders() (the "who currently owes
@@ -23,25 +24,42 @@ import { formatMoneyCents } from "@/lib/money";
 // exception — it DOES actually send, via sendMail() in src/lib/mail.ts,
 // but only once two distinct ADMIN/ACCOUNTANT people have approved it.
 
-export function buildReminderMessage(input: {
-  schoolName: string;
-  parentName: string;
-  childName: string;
-  outstandingCents: number;
-  currencyCode: string;
-}): string {
+// `template` defaults to the built-in "Friendly" wording when omitted, but
+// every real call site should pass the organization's actual saved
+// template (Organization.reminderMessageTemplate ?? the default) — see
+// reminderTemplates.ts for the placeholder tokens and the 5 built-in
+// options, and the org's own "Message template" editor on the Reminders
+// page for where this is customized.
+export function buildReminderMessage(
+  input: {
+    schoolName: string;
+    parentName: string;
+    childName: string;
+    outstandingCents: number;
+    currencyCode: string;
+  },
+  template: string = DEFAULT_REMINDER_TEMPLATE
+): string {
   const amount = formatMoneyCents(input.outstandingCents, input.currencyCode);
-  return `Hi ${input.parentName}, this is a friendly reminder from ${input.schoolName} that ${input.childName}'s account has an outstanding balance of ${amount}. Please let us know if you have any questions. Thank you!`;
+  return renderReminderTemplate(template, {
+    schoolName: input.schoolName,
+    parentName: input.parentName,
+    childName: input.childName,
+    amount,
+  });
 }
 
-export function buildReminderEmailHtml(input: {
-  schoolName: string;
-  parentName: string;
-  childName: string;
-  outstandingCents: number;
-  currencyCode: string;
-}): string {
-  const text = buildReminderMessage(input);
+export function buildReminderEmailHtml(
+  input: {
+    schoolName: string;
+    parentName: string;
+    childName: string;
+    outstandingCents: number;
+    currencyCode: string;
+  },
+  template: string = DEFAULT_REMINDER_TEMPLATE
+): string {
+  const text = buildReminderMessage(input, template);
   return `<p>${text.replace(/\n/g, "<br />")}</p>`;
 }
 

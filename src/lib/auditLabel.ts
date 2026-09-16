@@ -106,6 +106,8 @@ export function describeAuditAction(row: AuditRow): string {
     }
     case "reminders.sendAllCancelled":
       return "cancelled a request to send reminders to everyone owing";
+    case "reminders.templateUpdated":
+      return "updated the reminder message template";
     default:
       return row.action;
   }

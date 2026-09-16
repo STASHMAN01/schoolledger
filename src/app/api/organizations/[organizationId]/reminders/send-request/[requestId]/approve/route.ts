@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { canHandleReminderSend, REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
 import { buildReminderEmailHtml, buildReminderMessage } from "@/lib/billing/reminders";
+import { DEFAULT_REMINDER_TEMPLATE } from "@/lib/billing/reminderTemplates";
 import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
 import { sendMail } from "@/lib/mail";
 
@@ -93,8 +94,9 @@ export async function POST(_req: NextRequest, { params }: Params) {
     // should not still get emailed a reminder).
     const organization = await db.organization.findUnique({
       where: { id: organizationId },
-      select: { name: true, currencyCode: true },
+      select: { name: true, currencyCode: true, reminderMessageTemplate: true },
     });
+    const template = organization?.reminderMessageTemplate ?? DEFAULT_REMINDER_TEMPLATE;
     const outstanding = organization ? await getOutstandingReminders(organizationId) : [];
 
     let sentCount = 0;
@@ -118,8 +120,8 @@ export async function POST(_req: NextRequest, { params }: Params) {
         const sendResult = await sendMail({
           to: r.parentEmail,
           subject: `Payment reminder from ${organization!.name}`,
-          html: buildReminderEmailHtml(messageInput),
-          text: buildReminderMessage(messageInput),
+          html: buildReminderEmailHtml(messageInput, template),
+          text: buildReminderMessage(messageInput, template),
         });
         if (sendResult.sent) {
           sentCount++;

@@ -7,6 +7,13 @@ import { Button, Card, EmptyState, PageHeader, Textarea } from "@/components/ui"
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { canHandleReminderSend, REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
+import {
+  DEFAULT_REMINDER_TEMPLATE,
+  REMINDER_TEMPLATES,
+  missingRequiredPlaceholders,
+  renderReminderTemplate,
+} from "@/lib/billing/reminderTemplates";
+import { formatMoneyCents } from "@/lib/money";
 
 type Reminder = {
   childId: string;
@@ -44,7 +51,7 @@ type SendRequest = {
 };
 
 function RemindersPageInner() {
-  const { organizationId, role, currencyCode } = useOrg();
+  const { organizationId, organizationName, role, currencyCode } = useOrg();
   const canSend = role !== "VIEWER";
   const canHandleSendAll = canHandleReminderSend(role);
   const { confirm, dialog } = useConfirmDialog();
@@ -66,6 +73,17 @@ function RemindersPageInner() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendResult, setSendResult] = useState<string | null>(null);
 
+  // Message template (customizable wording, with {{childName}}/
+  // {{parentName}}/{{amount}}/{{schoolName}} placeholders). null = not
+  // loaded yet, in which case each card falls back to the server-computed
+  // r.message so there's no flash of "wrong" text while this loads.
+  const [templateBody, setTemplateBody] = useState<string | null>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
+  const [templateSaved, setTemplateSaved] = useState(false);
+  const canEditTemplate = canHandleReminderSend(role);
+
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/organizations/${organizationId}/reminders`);
@@ -86,11 +104,58 @@ function RemindersPageInner() {
     }
   }, [organizationId]);
 
+  const loadTemplate = useCallback(async () => {
+    const res = await fetch(`/api/organizations/${organizationId}/reminders/template`);
+    const data = await res.json();
+    if (res.ok) setTemplateBody(data.template);
+  }, [organizationId]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
     loadSendRequest();
-  }, [load, loadSendRequest]);
+    loadTemplate();
+  }, [load, loadSendRequest, loadTemplate]);
+
+  function applyBuiltInTemplate(id: string) {
+    const t = REMINDER_TEMPLATES.find((t) => t.id === id);
+    if (t) {
+      setTemplateBody(t.body);
+      setTemplateError(null);
+      setTemplateSaved(false);
+    }
+  }
+
+  async function saveTemplate() {
+    if (templateBody === null) return;
+    const missing = missingRequiredPlaceholders(templateBody);
+    if (missing.length > 0) {
+      setTemplateError(`Your message must include ${missing.join(", ")}.`);
+      return;
+    }
+    setTemplateSaving(true);
+    setTemplateError(null);
+    setTemplateSaved(false);
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/reminders/template`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template: templateBody }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTemplateError(data.error ?? "Could not save this template.");
+        return;
+      }
+      setTemplateBody(data.template);
+      setTemplateSaved(true);
+    } finally {
+      setTemplateSaving(false);
+    }
+  }
+
+  const selectedTemplateId =
+    REMINDER_TEMPLATES.find((t) => t.body === templateBody)?.id ?? "custom";
 
   async function requestSendAll() {
     const confirmed = await confirm({
@@ -187,7 +252,14 @@ function RemindersPageInner() {
   }
 
   function messageFor(r: Reminder) {
-    return editedMessages[r.childId] ?? r.message;
+    if (editedMessages[r.childId] !== undefined) return editedMessages[r.childId];
+    if (templateBody === null) return r.message;
+    return renderReminderTemplate(templateBody, {
+      schoolName: organizationName,
+      parentName: r.parentName,
+      childName: r.childName,
+      amount: formatMoneyCents(r.outstandingCents, currencyCode),
+    });
   }
 
   const visibleReminders = reminders.filter((r) => {
@@ -216,6 +288,70 @@ function RemindersPageInner() {
       {dialog}
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+
+      {canEditTemplate && (
+        <Card className="mb-4 p-4">
+          <button
+            type="button"
+            onClick={() => setTemplateOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <span className="text-sm font-medium text-foreground">Message template</span>
+            <span className="text-xs text-muted-foreground">
+              {templateOpen ? "Hide" : "Customize the wording used below"}
+            </span>
+          </button>
+          {templateOpen && (
+            <div className="animate-in mt-3 flex flex-col gap-3">
+              <div className="flex flex-wrap gap-1.5">
+                {REMINDER_TEMPLATES.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => applyBuiltInTemplate(t.id)}
+                    className={`transition-standard rounded-lg px-2.5 py-1 text-xs font-medium ${
+                      selectedTemplateId === t.id
+                        ? "bg-brand-soft text-brand-soft-foreground"
+                        : "bg-background text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+                {selectedTemplateId === "custom" && (
+                  <span className="rounded-lg bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-soft-foreground">
+                    Custom
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Write it however you like — {"{{childName}}"}, {"{{parentName}}"}, and{" "}
+                {"{{amount}}"} must always appear somewhere in the message; {"{{schoolName}}"} is
+                available too but optional.
+              </p>
+              <Textarea
+                rows={4}
+                value={templateBody ?? DEFAULT_REMINDER_TEMPLATE}
+                onChange={(e) => {
+                  setTemplateBody(e.target.value);
+                  setTemplateSaved(false);
+                }}
+              />
+              <div className="flex items-center gap-3">
+                <Button size="sm" onClick={saveTemplate} disabled={templateSaving}>
+                  {templateSaving ? "Saving…" : "Save as default"}
+                </Button>
+                {templateSaved && (
+                  <span className="text-xs text-success">
+                    Saved — this is now the default for everyone in your school.
+                  </span>
+                )}
+              </div>
+              {templateError && <p className="text-xs text-danger">{templateError}</p>}
+            </div>
+          )}
+        </Card>
+      )}
 
       {canHandleSendAll && !sendRequestLoading && (
         <Card className="mb-4 p-4">
