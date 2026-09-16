@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Lexend, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -38,6 +38,19 @@ export const metadata: Metadata = {
   title: "TinyLedger — Accounting built for preschools",
   description:
     "TinyLedger is fee and payment tracking built for preschools, nurseries, and crèches: enrollments, recurring fees, payment history, and statements in one place.",
+};
+
+// This was missing entirely, which is the actual cause of "everything is
+// zoomed out and I have to pinch to read it" on mobile: without a viewport
+// meta tag, mobile browsers assume the page was built for a ~980px desktop
+// layout and shrink the whole thing to fit, rather than laying it out at
+// the phone's real width. maximumScale/userScalable are left at their
+// defaults (both effectively unset here) so pinch-zoom still works for
+// accessibility — this only fixes the *initial* render, it doesn't lock
+// zoom out.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

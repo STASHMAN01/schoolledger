@@ -132,7 +132,7 @@ export default function PaymentTypesPage() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
-        <Card className="overflow-hidden">
+        <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-background text-left text-muted-foreground">
               <tr>
