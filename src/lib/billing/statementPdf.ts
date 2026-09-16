@@ -330,3 +330,39 @@ export async function generateStatementPdf(
 
   return pdf.save();
 }
+
+const MONTH_FULL = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+// Filename for a downloaded/shared statement, per the org owner's own
+// requirement: the child's first and last name, the current month (the
+// month it's being generated/sent, not necessarily the statement's
+// covered year), and the word "Statement" — e.g.
+// "Alice-Smith-Statement-September-2026.pdf". This is what a parent sees
+// as the actual filename once they've downloaded or been sent it via
+// WhatsApp/email/AirDrop, so it needs to be self-explanatory on its own,
+// without the surrounding app context.
+//
+// Sanitized to plain ASCII letters/digits/hyphens: filenames end up in
+// email attachments, WhatsApp, and every OS's filesystem, and accented
+// characters or punctuation in a name (all too common — "O'Brien",
+// "Müller") can silently corrupt or truncate in some of those paths.
+export function buildStatementFilename(
+  firstName: string,
+  lastName: string,
+  at: Date = new Date()
+): string {
+  const clean = (s: string) =>
+    s
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "") // strip accents after decomposing
+      .replace(/[^a-zA-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  const monthName = MONTH_FULL[at.getMonth()];
+  const parts = [clean(firstName), clean(lastName), "Statement", monthName, String(at.getFullYear())].filter(
+    Boolean
+  );
+  return `${parts.join("-")}.pdf`;
+}

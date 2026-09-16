@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { logAudit } from "@/lib/audit";
-import { generateStatementPdf } from "@/lib/billing/statementPdf";
+import { buildStatementFilename, generateStatementPdf } from "@/lib/billing/statementPdf";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
 
@@ -88,10 +88,18 @@ export async function GET(req: NextRequest, { params }: Params) {
     });
 
     const primaryChild = children.find((c) => c.id === childId)!;
+    const filename = buildStatementFilename(primaryChild.firstName, primaryChild.lastName);
+    // "inline" (the default) lets the "View statement" link open the PDF
+    // in-browser/in-tab; "?download=1" (the "Download" button) asks for
+    // "attachment" instead, which is what actually makes mobile browsers
+    // save the file with our filename rather than just displaying it with
+    // no visible way to save or share it — see the child detail page's
+    // three-button row (View / Download / Share) for why both exist.
+    const download = req.nextUrl.searchParams.get("download") === "1";
     return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="statement-${primaryChild.lastName}-${year}.pdf"`,
+        "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${filename}"`,
       },
     });
   } catch (err) {

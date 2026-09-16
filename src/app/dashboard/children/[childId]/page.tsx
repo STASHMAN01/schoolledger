@@ -46,6 +46,25 @@ export default function ChildDetailPage() {
   const [siblings, setSiblings] = useState<SiblingCandidate[]>([]);
   const [selectedSiblingIds, setSelectedSiblingIds] = useState<string[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
+  const [canShareFiles, setCanShareFiles] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  // Feature-detect the Web Share API (files) rather than assuming — this is
+  // the actual fix for "on the phone, after opening the PDF there's no
+  // share/download button": instead of relying on whatever chrome the
+  // phone's built-in PDF viewer happens to show (inconsistent across
+  // browsers, and sometimes there's genuinely nothing), this button pulls
+  // the PDF into the app itself and hands it to the OS's native share
+  // sheet (Messages, WhatsApp, Mail, Save to Files, AirDrop, ...) directly.
+  // Desktop browsers mostly don't support it, so it only renders when
+  // canShare actually exists.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time feature detection on mount
+    setCanShareFiles(
+      typeof navigator !== "undefined" && "share" in navigator && "canShare" in navigator
+    );
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,6 +104,37 @@ export default function ChildDetailPage() {
   const statementUrl = `/api/organizations/${organizationId}/children/${params.childId}/statement?year=${year}${
     selectedSiblingIds.length ? `&siblingIds=${selectedSiblingIds.join(",")}` : ""
   }`;
+  const downloadUrl = `${statementUrl}&download=1`;
+
+  async function shareStatement() {
+    setSharing(true);
+    setShareError(null);
+    try {
+      const res = await fetch(downloadUrl);
+      if (!res.ok) {
+        setShareError("Could not load the statement.");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename = match?.[1] ?? "statement.pdf";
+      const file = new File([blob], filename, { type: "application/pdf" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+      } else {
+        setShareError("Sharing isn't supported on this device — use Download instead.");
+      }
+    } catch (err) {
+      // The user cancelling the native share sheet throws an AbortError —
+      // that's a normal outcome, not a failure worth showing an error for.
+      if (err instanceof Error && err.name !== "AbortError") {
+        setShareError("Could not share the statement.");
+      }
+    } finally {
+      setSharing(false);
+    }
+  }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
   if (!child) return <p className="text-sm text-muted-foreground">Not found.</p>;
@@ -156,14 +206,34 @@ export default function ChildDetailPage() {
             ))}
           </div>
         )}
-        <a
-          href={statementUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
-        >
-          View / download statement (PDF)
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={statementUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
+          >
+            View statement
+          </a>
+          <a
+            href={downloadUrl}
+            download
+            className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-background"
+          >
+            Download PDF
+          </a>
+          {canShareFiles && (
+            <button
+              type="button"
+              onClick={shareStatement}
+              disabled={sharing}
+              className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50"
+            >
+              {sharing ? "Preparing…" : "Share"}
+            </button>
+          )}
+        </div>
+        {shareError && <p className="w-full text-xs text-danger">{shareError}</p>}
       </Card>
 
       <Card className="overflow-x-auto">
