@@ -51,22 +51,38 @@ and your card:
 No rush on this — search ranking and sharing links both work fine on
 the current `.vercel.app` address in the meantime.
 
-## 3. Stripe — only needed once you're ready to actually charge people
+## 3. Payment processor — decision made: Paystack (not Stripe)
 
-Stripe isn't connected in production yet, so right now the billing
-pages/plan selection won't process real payments. When you're ready to
-start charging (not before — no reason to set this up earlier):
+Only needed once you're ready to actually charge people — right now the
+billing pages/plan selection won't process real payments.
 
-1. Create/verify a Stripe account.
-2. In Stripe, create two **Price** objects: one recurring monthly at
-   $50, one recurring yearly at $450.
+**Decided 2026-09-16**: we're going with **Paystack**, not Stripe.
+Reason: Stripe doesn't actually support South African merchant payouts
+directly — SA businesses get routed through Paystack anyway (Stripe owns
+Paystack), so there's no direct-Stripe option to begin with. Comparing
+the real SA options (Paystack vs. PayFast vs. Yoco), Paystack has the
+lowest card fee (2.9% + R1), a genuinely cheap EFT rate (~2% via
+Capitec Pay/Ozow — useful since parents likely pay by EFT a lot), no
+monthly fee, and the best API/docs quality of the three. Full comparison
+is in `TINYLEDGER-MONEY-RESEARCH.md` if you want the details.
+
+When you're ready to start charging (not before — no reason to set this
+up earlier), the code in this app will need to be switched from its
+current Stripe-shaped billing code to Paystack's API — that's on me once
+you say go. Steps on your side:
+
+1. Create/verify a Paystack account (paystack.com — South Africa is a
+   directly supported market).
+2. In Paystack, set up two **Plan** objects: one recurring monthly at
+   $50 (or R-equivalent — Paystack settles in ZAR), one recurring yearly
+   at $450.
 3. In Vercel, add:
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_WEBHOOK_SECRET` (from a Stripe webhook pointed at your
-     deployed `/api/webhooks/stripe`-style endpoint — I'll give you the
-     exact URL when this step comes up)
-   - `STRIPE_PRICE_ID_MONTHLY`
-   - `STRIPE_PRICE_ID_YEARLY`
+   - `PAYSTACK_SECRET_KEY`
+   - `PAYSTACK_WEBHOOK_SECRET` (or the equivalent Paystack gives you for
+     verifying webhook signatures — I'll give you the exact endpoint URL
+     when this step comes up)
+   - `PAYSTACK_PLAN_CODE_MONTHLY`
+   - `PAYSTACK_PLAN_CODE_YEARLY`
 
 I'll walk you through this step by step when you say you're ready —
 it's the same "I can't type in a live secret key for you" situation as
@@ -85,7 +101,7 @@ just tell me the address.
 
 ---
 
-_Last updated: 2026-09-15 (send-all-reminders cross-reference added).
+_Last updated: 2026-09-16 (payment processor decided: Paystack, not Stripe).
 Nothing above is urgent — the app works fully
 without any of it (trial signups, all features, the platform dashboard).
 These are just the specific moments where a human with account access
