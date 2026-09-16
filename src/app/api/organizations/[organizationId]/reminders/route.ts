@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
-import { buildReminderMessage, getOutstandingReminders } from "@/lib/billing/reminders";
+import { buildReminderMessage } from "@/lib/billing/reminders";
+import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
 
 type Params = { params: Promise<{ organizationId: string }> };
 

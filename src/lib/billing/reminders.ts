@@ -1,5 +1,14 @@
-import { db } from "@/lib/db";
 import { formatMoneyCents } from "@/lib/money";
+
+// Pure, DB-free helpers only in this file, deliberately — see
+// reminders.test.ts. getOutstandingReminders() (the "who currently owes
+// money" query) lives in outstandingReminders.ts instead, specifically so
+// this file can be imported in a test without pulling in @/lib/db →
+// PrismaClient, which fails to construct in any environment that hasn't
+// run `prisma generate` (this sandbox can't — see AGENTS.md/session notes
+// — but a contributor's local machine without a fresh `npm install` could
+// hit the same thing). Keep it this way: if a future change here needs the
+// database, put it in outstandingReminders.ts, not here.
 
 // Deliberately does NOT send anything itself, for the on-demand/manual
 // per-child flow below (buildReminderMessage + the WhatsApp/mailto link
@@ -13,74 +22,6 @@ import { formatMoneyCents } from "@/lib/money";
 // prisma/schema.prisma and the send-request API routes) is the one
 // exception — it DOES actually send, via sendMail() in src/lib/mail.ts,
 // but only once two distinct ADMIN/ACCOUNTANT people have approved it.
-// getOutstandingReminders() below is shared by both: the read-only GET
-// /reminders list and the send-request execution path, so there's exactly
-// one place that decides "who currently owes money".
-
-export type OutstandingReminder = {
-  childId: string;
-  childName: string;
-  categoryName: string;
-  parentName: string;
-  parentPhone: string | null;
-  parentEmail: string | null;
-  lastReminderSentAt: Date | null;
-  outstandingCents: number;
-};
-
-export async function getOutstandingReminders(
-  organizationId: string
-): Promise<OutstandingReminder[]> {
-  const entries = await db.financialPlanEntry.findMany({
-    where: {
-      organizationId,
-      status: { in: ["OUTSTANDING", "PARTIALLY_PAID"] },
-      child: { archived: false },
-    },
-    select: {
-      childId: true,
-      amountDueCents: true,
-      amountPaidCents: true,
-      child: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          parentName: true,
-          parentPhone: true,
-          parentEmail: true,
-          lastReminderSentAt: true,
-          category: { select: { name: true } },
-        },
-      },
-    },
-  });
-
-  const byChild = new Map<string, OutstandingReminder>();
-  for (const e of entries) {
-    const outstanding = e.amountDueCents - e.amountPaidCents;
-    if (outstanding <= 0) continue;
-    const existing = byChild.get(e.childId);
-    if (existing) {
-      existing.outstandingCents += outstanding;
-    } else {
-      byChild.set(e.childId, {
-        childId: e.child.id,
-        childName: `${e.child.firstName} ${e.child.lastName}`,
-        categoryName: e.child.category.name,
-        parentName: e.child.parentName,
-        parentPhone: e.child.parentPhone,
-        parentEmail: e.child.parentEmail,
-        lastReminderSentAt: e.child.lastReminderSentAt,
-        outstandingCents: outstanding,
-      });
-    }
-  }
-
-  return Array.from(byChild.values()).sort(
-    (a, b) => b.outstandingCents - a.outstandingCents
-  );
-}
 
 export function buildReminderMessage(input: {
   schoolName: string;

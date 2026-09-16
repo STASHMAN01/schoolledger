@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildReminderMessage, whatsAppLink, mailtoLink } from "./reminders";
+import {
+  buildReminderEmailHtml,
+  buildReminderMessage,
+  whatsAppLink,
+  mailtoLink,
+} from "./reminders";
 
 describe("buildReminderMessage", () => {
   it("includes the parent, child, and formatted amount", () => {
@@ -14,6 +19,22 @@ describe("buildReminderMessage", () => {
     expect(msg).toContain("Alice Smith");
     expect(msg).toContain("Dee's Duckling Centre");
     expect(msg).toContain("R1400.00");
+  });
+});
+
+describe("buildReminderEmailHtml", () => {
+  it("wraps the same message text in a paragraph tag", () => {
+    const input = {
+      schoolName: "Dee's Duckling Centre",
+      parentName: "Mrs Smith",
+      childName: "Alice Smith",
+      outstandingCents: 140_000,
+      currencyCode: "ZAR",
+    };
+    const html = buildReminderEmailHtml(input);
+    expect(html.startsWith("<p>")).toBe(true);
+    expect(html.endsWith("</p>")).toBe(true);
+    expect(html).toContain(buildReminderMessage(input));
   });
 });
 

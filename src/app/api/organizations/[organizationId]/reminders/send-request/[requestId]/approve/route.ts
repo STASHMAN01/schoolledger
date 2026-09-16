@@ -4,11 +4,8 @@ import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { canHandleReminderSend, REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
-import {
-  buildReminderEmailHtml,
-  buildReminderMessage,
-  getOutstandingReminders,
-} from "@/lib/billing/reminders";
+import { buildReminderEmailHtml, buildReminderMessage } from "@/lib/billing/reminders";
+import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
 import { sendMail } from "@/lib/mail";
 
 type Params = { params: Promise<{ organizationId: string; requestId: string }> };
