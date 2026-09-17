@@ -19,44 +19,50 @@ const WHO_ITS_FOR = [
   {
     label: "Preschools & nurseries",
     description:
-      "Track enrollments, recurring school fees, and which families are up to date — without a spreadsheet only one person understands.",
+      "Stop being the only person who understands the fee book. Anyone on your team can see who's up to date in seconds.",
   },
   {
     label: "Crèches & daycares",
     description:
-      "Built for the way small early-years operators actually get paid: cash, EFT, and card, often on different days for different families.",
+      "Built for how you actually get paid — cash, EFT, and card, often on different days for different families — not how a big accounting company assumes you do.",
   },
   {
     label: "Small private schools",
     description:
-      "Registration, uniforms, trips, aftercare — one place for every payment type, with statements you can hand a parent or a bookkeeper.",
+      "Registration, uniforms, trips, aftercare — every payment type in one place, with a statement you're proud to hand a parent or an accountant.",
   },
 ];
 
 const FEATURES = [
   {
-    term: "Children & enrollments",
-    definition: "Category, parent contact details, enrollment date, and fee overrides in one record.",
+    term: "Never lose track of who owes what",
+    definition:
+      "Every child, every fee, one record. Open the app and know instantly who's paid and who hasn't — no notebook, no memory required.",
   },
   {
-    term: "Recurring & one-off fees",
-    definition: "School fees bill automatically every period. Uniforms and trips are one-time charges.",
+    term: "Stop calculating fees by hand every month",
+    definition:
+      "School fees bill themselves, automatically, every period. You add a uniform or a trip charge once — it's never manual math again.",
   },
   {
-    term: "Payment tracking",
-    definition: "Cash, EFT, and card, applied oldest-outstanding-first, so nothing quietly slips through.",
+    term: "Get paid faster, without chasing anyone",
+    definition:
+      "Payments are applied oldest-owing-first the moment they come in, and overdue families get an automatic reminder — so you're not the one sending awkward messages.",
   },
   {
-    term: "Parent statements",
-    definition: "A clean statement of what's paid and what's owed, ready to send or print.",
+    term: "Look professional in front of every parent",
+    definition:
+      "One click sends a clean, proper statement — the kind a parent (or your accountant) can trust, not a handwritten note torn from a book.",
   },
   {
-    term: "Multi-currency",
-    definition: "Set your school's currency once; every amount on every screen follows it.",
+    term: "Collect for trips and events without a spreadsheet",
+    definition:
+      "Create the trip once and every enrolled family is billed automatically — no manually working out who owes for the school outing.",
   },
   {
-    term: "Team access with roles",
-    definition: "Admin, accountant, manager, or viewer — each sees exactly what their role needs.",
+    term: "Let your bookkeeper in, without handing over everything",
+    definition:
+      "Invite your mom, your accountant, or a teacher with a role that shows them exactly what they need — money for the bookkeeper, enrollments for the classroom, nothing more.",
   },
 ];
 
@@ -78,16 +84,17 @@ export default async function RootPage() {
           <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-16">
             <div className="animate-in">
               <p className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-brand">
-                Fee tracking for preschools, nurseries &amp; crèches
+                For preschool, nursery &amp; crèche owners
               </p>
               <h1 className="font-display mt-4 max-w-xl text-4xl font-semibold leading-[1.08] text-foreground sm:text-5xl">
-                Every fee, every family, one page that actually balances.
+                Know exactly who's paid and who owes you — without opening a notebook.
               </h1>
               <p className="mt-5 max-w-md text-base text-muted-foreground">
-                Crechely replaces the notebook-plus-spreadsheet-plus-memory
-                system most small schools run on. Enrollments, recurring fees,
-                and every cash, EFT, or card payment — always current, always
-                accounted for.
+                Crechely does the fee tracking and chasing you're doing by
+                hand right now — automatically. Set it up once, and every
+                month it bills the right families, tracks every cash, EFT,
+                and card payment, and reminds the ones who haven't paid,
+                so you don't have to.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
                 <LinkButton href="/register" size="md" className="px-6 py-3 text-base">
@@ -101,7 +108,7 @@ export default async function RootPage() {
                 </Link>
               </div>
               <p className="mt-6 text-xs text-muted-foreground">
-                14 days free. No card required to start.
+                14 days completely free. No card required, no risk to try it.
               </p>
             </div>
 
@@ -174,10 +181,10 @@ export default async function RootPage() {
             <Reveal>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-                  What&apos;s included
+                  What this actually gets you
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  One plan. Every feature. No add-ons to hunt for later.
+                  One plan. Everything below, from day one. No add-ons to unlock later.
                 </p>
               </div>
             </Reveal>
@@ -205,12 +212,12 @@ export default async function RootPage() {
               <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-16">
                 <div>
                   <h2 className="font-display max-w-md text-2xl font-semibold sm:text-3xl">
-                    $50 a month, or $450 a year.
+                    R499 a month, or R4,990 a year.
                   </h2>
                   <p className="mt-3 max-w-md text-sm text-background/70">
-                    Paying yearly saves $150 — the equivalent of three months
-                    free. Every feature either way; no tier to upgrade into
-                    later.
+                    One paying family a month covers it. Paying yearly saves
+                    R998 — almost two months free. Every feature either way;
+                    nothing to upgrade into later, ever.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3">

@@ -6,31 +6,34 @@ import { MarketingFooter } from "@/components/MarketingFooter";
 const PLANS = [
   {
     name: "Monthly",
-    note: "Pay as you go, cancel any time.",
-    price: "$50.00",
+    note: "Pay as you go, cancel any time — no contract.",
+    price: "R499.00",
     period: "/ month",
     highlight: false,
   },
   {
     name: "Yearly",
-    note: "Billed once a year. Saves $150 — like getting 3 months free.",
-    price: "$450.00",
+    note: "Billed once a year. Saves R998 — almost 2 months free.",
+    price: "R4,990.00",
     period: "/ year",
     highlight: true,
   },
 ];
 
+// Framed as what you get to stop doing, not a feature checklist — a parent
+// or an accountant would ask "so what does this actually do for me," and
+// this is the honest answer to that, item by item.
 const INCLUDED = [
-  "Unlimited children & enrollments",
-  "Recurring and one-off fees",
-  "Payment tracking (cash, EFT, card)",
-  "Parent statements & CSV export",
-  "Multi-currency support",
-  "Team invites with roles",
-  "Events & trip payment collection",
-  "Automated payment reminders",
-  "Audit log",
-  "Email support",
+  "Never manually work out who's paid and who owes you again",
+  "Fees bill themselves every month — no more doing the sums by hand",
+  "Every cash, EFT, and card payment tracked and applied correctly",
+  "A proper statement, ready to send, in one click",
+  "Automatic reminders to families who haven't paid — you don't send them",
+  "Collect for a trip or event from every family in one step",
+  "Your bookkeeper or a teacher gets exactly the access they need, nothing more",
+  "A full record of who did what, so nothing gets lost or disputed",
+  "Works in your currency, no conversion or setup needed",
+  "A real person to email when something's wrong",
 ];
 
 export default function PricingPage() {
@@ -44,11 +47,12 @@ export default function PricingPage() {
             Pricing
           </p>
           <h1 className="font-display mt-3 max-w-lg text-3xl font-semibold text-foreground sm:text-4xl">
-            One plan. Every feature. Pick how often you pay.
+            Less than one term of one child's fees. Covers your whole school.
           </h1>
           <p className="mt-3 max-w-md text-sm text-muted-foreground">
-            No tiers to compare, nothing locked behind a higher price.
-            14 days free before either one starts billing.
+            No tiers, nothing locked behind a higher price, nothing to
+            upgrade into later. Try it free for 14 days — no card, no
+            commitment, no risk if it's not for you.
           </p>
         </section>
 
@@ -91,7 +95,7 @@ export default function PricingPage() {
 
           <div className="mt-10 border-t border-border pt-8">
             <h2 className="font-display text-base font-semibold text-foreground">
-              Included on every plan
+              What you stop having to do yourself
             </h2>
             <ul className="mt-4 grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
               {INCLUDED.map((item) => (
@@ -106,11 +110,12 @@ export default function PricingPage() {
           </div>
 
           <p className="mt-10 text-sm text-muted-foreground">
-            Questions about pricing?{" "}
+            Not sure yet? Start the free trial — no card needed — and decide
+            once you've actually used it with your real families. You can{" "}
             <Link href="/register" className="font-medium text-brand hover:underline">
-              Start a free trial
+              start free
             </Link>{" "}
-            — you can pick a plan, or stay on trial, from inside your dashboard.
+            and pick a plan from inside your dashboard whenever you're ready.
           </p>
         </section>
       </main>

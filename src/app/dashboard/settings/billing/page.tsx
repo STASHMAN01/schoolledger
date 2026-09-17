@@ -78,7 +78,7 @@ export default function BillingPage() {
         <div className="flex flex-wrap gap-3">
           <Card className="p-4">
             <p className="mb-1 font-medium text-foreground">Monthly</p>
-            <p className="mb-3 text-sm text-muted-foreground">$50/month</p>
+            <p className="mb-3 text-sm text-muted-foreground">R499/month</p>
             <Button onClick={() => checkout("monthly")} disabled={loading !== null}>
               {loading === "monthly" ? "Redirecting..." : "Subscribe monthly"}
             </Button>
