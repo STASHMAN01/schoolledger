@@ -51,8 +51,10 @@ export default function PricingPage() {
           </h1>
           <p className="mt-3 max-w-md text-sm text-muted-foreground">
             No tiers, nothing locked behind a higher price, nothing to
-            upgrade into later. Try it free for 14 days — no card, no
-            commitment, no risk if it&rsquo;s not for you.
+            upgrade into later.
+          </p>
+          <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
+            <span className="text-success">✓</span> No card, no commitment — free for 14 days.
           </p>
         </section>
 

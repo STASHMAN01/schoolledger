@@ -72,13 +72,13 @@ export default function RegisterPage() {
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
       <div className="animate-in mb-8 flex flex-col items-center text-center">
         <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand font-display text-lg font-bold text-brand-foreground">
-          T
+          C
         </div>
         <h1 className="font-display text-2xl font-semibold text-foreground">
           Set up your school
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          14-day free trial, no card required to start.
+        <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-foreground">
+          <span className="text-success">✓</span> No card required — 14 days free.
         </p>
       </div>
 

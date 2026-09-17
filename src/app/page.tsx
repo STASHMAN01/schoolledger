@@ -96,20 +96,22 @@ export default async function RootPage() {
                 and card payment, and reminds the ones who haven&rsquo;t paid,
                 so you don&rsquo;t have to.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-                <LinkButton href="/register" size="md" className="px-6 py-3 text-base">
-                  Start your free trial
-                </LinkButton>
-                <Link
-                  href="/pricing"
-                  className="text-sm font-medium text-foreground underline decoration-border-strong underline-offset-4 hover:decoration-foreground"
-                >
-                  See pricing →
-                </Link>
+              <div className="mt-8">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                  <LinkButton href="/register" size="lg">
+                    Start your free trial
+                  </LinkButton>
+                  <Link
+                    href="/pricing"
+                    className="text-sm font-medium text-foreground underline decoration-border-strong underline-offset-4 hover:decoration-foreground"
+                  >
+                    See pricing →
+                  </Link>
+                </div>
+                <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <span className="text-success">✓</span> No card required — full access for 14 days, free.
+                </p>
               </div>
-              <p className="mt-6 text-xs text-muted-foreground">
-                14 days completely free. No card required, no risk to try it.
-              </p>
             </div>
 
             {/* The statement panel */}
@@ -220,16 +222,21 @@ export default async function RootPage() {
                     nothing to upgrade into later, ever.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                  <LinkButton href="/register" size="md" className="px-6 py-3 text-base">
-                    Start your free trial
-                  </LinkButton>
-                  <Link
-                    href="/pricing"
-                    className="text-sm font-medium text-background underline decoration-background/40 underline-offset-4 hover:decoration-background"
-                  >
-                    Compare plans →
-                  </Link>
+                <div>
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                    <LinkButton href="/register" size="lg">
+                      Start your free trial
+                    </LinkButton>
+                    <Link
+                      href="/pricing"
+                      className="text-sm font-medium text-background underline decoration-background/40 underline-offset-4 hover:decoration-background"
+                    >
+                      Compare plans →
+                    </Link>
+                  </div>
+                  <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-background">
+                    <span className="text-success">✓</span> No card required — full access for 14 days, free.
+                  </p>
                 </div>
               </div>
             </Reveal>
