@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
     const resetUrl = `${req.nextUrl.origin}/reset-password/${token}`;
     await sendMail({
       to: user.email,
-      subject: "Reset your TinyLedger password",
-      text: `We got a request to reset your TinyLedger password. This link works once and expires in ${RESET_EXPIRY_MINUTES} minutes:\n\n${resetUrl}\n\nIf you didn't ask for this, you can ignore this email — your password hasn't been changed.`,
+      subject: "Reset your Crechely password",
+      text: `We got a request to reset your Crechely password. This link works once and expires in ${RESET_EXPIRY_MINUTES} minutes:\n\n${resetUrl}\n\nIf you didn't ask for this, you can ignore this email — your password hasn't been changed.`,
       html: `
-        <p>We got a request to reset your TinyLedger password.</p>
+        <p>We got a request to reset your Crechely password.</p>
         <p><a href="${resetUrl}">Reset your password</a></p>
         <p style="color:#666;font-size:13px">This link works once and expires in ${RESET_EXPIRY_MINUTES} minutes. If you didn't ask for this, you can ignore this email — your password hasn't been changed.</p>
       `,

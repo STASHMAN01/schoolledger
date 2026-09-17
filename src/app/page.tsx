@@ -84,7 +84,7 @@ export default async function RootPage() {
                 Every fee, every family, one page that actually balances.
               </h1>
               <p className="mt-5 max-w-md text-base text-muted-foreground">
-                TinyLedger replaces the notebook-plus-spreadsheet-plus-memory
+                Crechely replaces the notebook-plus-spreadsheet-plus-memory
                 system most small schools run on. Enrollments, recurring fees,
                 and every cash, EFT, or card payment — always current, always
                 accounted for.

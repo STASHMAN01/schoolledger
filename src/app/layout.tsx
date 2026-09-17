@@ -35,9 +35,9 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TinyLedger — Accounting built for preschools",
+  title: "Crechely — Accounting built for preschools",
   description:
-    "TinyLedger is fee and payment tracking built for preschools, nurseries, and crèches: enrollments, recurring fees, payment history, and statements in one place.",
+    "Crechely is fee and payment tracking built for preschools, nurseries, and crèches: enrollments, recurring fees, payment history, and statements in one place.",
 };
 
 // This was missing entirely, which is the actual cause of "everything is

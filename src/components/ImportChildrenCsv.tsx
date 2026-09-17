@@ -41,7 +41,7 @@ function downloadTemplate() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "tinyledger-children-template.csv";
+  a.download = "crechely-children-template.csv";
   a.click();
   URL.revokeObjectURL(url);
 }

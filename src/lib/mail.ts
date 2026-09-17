@@ -44,7 +44,7 @@ export async function sendMail(opts: { to: string; subject: string; html: string
   }
 
   await transport.sendMail({
-    from: `TinyLedger <${from}>`,
+    from: `Crechely <${from}>`,
     to: opts.to,
     subject: opts.subject,
     html: opts.html,

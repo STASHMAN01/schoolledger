@@ -32,7 +32,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       role: invite.role,
       // Tells the accept page whether to show a "set a password" form
       // (brand new person) or just a "log in and accept" prompt (existing
-      // TinyLedger user joining a second school).
+      // Crechely user joining a second school).
       requiresNewAccount: !existingUser,
     });
   } catch (err) {

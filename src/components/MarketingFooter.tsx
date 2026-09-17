@@ -9,7 +9,7 @@ export function MarketingFooter() {
             T
           </div>
           <span className="text-sm text-muted-foreground">
-            TinyLedger — accounting built for preschools
+            Crechely — accounting built for preschools
           </span>
         </div>
         <nav className="flex items-center gap-4 text-sm text-muted-foreground">

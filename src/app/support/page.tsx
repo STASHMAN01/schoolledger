@@ -41,7 +41,7 @@ export default function SupportPage() {
       <MarketingHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
         <h1 className="font-display text-2xl font-semibold text-foreground">
-          Support &amp; how to use TinyLedger
+          Support &amp; how to use Crechely
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Stuck on something, found a bug, or just have a question? Email us
@@ -59,7 +59,7 @@ export default function SupportPage() {
         </Card>
 
         <h2 className="font-display mt-10 mb-4 text-lg font-semibold text-foreground">
-          How to use TinyLedger
+          How to use Crechely
         </h2>
         <div className="flex flex-col gap-3">
           {GUIDE_SECTIONS.map((s) => (

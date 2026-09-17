@@ -237,7 +237,7 @@ Billing Portal provides out of the box.
   children/family data on a school's instructions, isolates it per
   organization, encrypts bank details, bills via Stripe) rather than a
   generic template — includes the operator/responsible-party split under
-  POPIA (the school controls what's collected and why; TinyLedger
+  POPIA (the school controls what's collected and why; Crechely
   processes it on the school's instructions), subprocessor disclosure
   (Stripe, hosting/DB providers — placeholders until finalized), retention,
   and a security-incident notification commitment matching SECURITY.md.

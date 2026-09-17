@@ -73,7 +73,7 @@ export default async function DashboardLayout({
               )}
               <Link
                 href="/support"
-                title="Support & how to use TinyLedger"
+                title="Support & how to use Crechely"
                 className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
               >
                 Support

@@ -3,4 +3,4 @@
 // tells us the real address he wants customers writing to. Swap the value
 // below (or better: move it to an env var once it's final) and every place
 // that imports SUPPORT_EMAIL updates automatically.
-export const SUPPORT_EMAIL = "support@tinyledger.app";
+export const SUPPORT_EMAIL = "support@crechely.app";

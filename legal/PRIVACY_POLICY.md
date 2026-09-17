@@ -1,4 +1,4 @@
-# Privacy Policy — TinyLedger (working name)
+# Privacy Policy — Crechely (working name)
 
 **Status: DRAFT — not yet reviewed by a lawyer. Do not publish this or start
 onboarding paying customers until a lawyer (ideally one familiar with POPIA,
@@ -11,7 +11,7 @@ _Last updated: [DATE]_
 ## Who this is about and who we are
 
 This policy explains how **[YOUR REGISTERED BUSINESS NAME]** ("**we**",
-"**us**", operating the TinyLedger product, referred to here as "**the
+"**us**", operating the Crechely product, referred to here as "**the
 Service**") collects, uses, stores and protects personal information when a
 school ("**you**", "**the school**", "**the customer**") uses the Service
 to manage its own records of children, parents/guardians, and payments.

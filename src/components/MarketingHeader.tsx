@@ -11,7 +11,7 @@ export function MarketingHeader() {
             T
           </div>
           <span className="font-display text-base font-semibold text-foreground">
-            TinyLedger
+            Crechely
           </span>
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2">
