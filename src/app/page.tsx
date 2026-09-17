@@ -87,14 +87,14 @@ export default async function RootPage() {
                 For preschool, nursery &amp; crèche owners
               </p>
               <h1 className="font-display mt-4 max-w-xl text-4xl font-semibold leading-[1.08] text-foreground sm:text-5xl">
-                Know exactly who's paid and who owes you — without opening a notebook.
+                Know exactly who&rsquo;s paid and who owes you — without opening a notebook.
               </h1>
               <p className="mt-5 max-w-md text-base text-muted-foreground">
-                Crechely does the fee tracking and chasing you're doing by
+                Crechely does the fee tracking and chasing you&rsquo;re doing by
                 hand right now — automatically. Set it up once, and every
                 month it bills the right families, tracks every cash, EFT,
-                and card payment, and reminds the ones who haven't paid,
-                so you don't have to.
+                and card payment, and reminds the ones who haven&rsquo;t paid,
+                so you don&rsquo;t have to.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
                 <LinkButton href="/register" size="md" className="px-6 py-3 text-base">

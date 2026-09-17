@@ -47,12 +47,12 @@ export default function PricingPage() {
             Pricing
           </p>
           <h1 className="font-display mt-3 max-w-lg text-3xl font-semibold text-foreground sm:text-4xl">
-            Less than one term of one child's fees. Covers your whole school.
+            Less than one term of one child&rsquo;s fees. Covers your whole school.
           </h1>
           <p className="mt-3 max-w-md text-sm text-muted-foreground">
             No tiers, nothing locked behind a higher price, nothing to
             upgrade into later. Try it free for 14 days — no card, no
-            commitment, no risk if it's not for you.
+            commitment, no risk if it&rsquo;s not for you.
           </p>
         </section>
 
@@ -111,11 +111,11 @@ export default function PricingPage() {
 
           <p className="mt-10 text-sm text-muted-foreground">
             Not sure yet? Start the free trial — no card needed — and decide
-            once you've actually used it with your real families. You can{" "}
+            once you&rsquo;ve actually used it with your real families. You can{" "}
             <Link href="/register" className="font-medium text-brand hover:underline">
               start free
             </Link>{" "}
-            and pick a plan from inside your dashboard whenever you're ready.
+            and pick a plan from inside your dashboard whenever you&rsquo;re ready.
           </p>
         </section>
       </main>
