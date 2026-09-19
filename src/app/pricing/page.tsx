@@ -4,12 +4,12 @@ import { LinkButton } from "@/components/ui";
 import { MarketingHeader } from "@/components/MarketingHeader";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
+import { TRIAL_DAYS } from "@/lib/trial";
 
 // Fixes H1 — see CRECHELY_AUDIT.md.
 export const metadata: Metadata = {
   title: "Pricing",
-  description:
-    "R499/month or R4,990/year, flat — one plan, everything included, no per-child fees, 14-day free trial.",
+  description: `R499/month or R4,990/year, flat — one plan, everything included, no per-child fees, ${TRIAL_DAYS}-day free trial.`,
   alternates: { canonical: "/pricing" },
   openGraph: {
     title: "Crechely pricing",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 // evening would have.
 const OBJECTIONS = [
   {
-    q: "What happens on day 15, if I haven't paid?",
+    q: `What happens on day ${TRIAL_DAYS + 1}, if I haven't paid?`,
     a: "Nothing is deleted. Your account moves to read-only — you can still see and export everything, but can't add new payments or send reminders until you subscribe.",
   },
   {
@@ -100,7 +100,7 @@ export default function PricingPage() {
             One plan, no tiers, nothing locked behind a higher price.
           </p>
           <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
-            <span className="text-success">✓</span> No card, no commitment — free for 14 days.
+            <span className="text-success">✓</span> No card, no commitment — free for {TRIAL_DAYS} days.
           </p>
         </section>
 

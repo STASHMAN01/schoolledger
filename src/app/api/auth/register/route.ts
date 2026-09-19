@@ -4,6 +4,7 @@ import { hashPassword, isPasswordStrongEnough } from "@/lib/password";
 import { registerSchema } from "@/lib/validation";
 import { rateLimit } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
+import { TRIAL_DAYS } from "@/lib/trial";
 
 // Creates a brand new Organization (school) plus its first user as ADMIN.
 // This is the ONLY place a User + Membership + Organization get created
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
         name: organizationName,
         countryCode,
         currencyCode,
-        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
       },
     });
 

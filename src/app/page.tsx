@@ -7,6 +7,7 @@ import { MarketingHeader } from "@/components/MarketingHeader";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { Reveal } from "@/components/Reveal";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
+import { TRIAL_DAYS } from "@/lib/trial";
 
 // A real (fictional) excerpt of what the product actually produces —
 // standing in for the "dashboard screenshot" hero image without being one.
@@ -122,7 +123,7 @@ export default async function RootPage() {
                   </Link>
                 </div>
                 <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
-                  <span className="text-success">✓</span> No card required — full access for 14 days, free.
+                  <span className="text-success">✓</span> No card required — full access for {TRIAL_DAYS} days, free.
                 </p>
                 {/* H2: low-commitment secondary CTA beside the primary one. */}
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -394,7 +395,7 @@ export default async function RootPage() {
                     </Link>
                   </div>
                   <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-background">
-                    <span className="text-success">✓</span> No card required — full access for 14 days, free.
+                    <span className="text-success">✓</span> No card required — full access for {TRIAL_DAYS} days, free.
                   </p>
                 </div>
               </div>

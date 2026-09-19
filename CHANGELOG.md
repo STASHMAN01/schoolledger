@@ -1,5 +1,19 @@
 # Changelog — launch-readiness audit pass
 
+## 2026-09-19 (trial length)
+
+- **Extended the free trial from 14 to 30 days.** 14 days never spans one
+  full monthly billing cycle, so nobody trialing the product experienced
+  the automated month-end statement/reminder run — the actual moment
+  that shows what Crechely does. New `src/lib/trial.ts` (`TRIAL_DAYS =
+  30`) is now the single source of truth; it was previously hardcoded
+  independently in 8 places (the register route's actual
+  `trialEndsAt` calculation, plus marketing copy on the homepage,
+  `/register`, and `/pricing`), which is exactly the kind of thing that
+  drifts out of sync. This was Dylan's call, not analysis-only — he
+  asked for it directly after reviewing a pricing-strategy write-up that
+  flagged the short trial as the single highest-leverage change in it.
+
 ## 2026-09-19 (dashboard/homepage follow-ups)
 
 Branch: `feature/dashboard-and-pricing-tweaks`. Not yet merged to `main`.

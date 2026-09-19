@@ -8,6 +8,7 @@ import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
 import { Logo } from "@/components/Logo";
 import { SUPPORT_EMAIL } from "@/lib/support";
+import { TRIAL_DAYS } from "@/lib/trial";
 
 const COUNTRIES = [
   { code: "ZA", currency: "ZAR", label: "South Africa" },
@@ -81,7 +82,7 @@ export default function RegisterPage() {
           Set up your school
         </h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-foreground">
-          <span className="text-success">✓</span> No card required — 14 days free.
+          <span className="text-success">✓</span> No card required — {TRIAL_DAYS} days free.
         </p>
       </div>
 
@@ -186,7 +187,7 @@ export default function RegisterPage() {
           </Button>
           <p className="text-center text-xs text-muted-foreground">
             What happens next: you&apos;re straight into your dashboard with a
-            14-day free trial, no card needed. Add your school&apos;s details,
+            {" "}{TRIAL_DAYS}-day free trial, no card needed. Add your school&apos;s details,
             then your categories and children, and you&apos;re tracking real
             payments the same day.
           </p>
