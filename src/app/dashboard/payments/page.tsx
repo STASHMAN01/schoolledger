@@ -142,14 +142,14 @@ export default function PaymentsPage() {
             className="grid grid-cols-1 gap-3 sm:grid-cols-2"
           >
             <Label className="flex flex-col gap-1">
-              Category
+              Class
               <Select
                 value={form.categoryId}
                 onChange={(e) =>
                   setForm({ ...form, categoryId: e.target.value, childId: "" })
                 }
               >
-                <option value="">All categories</option>
+                <option value="">All classes</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -259,7 +259,7 @@ export default function PaymentsPage() {
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
         >
-          <option value="">All categories</option>
+          <option value="">All classes</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}

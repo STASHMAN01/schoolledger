@@ -45,39 +45,15 @@
   --ring: #0670b8;
 }
 
-/* System preference — skipped when the visitor has explicitly chosen
- * light via the toggle (data-theme="light" wins over the OS setting). */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: #0c0a09;
-    --surface: #1c1917;
-    --foreground: #fafaf9;
-    --muted: #a8a29e;
-    --muted-foreground: #d6d3d1;
-    --border: #292524;
-    --border-strong: #44403c;
+/* CHANGELOG (2026-09-19): this used to auto-switch to dark colours
+ * whenever a visitor's OS/browser was set to dark mode, via
+ * @media (prefers-color-scheme: dark). Dylan wants the site to default
+ * to light for everyone, and only go dark when someone explicitly picks
+ * it with the toggle — so the OS-preference media query is gone. Dark
+ * mode now only ever applies via the explicit `data-theme="dark"` block
+ * below, set by ThemeToggle.tsx and persisted to localStorage. */
 
-    --brand: #38bdf8;
-    --brand-hover: #7dd3fc;
-    --brand-foreground: #001233;
-    --brand-soft: #0c3a5c;
-    --brand-soft-foreground: #bae6fd;
-
-    --accent: #fed503;
-    --accent-foreground: #001233;
-    --accent-soft: #4d3c00;
-    --accent-soft-foreground: #fde68a;
-
-    --danger: #f87171;
-    --danger-soft: #450a0a;
-    --danger-foreground: #450a0a;
-
-    --success: #4ade80;
-    --success-soft: #052e16;
-  }
-}
-
-/* Explicit choice via the toggle — wins over the OS setting either way. */
+/* Explicit choice via the toggle — the only way dark mode is applied. */
 :root[data-theme="dark"] {
   --background: #0c0a09;
   --surface: #1c1917;
@@ -143,7 +119,15 @@
 }
 
 html {
-  color-scheme: light dark;
+  /* Was "light dark" (follows OS for native scrollbars/form controls even
+   * before any toggle). Defaults to light now, same as the rest of the
+   * palette above; the explicit dark override lives in
+   * :root[data-theme="dark"] below. */
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {

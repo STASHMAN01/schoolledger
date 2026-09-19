@@ -15,7 +15,7 @@ const TEMPLATE_HEADERS = [
   "Parent Last Name",
   "Parent Phone",
   "Parent Email",
-  "Category",
+  "Class",
   "Enrollment Date",
   "Parent ID",
   "Child ID",
@@ -48,7 +48,7 @@ function downloadTemplate() {
 
 /**
  * Bulk-add children from a CSV export of whatever spreadsheet a school
- * already had. Category and Enrollment Date columns are optional per row
+ * already had. Class and Enrollment Date columns are optional per row
  * — most schools' existing lists won't have them in this app's shape, so
  * this picks a default for the whole file and only falls back to a row's
  * own value when it has one. See the /children/import route for the full
@@ -156,8 +156,8 @@ export function ImportChildrenCsv({
       <p className="mb-3 text-sm text-muted-foreground">
         Columns: child first/last name and parent first/last name (or a single
         parent name column) are required. Parent phone, parent email,
-        category, enrollment date, parent ID and child ID are all optional —
-        rows without a category or enrollment date use the defaults below.
+        class, enrollment date, parent ID and child ID are all optional —
+        rows without a class or enrollment date use the defaults below.
       </p>
 
       <button
@@ -181,13 +181,13 @@ export function ImportChildrenCsv({
         </Label>
         <div />
         <Label className="flex flex-col gap-1">
-          Default category (used when a row doesn&apos;t specify one)
+          Default class (used when a row doesn&apos;t specify one)
           <Select
             required
             value={defaultCategoryId}
             onChange={(e) => setDefaultCategoryId(e.target.value)}
           >
-            <option value="">Select a category...</option>
+            <option value="">Select a class...</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}

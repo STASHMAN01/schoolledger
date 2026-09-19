@@ -9,7 +9,7 @@ const LINKS = [
   { href: "/dashboard", label: "Home", exact: true },
   { href: "/dashboard/children", label: "Children" },
   { href: "/dashboard/payments", label: "Payments" },
-  { href: "/dashboard/categories", label: "Categories" },
+  { href: "/dashboard/categories", label: "Classes" },
   { href: "/dashboard/events", label: "Events" },
   { href: "/dashboard/reminders", label: "Reminders" },
 ];

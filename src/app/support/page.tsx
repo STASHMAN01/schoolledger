@@ -23,8 +23,8 @@ const GUIDE_SECTIONS = [
     body: "Go to Settings → General to upload your logo and letterhead, and fill in your address, contact details, and bank details. Your letterhead appears automatically at the top of every statement you generate.",
   },
   {
-    title: "2. Add categories and children",
-    body: "Categories (Grade R, Toddlers, Aftercare, etc.) live under Categories, and each one can have its own monthly fee. Add children under Children, assign each one to a category, and their monthly fees are generated automatically.",
+    title: "2. Add classes and children",
+    body: "Classes (Grade R, Toddlers, Aftercare, etc.) live under Classes, and each one can have its own monthly fee. Add children under Children, assign each one to a class, and their monthly fees are generated automatically.",
   },
   {
     title: "3. Record payments",
@@ -36,7 +36,7 @@ const GUIDE_SECTIONS = [
   },
   {
     title: "5. Deleting things safely",
-    body: "Categories, children, and other records can't be deleted with a single click — deleting requires two admins to approve, and anything approved goes to Trash for 30 days before it's gone for good, so mistakes are always recoverable in time.",
+    body: "Classes, children, and other records can't be deleted with a single click — deleting requires two admins to approve, and anything approved goes to Trash for 30 days before it's gone for good, so mistakes are always recoverable in time.",
   },
   {
     title: "6. Team & roles",

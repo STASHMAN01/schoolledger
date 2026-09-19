@@ -28,6 +28,12 @@ const PUBLIC_PATHS = [
   "/opengraph-image.png",
   "/twitter-image.png",
   "/brand",
+  // Public "give a testimonial" submission form and its API route — no
+  // login required to submit; moderation happens separately at
+  // /platform/testimonials, which is NOT in this list (platform routes
+  // are gated by requirePlatformAdmin, not by session presence alone).
+  "/testimonials/new",
+  "/api/testimonials",
   // Invite links must work for someone who has never logged in — the
   // invite token itself is what's checked for authenticity server-side
   // (see src/app/api/invites/*), not a session.

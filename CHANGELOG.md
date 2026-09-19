@@ -1,5 +1,61 @@
 # Changelog — launch-readiness audit pass
 
+## 2026-09-19 (dashboard/homepage follow-ups)
+
+Branch: `feature/dashboard-and-pricing-tweaks`. Not yet merged to `main`.
+
+- **Dark mode was defaulting on for some visitors.** `ThemeToggle.tsx`
+  fell back to `matchMedia("(prefers-color-scheme: dark)")` whenever
+  nothing was saved to `localStorage`, and `globals.css` had a matching
+  `@media (prefers-color-scheme: dark)` block. Anyone with a dark-mode OS
+  saw a dark site on first visit. Removed both — the default is now
+  always light for every visitor; dark only applies once someone
+  explicitly clicks the toggle.
+- **"Add child" is now collapsed by default.** The form on
+  `/dashboard/children` was an always-open Card at the top of the page;
+  it's now a closed dropdown ("Add child" button with a chevron) that
+  opens on click and has its own Cancel button, closing again after a
+  successful add.
+- **"Categories" renamed to "Classes" in every visible label**, since
+  the product is now scoped entirely to crèches/preschools rather than
+  a general school hierarchy — nav link, page titles, form labels,
+  filters, CSV import template/column/errors, support-page copy. The
+  underlying `Category` Prisma model, API routes (`/api/organizations/
+  [id]/categories`), and the `/dashboard/categories` URL were
+  deliberately left unchanged — renaming those would mean a real schema
+  migration and broken bookmarks/integrations for a purely cosmetic win.
+- **Homepage founder section filled in** with Dylan's real name and a
+  summarized version of his story (Bela-Bela, family crèche since 2015,
+  11 years in the industry, why he built this). Founder photo is still
+  a placeholder — none was provided.
+- **Testimonials: removed the empty placeholder slots, added a real
+  submission + moderation flow.** New `Testimonial` model (`PENDING` /
+  `APPROVED` / `REJECTED`), a public, unauthenticated submission form at
+  `/testimonials/new` (rate-limited, honeypot field), and a
+  platform-admin-only moderation queue at `/platform/testimonials`
+  (gated by the existing `requirePlatformAdmin`, i.e.
+  `dylanmaps3@gmail.com` via `PLATFORM_ADMIN_EMAILS`, same as the rest
+  of `/platform`). The homepage now queries only `APPROVED` testimonials
+  server-side and shows an honest "be the first to share yours" prompt
+  when there are none — never a fake or auto-published quote.
+  **Requires a schema change on the production database** — see the
+  note at the end of this entry.
+- **Reminders "Email" button investigated, not changed.** The button is
+  a plain `mailto:` link built from the parent's real email and the
+  reminder message — the code is correct. The most likely cause of
+  "nothing happens" is that the device/browser has no default email
+  application configured, which is a common, silent failure mode for
+  `mailto:` links (no error, no dialog, nothing visibly happens). Not a
+  code fix; flagged for Dylan to check on his own machine/browser.
+
+**Before this branch's DB-dependent parts work in production**: run
+`npx prisma generate && npx prisma db push` against the live database
+(no `prisma/migrations` folder exists in this repo — every prior schema
+change was applied the same way, via `db push`, not `migrate`). Without
+this, `/testimonials/new`, `/platform/testimonials`, and the homepage's
+testimonial section will error, since the `testimonials` table won't
+exist yet.
+
 ## 2026-09-19 (post-deploy fix)
 
 - **Bug found live**, right after this branch deployed to production:

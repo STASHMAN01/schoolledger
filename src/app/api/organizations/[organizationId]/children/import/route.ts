@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       where: { id: body.defaultCategoryId, organizationId, deletedAt: null },
     });
     if (!defaultCategory) {
-      return NextResponse.json({ error: "Default category not found." }, { status: 400 });
+      return NextResponse.json({ error: "Default class not found." }, { status: 400 });
     }
 
     const categories = await db.category.findMany({
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           if (!match) {
             errors.push({
               row: rowNumber,
-              error: `Category "${parsed.categoryName}" doesn't match any existing category — fix the name or leave it blank to use the default.`,
+              error: `Class "${parsed.categoryName}" doesn't match any existing class — fix the name or leave it blank to use the default.`,
             });
             continue;
           }

@@ -48,6 +48,12 @@ export default async function PlatformLayout({ children }: { children: React.Rea
               Team
             </Link>
             <Link
+              href="/platform/testimonials"
+              className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+            >
+              Testimonials
+            </Link>
+            <Link
               href="/dashboard"
               className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
             >

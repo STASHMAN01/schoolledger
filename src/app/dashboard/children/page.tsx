@@ -44,6 +44,9 @@ export default function ChildrenPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [siblingNotice, setSiblingNotice] = useState<string | null>(null);
+  // Closed by default — Dylan wants "Add child" to be a dropdown you open,
+  // not a form that's always sitting open at the top of the page.
+  const [showAddForm, setShowAddForm] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const loadCategories = useCallback(async () => {
@@ -114,6 +117,7 @@ export default function ChildrenPage() {
       );
     }
     setForm(emptyForm);
+    setShowAddForm(false);
     await loadChildren();
   }
 
@@ -151,16 +155,41 @@ export default function ChildrenPage() {
       />
 
       {canManage(role) && (
+        <div className="mb-8">
+          <button
+            type="button"
+            onClick={() => setShowAddForm((v) => !v)}
+            aria-expanded={showAddForm}
+            className="transition-standard flex w-full items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-background"
+          >
+            Add child
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`h-4 w-4 shrink-0 transition-standard ${showAddForm ? "rotate-180" : ""}`}
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {canManage(role) && showAddForm && (
         <Card as="div" className="mb-8 p-4">
           <form onSubmit={addChild} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Label className="flex flex-col gap-1">
-              Category
+              Class
               <Select
                 required
                 value={form.categoryId}
                 onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
               >
-                <option value="">Select a category...</option>
+                <option value="">Select a class...</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -216,8 +245,19 @@ export default function ChildrenPage() {
                 onChange={(e) => setForm({ ...form, parentEmail: e.target.value })}
               />
             </Label>
-            <div className="sm:col-span-2">
+            <div className="flex gap-2 sm:col-span-2">
               <Button type="submit">Add child</Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setForm(emptyForm);
+                  setError(null);
+                  setShowAddForm(false);
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           </form>
         </Card>
@@ -241,7 +281,7 @@ export default function ChildrenPage() {
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
         >
-          <option value="">All categories</option>
+          <option value="">All classes</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -270,7 +310,7 @@ export default function ChildrenPage() {
             <thead className="bg-background text-left">
               <tr>
                 <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Category</th>
+                <th className="px-3 py-2">Class</th>
                 <th className="px-3 py-2">Parent</th>
                 <th className="px-3 py-2">Enrolled</th>
                 {canManage(role) && <th className="px-3 py-2"></th>}

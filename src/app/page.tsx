@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { LinkButton } from "@/components/ui";
 import { MarketingHeader } from "@/components/MarketingHeader";
 import { MarketingFooter } from "@/components/MarketingFooter";
@@ -72,6 +73,17 @@ export default async function RootPage() {
   if (session?.user?.id) {
     redirect("/dashboard");
   }
+
+  // Only ever approved, real, user-submitted testimonials — see
+  // /api/testimonials (public submission) and /platform/testimonials
+  // (Dylan's approval queue). Never invented or auto-published; if this
+  // is empty, the section below simply shows the "be the first" prompt
+  // instead of a testimonial grid.
+  const testimonials = await db.testimonial.findMany({
+    where: { status: "APPROVED" },
+    orderBy: { reviewedAt: "desc" },
+    take: 3,
+  });
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -248,13 +260,13 @@ export default async function RootPage() {
           </div>
         </section>
 
-        {/* Trust/proof — added per C4 in CRECHELY_AUDIT.md. There was
-            previously zero proof of any kind on the site: no founder
-            story, no contact details beyond a nav link, no testimonials
-            (real or otherwise). Per the audit brief, nothing here is
-            invented — no fake testimonials, customer counts, logos, or
-            awards. Every gap below is marked [ADD REAL: …] and logged in
-            OPEN_QUESTIONS.md until Dylan fills it in. */}
+        {/* Trust/proof — added per C4 in CRECHELY_AUDIT.md, founder story
+            and testimonial submission/moderation flow added 2026-09-19.
+            Nothing here is invented — no fake testimonials, customer
+            counts, logos, or awards. Testimonials only ever come from the
+            public submission form (/testimonials/new) and only appear here
+            once Dylan approves them at /platform/testimonials. The founder
+            photo is still a placeholder — everything else below is real. */}
         <section className="border-t border-border bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <Reveal>
@@ -264,27 +276,29 @@ export default async function RootPage() {
             </Reveal>
             <div className="mt-8 grid gap-10 lg:grid-cols-[220px_1fr] lg:gap-16">
               <div className="flex flex-col items-center gap-3 lg:items-start">
-                {/* [ADD REAL: founder photo] */}
+                {/* [ADD REAL: founder photo] — Dylan hasn't sent one yet;
+                    everything else below is his real story. */}
                 <div className="flex h-28 w-28 items-center justify-center rounded-full border border-dashed border-border-strong bg-background text-center text-[11px] text-muted">
                   [ADD REAL:
                   <br />
                   founder photo]
                 </div>
                 <div className="text-center text-sm text-muted-foreground lg:text-left">
-                  {/* [ADD REAL: founder name] */}
-                  <p className="font-medium text-foreground">[ADD REAL: your name]</p>
+                  <p className="font-medium text-foreground">Dylan Maps</p>
                   <p>Founder, Crechely</p>
                 </div>
               </div>
               <div>
                 <p className="text-sm text-foreground sm:text-base">
-                  {/* [ADD REAL: founder story] — one honest paragraph: why
-                      you built this, and that it was built for a real
-                      preschool, not a hypothetical one. */}
-                  [ADD REAL: a short, honest paragraph — why you built
-                  Crechely, and the real preschool it was built for. This
-                  is the one place on the site where a specific, true
-                  story does more than any feature list.]
+                  I grew up in Bela-Bela, where my parents started a crèche back in 2015.
+                  I&rsquo;ve been working in this industry ever since — 6 years part-time, then 4
+                  years full-time after school, so I&rsquo;ve seen the day-to-day of running one up
+                  close, not from the outside. I built Crechely because most software gets built
+                  for primary and high schools, or by developers who&rsquo;ve never actually worked
+                  in this industry. What made the job hardest wasn&rsquo;t the kids — it was
+                  arguing with parents over fees because there was no proper system tracking who
+                  owed what. That kind of dispute can cost you a friendship, not just a payment.
+                  Crechely is my attempt to fix that.
                 </p>
                 <div className="mt-6 grid gap-4 text-sm text-muted-foreground sm:grid-cols-2">
                   <div>
@@ -299,27 +313,53 @@ export default async function RootPage() {
                     <p className="text-xs font-medium uppercase tracking-wide text-muted">
                       Based in
                     </p>
-                    {/* [ADD REAL: city/region, and business details if you
-                        want them public] */}
-                    <p className="mt-1">[ADD REAL: city, South Africa]</p>
+                    {/* Confirm with Dylan whether this should be the town he
+                        grew up in or wherever he actually operates from today
+                        — using Bela-Bela for now since that's what he told us. */}
+                    <p className="mt-1">Bela-Bela, South Africa</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Empty testimonial slots, ready to fill once real customers
-                exist — deliberately not populated with placeholder quotes,
-                since a fake-looking testimonial is worse than none. */}
-            <div className="mt-12 grid gap-4 border-t border-border pt-8 sm:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-dashed border-border-strong px-4 py-6 text-center text-xs text-muted"
+            {/* Real, approved testimonials only (see /api/testimonials and
+                /platform/testimonials) — never invented. Falls back to an
+                honest "be the first" prompt when there are none yet, rather
+                than empty dashed boxes or fake quotes. */}
+            <div className="mt-12 border-t border-border pt-8">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-foreground">What schools say</h3>
+                <Link
+                  href="/testimonials/new"
+                  className="text-sm font-medium text-brand hover:underline"
                 >
-                  [ADD REAL: a testimonial from an actual paying school,
-                  once one exists]
+                  Give a testimonial →
+                </Link>
+              </div>
+              {testimonials.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border-strong px-4 py-6 text-center text-sm text-muted">
+                  No testimonials yet — if you use Crechely, be the first to{" "}
+                  <Link href="/testimonials/new" className="text-brand hover:underline">
+                    share yours
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {testimonials.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex flex-col justify-between rounded-lg border border-border bg-background p-4"
+                    >
+                      <p className="text-sm text-foreground">&ldquo;{t.quote}&rdquo;</p>
+                      <p className="mt-3 text-xs font-medium text-muted-foreground">
+                        {t.authorName}
+                        {t.schoolName ? ` · ${t.schoolName}` : ""}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </section>

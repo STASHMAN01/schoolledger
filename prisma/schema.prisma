@@ -149,6 +149,7 @@ model User {
   payments    Payment[] @relation("RecordedBy")
   deletionApprovals DeletionApproval[]
   reminderSendApprovals ReminderSendApproval[]
+  reviewedTestimonials Testimonial[]
 
   @@map("users")
 }
@@ -569,4 +570,33 @@ model ReminderSendApproval {
 
   @@unique([reminderSendRequestId, userId])
   @@map("reminder_send_approvals")
+}
+
+// Public marketing-site testimonials. Deliberately standalone — not tied
+// to an Organization/User — since anyone (a parent, a school director, a
+// prospective customer who just wants to say something) can submit one
+// without an account. Nothing here shows on the homepage until a platform
+// admin (dylanmaps3@gmail.com today, via PLATFORM_ADMIN_EMAILS — see
+// src/lib/platformAdmin.ts) approves it: see CRECHELY_AUDIT.md's rule
+// against ever inventing or auto-publishing proof.
+enum TestimonialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Testimonial {
+  id           String             @id @default(cuid())
+  authorName   String
+  schoolName   String?
+  quote        String
+  status       TestimonialStatus  @default(PENDING)
+  createdAt    DateTime           @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  reviewedBy User? @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("testimonials")
 }

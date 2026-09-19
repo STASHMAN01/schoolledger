@@ -66,7 +66,7 @@ export default function CategoriesPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "Could not add category.");
+      setError(data.error ?? "Could not add class.");
       return;
     }
     setName("");
@@ -77,8 +77,8 @@ export default function CategoriesPage() {
   async function toggleArchive(category: Category) {
     if (!category.archived) {
       const confirmed = await confirm({
-        title: "Archive this category?",
-        description: `"${category.name}" will be hidden from the active category list (its children and history are kept, and you can restore it any time).`,
+        title: "Archive this class?",
+        description: `"${category.name}" will be hidden from the active class list (its children and history are kept, and you can restore it any time).`,
         confirmLabel: "Archive",
         variant: "danger",
       });
@@ -144,7 +144,7 @@ export default function CategoriesPage() {
     <div className="animate-in">
       {confirmDialog}
       <PageHeader
-        title="Categories"
+        title="Classes"
         actions={
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
@@ -170,7 +170,7 @@ export default function CategoriesPage() {
               />
             </Label>
             <Label className="flex flex-col gap-1">
-              Parent category (optional)
+              Parent class (optional)
               <Select
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
@@ -193,7 +193,7 @@ export default function CategoriesPage() {
                 inputMode="decimal"
               />
             </Label>
-            <Button type="submit">Add category</Button>
+            <Button type="submit">Add class</Button>
           </form>
         </Card>
       )}
@@ -204,8 +204,8 @@ export default function CategoriesPage() {
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : roots.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No categories yet. Add your first one above — e.g. &quot;Daycare&quot;,
-          then add sub-categories like &quot;Ducks Class&quot; underneath it.
+          No classes yet. Add your first one above — e.g. &quot;Daycare&quot;,
+          then add sub-classes like &quot;Ducks Class&quot; underneath it.
         </p>
       ) : (
         <Card>

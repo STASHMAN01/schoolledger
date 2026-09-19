@@ -97,11 +97,11 @@ export default function RootLayout({
     >
       <head>
         {/* Applies a saved light/dark choice before first paint, so there's
-            no flash of the wrong theme between the server-rendered (system-
-            preference) page and the client reading localStorage. Inline and
+            no flash of the wrong theme between the server-rendered (light
+            by default) page and the client reading localStorage. Inline and
             blocking on purpose — this has to run before the browser paints
             anything. Fails silently (e.g. localStorage blocked) and just
-            falls back to the system preference already baked into the CSS. */}
+            leaves the page on its light default. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}`,

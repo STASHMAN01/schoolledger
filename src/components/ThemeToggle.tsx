@@ -4,37 +4,38 @@ import { useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
-function getSystemTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
+// CHANGELOG (2026-09-19): this used to fall back to the visitor's OS/
+// browser preference (matchMedia("prefers-color-scheme: dark")) whenever
+// nothing was saved yet, so anyone with a dark-mode OS saw a dark site by
+// default. Dylan wants light to be the actual default for everyone —
+// dark only when someone explicitly picks it here — so the fallback is
+// now always "light", full stop, regardless of OS setting.
+const DEFAULT_THEME: Theme = "light";
 
 /**
- * Explicit light/dark override, on top of whatever the OS prefers.
- * Research on this is genuinely split (roughly a third light, a third
- * dark, a third "depends") — there's no default that satisfies everyone,
- * so this exists specifically so nobody's stuck with the choice we made
- * for them. The actual switching happens via `data-theme` on <html>
- * (see globals.css); the blocking script in layout.tsx applies a saved
- * choice before first paint so there's no flash of the wrong theme.
+ * Explicit light/dark toggle. Defaults to light for every visitor; the
+ * choice is saved and only changes for that visitor once they click this.
+ * The actual switching happens via `data-theme` on <html> (see
+ * globals.css); the blocking script in layout.tsx applies a saved choice
+ * before first paint so there's no flash of the wrong theme.
  */
 export function ThemeToggle() {
   // Starts null so the icon doesn't render (and mismatch) before the
-  // client can read localStorage/matchMedia — see the fixed-size wrapper
-  // below, which keeps the header from jumping once it does render.
+  // client can read localStorage — see the fixed-size wrapper below,
+  // which keeps the header from jumping once it does render.
   const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
-    // Reads from localStorage/matchMedia, which don't exist during SSR —
-    // this has to run as a mount effect, not a lazy initializer, to avoid a
+    // Reads from localStorage, which doesn't exist during SSR — this has
+    // to run as a mount effect, not a lazy initializer, to avoid a
     // hydration mismatch between server and client markup.
     const stored = window.localStorage.getItem("theme");
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTheme(stored === "light" || stored === "dark" ? stored : getSystemTheme());
+    setTheme(stored === "light" || stored === "dark" ? stored : DEFAULT_THEME);
   }, []);
 
   function toggle() {
-    const next: Theme = (theme ?? getSystemTheme()) === "dark" ? "light" : "dark";
+    const next: Theme = (theme ?? DEFAULT_THEME) === "dark" ? "light" : "dark";
     setTheme(next);
     document.documentElement.setAttribute("data-theme", next);
     window.localStorage.setItem("theme", next);

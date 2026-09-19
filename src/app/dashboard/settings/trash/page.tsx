@@ -25,7 +25,7 @@ type PendingRequest = {
 };
 
 const TARGET_TYPE_LABEL: Record<PendingRequest["targetType"], string> = {
-  CATEGORY: "Category",
+  CATEGORY: "Class",
   CHILD: "Child",
   PAYMENT: "Payment",
 };
@@ -196,7 +196,7 @@ export default function TrashPage() {
                   <div className="min-w-0">
                     <p className="text-sm text-foreground">
                       <Badge variant={item.targetType === "CATEGORY" ? "accent" : "brand"}>
-                        {item.targetType === "CATEGORY" ? "Category" : "Child"}
+                        {item.targetType === "CATEGORY" ? "Class" : "Child"}
                       </Badge>{" "}
                       <span className="font-medium">{item.label}</span>
                     </p>

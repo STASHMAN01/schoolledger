@@ -233,3 +233,19 @@ export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
 });
+
+// Public testimonial submission (no login required) — see Testimonial in
+// schema.prisma. "website" is a honeypot: real visitors never see or fill
+// this field (hidden via CSS in the form), so anything filling it in is
+// almost certainly a bot and gets silently dropped rather than told why,
+// same principle as forgotPasswordSchema's generic response above.
+export const testimonialSubmissionSchema = z.object({
+  authorName: z.string().trim().min(2, "Enter your name").max(120),
+  schoolName: z.string().trim().max(200).optional().or(z.literal("")),
+  quote: z
+    .string()
+    .trim()
+    .min(20, "A few sentences helps — at least 20 characters")
+    .max(1000, "Keep it under 1000 characters"),
+  website: z.string().max(0, "").optional().or(z.literal("")),
+});
