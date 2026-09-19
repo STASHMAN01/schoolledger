@@ -1,5 +1,20 @@
 # Changelog — launch-readiness audit pass
 
+## 2026-09-19 (post-deploy fix)
+
+- **Bug found live**, right after this branch deployed to production:
+  `src/components/LegalDoc.tsx`'s markdown renderer only merged wrapped
+  *paragraph* lines, not wrapped *list item* lines. Several bullets in
+  `/privacy` and `/terms` are written across multiple source lines
+  (standard markdown — a list item wraps until a blank line), and each
+  continuation line was being rendered as a new, orphaned paragraph
+  instead of staying part of its bullet — visibly mangling the "who this
+  data is about" bullets on the live `/privacy` page. Fixed by tracking
+  the currently-open list item the same way the paragraph buffer already
+  worked, so a continuation line joins the open bullet instead of
+  starting a stray paragraph. Verified against the exact live output
+  that showed the bug.
+
 Branch: `audit/crechely-launch-readiness`. All entries below reference the
 issue IDs in `CRECHELY_AUDIT.md`. Nothing in this branch has been pushed
 or merged to `main` — per the brief, that's Dylan's call.
