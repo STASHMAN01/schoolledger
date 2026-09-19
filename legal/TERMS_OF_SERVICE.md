@@ -46,7 +46,7 @@ statements and financial records periodically.
   accordingly.
 - You're responsible for keeping login credentials confidential and for
   all activity under your school's account. Tell us immediately at
-  **[SUPPORT EMAIL]** if you suspect unauthorized access.
+  **support@crechely.co.za** if you suspect unauthorized access.
 - We may suspend an account we reasonably believe is compromised, being
   used fraudulently, or in breach of these Terms, and will try to notify
   the school's Admin(s) when we do.
@@ -80,7 +80,7 @@ statements and financial records periodically.
 - You retain ownership of all data you enter into the Service — the
   children's, families', and financial records are your school's, not
   ours. See the Privacy Policy for how we handle it.
-- You must have a lawful basis (e.g., your own enrollment agreement with
+- You must have a lawful basis (e.g., your own enrolment agreement with
   families) for recording personal information about children and
   parents/guardians in the Service, and must comply with applicable data
   protection law (including POPIA, if your school operates in South

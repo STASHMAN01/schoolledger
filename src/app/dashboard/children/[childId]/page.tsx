@@ -32,7 +32,11 @@ type SiblingCandidate = { id: string; firstName: string; lastName: string };
 
 const statusColor: Record<string, string> = {
   PAID: "text-success",
-  PARTIALLY_PAID: "text-accent",
+  // M5: was "text-accent" — safe when --accent was amber (#d97706), but
+  // --accent is now the logo's yellow (#fed503), which fails WCAG AA as
+  // text on a light background (yellow-on-white is ~1.3:1). Using the
+  // soft-foreground token instead, which is designed to be read as text.
+  PARTIALLY_PAID: "text-accent-soft-foreground",
   OUTSTANDING: "text-danger",
   UPCOMING: "text-muted",
   CANCELLED: "text-muted line-through",

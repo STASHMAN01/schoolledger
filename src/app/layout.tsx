@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Lexend, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { SITE_URL, SITE_NAME } from "@/lib/site";
 
 // Inter: the body/UI typeface — exceptionally legible across languages and
 // scripts, which matters for a product aimed at schools worldwide, not just
@@ -34,10 +35,41 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
+// CHANGELOG H1/C6 (2026-09-19): every page previously inherited this exact
+// title/description with no override, so /, /pricing, /register, /login,
+// /support all showed identically in search results and link previews
+// (verified live — see CRECHELY_AUDIT.md H1). Each of those pages now sets
+// its own metadata; this is only the site-wide default/fallback plus the
+// OG/Twitter/canonical config every page shares.
+// Title wording deliberately UNCHANGED from what's live today
+// ("Accounting built for preschools") — M1 in CRECHELY_AUDIT.md flags this
+// exact phrase as worth reconsidering, but asks for 3 alternatives and
+// Dylan's sign-off before changing it, not a unilateral rewrite. Only the
+// technical metadata (per-page uniqueness, OG/Twitter, canonical,
+// metadataBase) changed here.
 export const metadata: Metadata = {
-  title: "Crechely — Accounting built for preschools",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — Accounting built for preschools`,
+    template: `%s | ${SITE_NAME}`,
+  },
   description:
-    "Crechely is fee and payment tracking built for preschools, nurseries, and crèches: enrollments, recurring fees, payment history, and statements in one place.",
+    "Crechely is fee and payment tracking built for preschools, nurseries, and crèches: enrolments, recurring fees, payment history, and statements in one place.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    url: SITE_URL,
+    title: `${SITE_NAME} — Accounting built for preschools`,
+    description:
+      "Records cash, EFT, and card payments, and sends email reminders — so you always know who's paid.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — Accounting built for preschools`,
+    description:
+      "Records cash, EFT, and card payments, and sends email reminders — so you always know who's paid.",
+  },
 };
 
 // This was missing entirely, which is the actual cause of "everything is

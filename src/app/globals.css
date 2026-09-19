@@ -1,17 +1,19 @@
 @import "tailwindcss";
 
 /* ── Crechely design tokens ────────────────────────────────────────────
- * Brand: a warm, trustworthy teal as primary (calm + financial trust,
- * without the cold "generic B2B blue" or "childish pastel" extremes),
- * paired with a soft amber accent for warmth (this app lives in preschools,
- * not spreadsheets-for-spreadsheets'-sake). Neutrals are warm-tinted grays
- * rather than pure gray, which reads friendlier at this scale of app.
- * Both a light and dark palette are defined. Default behavior follows the
- * visitor's system preference (research is split roughly 1/3 light, 1/3
- * dark, 1/3 "depends" — there's no single right default), but every page
- * also carries an explicit light/dark toggle (see ThemeToggle.tsx) that
- * overrides the system preference and persists via localStorage, using
- * `data-theme="light"` / `data-theme="dark"` on <html>.
+ * CHANGELOG C1/M5 (2026-09-19): repointed at the real logo now that it
+ * exists (sky blue #089ef7 circle, yellow #fed503 duck, navy #002159
+ * wordmark) — this was deliberately left undecided until the mascot did.
+ * --brand is a *darkened* version of the logo's sky blue (#0670b8, not
+ * #089ef7 itself): the literal logo blue only hits 2.9:1 contrast against
+ * white text, which fails WCAG AA (needs 4.5:1) — see BEFORE_AFTER.md for
+ * the full contrast table. The lighter, true logo blue (#089ef7) is kept
+ * as --brand-soft for tints/badges where it sits behind dark text instead.
+ * --accent is the duck's yellow, used only as a soft badge tint today;
+ * if a solid yellow surface is ever added, pair it with --accent-foreground
+ * (navy), never white — yellow-on-white text fails contrast outright.
+ * Neutrals (background/foreground/border) are unchanged from before this
+ * pass — they're not logo-derived and weren't part of this rebrand.
  */
 :root {
   --background: #fafaf9;
@@ -22,15 +24,16 @@
   --border: #e7e5e4;
   --border-strong: #d6d3d1;
 
-  --brand: #0f766e;
-  --brand-hover: #0d5f59;
+  --brand: #0670b8;
+  --brand-hover: #055a94;
   --brand-foreground: #ffffff;
-  --brand-soft: #ecfdf9;
-  --brand-soft-foreground: #0f766e;
+  --brand-soft: #e6f4ff;
+  --brand-soft-foreground: #04456e;
 
-  --accent: #d97706;
-  --accent-soft: #fef3e2;
-  --accent-soft-foreground: #92400e;
+  --accent: #fed503;
+  --accent-foreground: #002159;
+  --accent-soft: #fffbea;
+  --accent-soft-foreground: #7a5b00;
 
   --danger: #dc2626;
   --danger-soft: #fef2f2;
@@ -39,7 +42,7 @@
   --success: #16a34a;
   --success-soft: #f0fdf4;
 
-  --ring: #0f766e;
+  --ring: #0670b8;
 }
 
 /* System preference — skipped when the visitor has explicitly chosen
@@ -54,14 +57,15 @@
     --border: #292524;
     --border-strong: #44403c;
 
-    --brand: #2dd4bf;
-    --brand-hover: #5eead4;
-    --brand-foreground: #042f2e;
-    --brand-soft: #134e4a;
-    --brand-soft-foreground: #99f6e4;
+    --brand: #38bdf8;
+    --brand-hover: #7dd3fc;
+    --brand-foreground: #001233;
+    --brand-soft: #0c3a5c;
+    --brand-soft-foreground: #bae6fd;
 
-    --accent: #fbbf24;
-    --accent-soft: #451a03;
+    --accent: #fed503;
+    --accent-foreground: #001233;
+    --accent-soft: #4d3c00;
     --accent-soft-foreground: #fde68a;
 
     --danger: #f87171;
@@ -83,14 +87,15 @@
   --border: #292524;
   --border-strong: #44403c;
 
-  --brand: #2dd4bf;
-  --brand-hover: #5eead4;
-  --brand-foreground: #042f2e;
-  --brand-soft: #134e4a;
-  --brand-soft-foreground: #99f6e4;
+  --brand: #38bdf8;
+  --brand-hover: #7dd3fc;
+  --brand-foreground: #001233;
+  --brand-soft: #0c3a5c;
+  --brand-soft-foreground: #bae6fd;
 
-  --accent: #fbbf24;
-  --accent-soft: #451a03;
+  --accent: #fed503;
+  --accent-foreground: #001233;
+  --accent-soft: #4d3c00;
   --accent-soft-foreground: #fde68a;
 
   --danger: #f87171;
@@ -117,6 +122,7 @@
   --color-brand-soft-foreground: var(--brand-soft-foreground);
 
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
   --color-accent-soft-foreground: var(--accent-soft-foreground);
 

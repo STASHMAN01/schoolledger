@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { LinkButton } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 
 export function MarketingHeader() {
   return (
     <header className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-foreground">
-            C
-          </div>
+          <Logo variant="icon" size={32} />
           <span className="font-display text-base font-semibold text-foreground">
             Crechely
           </span>

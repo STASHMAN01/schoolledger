@@ -1,0 +1,48 @@
+import type { Metadata } from "next";
+import fs from "node:fs";
+import path from "node:path";
+import Link from "next/link";
+import { MarketingHeader } from "@/components/MarketingHeader";
+import { MarketingFooter } from "@/components/MarketingFooter";
+import { LegalDoc } from "@/components/LegalDoc";
+
+// Fixes C2 — see CRECHELY_AUDIT.md.
+export const metadata: Metadata = {
+  title: "POPIA Notice",
+  description: "A plain-language summary of how Crechely handles POPIA obligations.",
+  alternates: { canonical: "/popia" },
+  robots: { index: false },
+};
+
+export default function PopiaPage() {
+  const markdown = fs.readFileSync(
+    path.join(process.cwd(), "legal", "POPIA_NOTICE.md"),
+    "utf-8"
+  );
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background">
+      <MarketingHeader />
+      <main className="flex-1">
+        <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+          <div className="rounded-lg border border-accent/40 bg-accent-soft px-4 py-3 text-sm text-accent-soft-foreground">
+            <strong>DRAFT — not yet reviewed by a lawyer.</strong> Published so
+            it&rsquo;s honestly visible, not because it&rsquo;s finished. See{" "}
+            <Link href="/privacy" className="underline">
+              Privacy Policy
+            </Link>{" "}
+            and{" "}
+            <Link href="/terms" className="underline">
+              Terms of Service
+            </Link>{" "}
+            too.
+          </div>
+          <div className="mt-8">
+            <LegalDoc markdown={markdown} />
+          </div>
+        </div>
+      </main>
+      <MarketingFooter />
+    </div>
+  );
+}

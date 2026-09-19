@@ -1,8 +1,21 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHeader } from "@/components/MarketingHeader";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { Card } from "@/components/ui";
-import { SUPPORT_EMAIL } from "@/lib/support";
+import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
+
+// Fixes H1 — see CRECHELY_AUDIT.md.
+export const metadata: Metadata = {
+  title: "Contact us & how to use Crechely",
+  description:
+    "Get in touch with Crechely support, or read the quick-start guide covering setup, payments, reminders, and statements.",
+  alternates: { canonical: "/support" },
+  openGraph: {
+    title: "Contact us & how to use Crechely",
+    description: "Get in touch with Crechely support, or read the quick-start guide.",
+  },
+};
 
 const GUIDE_SECTIONS = [
   {
@@ -56,6 +69,20 @@ export default function SupportPage() {
           >
             {SUPPORT_EMAIL}
           </a>
+          {WHATSAPP_NUMBER ? (
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-display mt-2 block text-sm font-medium text-brand hover:underline"
+            >
+              Or WhatsApp us →
+            </a>
+          ) : (
+            <p className="mt-2 text-xs italic text-muted">
+              WhatsApp coming soon — email works today.
+            </p>
+          )}
         </Card>
 
         <h2 className="font-display mt-10 mb-4 text-lg font-semibold text-foreground">

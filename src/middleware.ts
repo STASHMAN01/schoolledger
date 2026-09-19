@@ -6,12 +6,28 @@ const PUBLIC_PATHS = [
   "/",
   "/pricing",
   "/support",
+  "/privacy",
+  "/terms",
+  "/popia",
   "/login",
   "/register",
   "/forgot-password",
   "/reset-password",
   "/api/auth",
   "/api/webhooks",
+  // SEO/crawler files and Next's own generated icon/OG routes must be
+  // reachable without a session — before this fix they, and literally
+  // any mistyped URL, silently redirected to /login instead of 404ing.
+  // Verified live: crechely.co.za/robots.txt and /sitemap.xml both
+  // redirected to /login (see CRECHELY_AUDIT.md, finding beyond-brief-1).
+  "/robots.txt",
+  "/sitemap.xml",
+  "/favicon.ico",
+  "/icon.png",
+  "/apple-icon.png",
+  "/opengraph-image.png",
+  "/twitter-image.png",
+  "/brand",
   // Invite links must work for someone who has never logged in — the
   // invite token itself is what's checked for authenticity server-side
   // (see src/app/api/invites/*), not a session.

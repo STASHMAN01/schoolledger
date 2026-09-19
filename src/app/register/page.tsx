@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
+import { Logo } from "@/components/Logo";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 const COUNTRIES = [
   { code: "ZA", currency: "ZAR", label: "South Africa" },
@@ -20,15 +23,15 @@ export default function RegisterPage() {
   const [adminName, setAdminName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (password !== confirmPassword) {
-      setError("Passwords don't match.");
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms and Privacy Policy to continue.");
       return;
     }
     setLoading(true);
@@ -71,9 +74,9 @@ export default function RegisterPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
       <div className="animate-in mb-8 flex flex-col items-center text-center">
-        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand font-display text-lg font-bold text-brand-foreground">
-          C
-        </div>
+        <Link href="/" className="mb-4">
+          <Logo variant="icon" size={44} className="rounded-xl" />
+        </Link>
         <h1 className="font-display text-2xl font-semibold text-foreground">
           Set up your school
         </h1>
@@ -111,8 +114,12 @@ export default function RegisterPage() {
               ))}
             </Select>
             <p className="mt-1 text-xs text-muted-foreground">
-              Don&apos;t see your country? Pick the closest currency for now —
-              email us and we&apos;ll add it.
+              Don&apos;t see your country? Pick the closest currency for now
+              and email{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand hover:underline">
+                {SUPPORT_EMAIL}
+              </a>{" "}
+              and we&apos;ll add it.
             </p>
           </div>
           <div>
@@ -149,28 +156,40 @@ export default function RegisterPage() {
               className="mt-1"
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              At least 10 characters.
+              At least 10 characters. Use the eye icon to check what you
+              typed before submitting.
             </p>
           </div>
-          <div>
-            <Label htmlFor="confirmPassword">Confirm password</Label>
-            <PasswordInput
-              id="confirmPassword"
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
               required
-              minLength={10}
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong"
             />
-            {confirmPassword.length > 0 && confirmPassword !== password && (
-              <p className="mt-1 text-xs text-danger">Passwords don&apos;t match.</p>
-            )}
-          </div>
+            <span>
+              I agree to Crechely&apos;s{" "}
+              <Link href="/terms" className="text-brand hover:underline" target="_blank">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="text-brand hover:underline" target="_blank">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
           {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" disabled={loading} className="mt-2">
             {loading ? "Creating account…" : "Create account"}
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            What happens next: you&apos;re straight into your dashboard with a
+            14-day free trial, no card needed. Add your school&apos;s details,
+            then your categories and children, and you&apos;re tracking real
+            payments the same day.
+          </p>
         </form>
       </Card>
     </main>

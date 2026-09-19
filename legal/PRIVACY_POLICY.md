@@ -25,7 +25,7 @@ explicit about the difference:
   party"** under POPIA (or "data controller" under GDPR, if that ever
   applies).
 - **The children and parents/guardians the school records in the
-  Service** (names, contact details, enrollment dates, payment history) —
+  Service** (names, contact details, enrolment dates, payment history) —
   this data belongs to the school's own relationship with those families.
   The school decides what to record and why; we just provide the software
   and the hosting. For this data, **the school is the responsible
@@ -39,7 +39,23 @@ directly** — we don't have a relationship with you and generally can't act
 on your data independently of the school that entered it. If you are a
 school, this policy is written for you.
 
-Contact for privacy questions: **[SUPPORT/PRIVACY EMAIL ADDRESS]**
+Contact for privacy questions: **support@crechely.co.za**
+
+## How we handle your data — the short version
+
+The full policy below is long because it has to be; this is the plain-
+language summary (site-facing copy, see /privacy on crechely.co.za):
+
+- Your school enters children's and parents' details — we don't collect
+  them directly, and we don't sell or advertise using them.
+- Your school owns that data and decides what to record; we're the
+  processor running the software it's stored in.
+- It's hosted on Vercel and Render, sent by email via Zoho Mail, and
+  isolated per school at the database level.
+- Passwords are hashed, bank details are encrypted, and everything
+  travels over HTTPS.
+- If you cancel, your data isn't deleted immediately — see "How long we
+  keep it" below for the exact period.
 
 ## What we collect
 
@@ -53,7 +69,7 @@ Contact for privacy questions: **[SUPPORT/PRIVACY EMAIL ADDRESS]**
 ### About the children and families your school records
 Entered by your school's own staff, not collected directly from families
 by us:
-- Child's name, enrollment/exit dates, category/class, fee arrangements.
+- Child's name, enrolment/exit dates, category/class, fee arrangements.
 - Parent/guardian contact details (phone number, email) where your school
   chooses to record them.
 - Payment and billing history: amounts due, amounts paid, payment dates,
@@ -64,9 +80,10 @@ by us:
 ### About your school as our customer
 - School/organization name, address, banking details for your own
   statements, country and currency settings.
-- Billing and subscription information — **card details are never seen or
-  stored by us**; payment is handled entirely by our payment processor,
-  Stripe (see "Who else sees this data" below).
+- Billing and subscription information. Online payment isn't live yet;
+  once it is, **card details will never be seen or stored by us** —
+  payment will be handled entirely by our payment processor (planned:
+  Paystack; see "Who else sees this data" below).
 
 ### Collected automatically
 - Standard technical logs (IP address, browser type, timestamps) generated
@@ -101,15 +118,18 @@ brokers or advertisers.
 We use a small number of service providers ("subprocessors") to run the
 Service. Each only sees the minimum data needed to do its specific job:
 
-- **[HOSTING PROVIDER, e.g. Vercel]** — hosts the application and database
-  infrastructure.
-- **[DATABASE PROVIDER — fill in once chosen]** — stores the database.
-- **Stripe** — processes subscription payments. Stripe sees your school's
-  billing contact and card details directly; we never receive or store
-  full card numbers.
-- **[EMAIL PROVIDER — fill in once wired up, e.g. Resend]** — sends
-  transactional emails (invite links, notifications) once that feature is
-  live.
+- **Vercel** — hosts the web application.
+- **Render** — hosts the Postgres database.
+- **Zoho Mail** — sends transactional email (password resets, receipts,
+  reminders) on our behalf.
+- **Payments: not yet live.** Crechely does not currently process online
+  payments — your school records cash/EFT/card payments it already
+  received; nothing is charged through the Service today. When online
+  billing goes live, the payment processor (planned: **Paystack**) will
+  be named here and this policy updated before that feature launches.
+  [PRIOR DRAFT NAMED STRIPE — CORRECTED: Stripe does not support direct
+  South African merchant payouts, see the project's money/infrastructure
+  research; Paystack, which Stripe owns, is the actual plan.]
 
 We do not sell personal information, and we do not share it with anyone
 else except: (a) the subprocessors above, each bound by their own
@@ -167,7 +187,7 @@ Because your school controls what personal information it records about
 children and families, your school is responsible for:
 
 - Having a lawful basis to collect and store that information (for
-  example, your school's own enrollment agreement with parents/guardians).
+  example, your school's own enrolment agreement with parents/guardians).
 - Telling the families you serve that their and their children's
   information is processed using a system like this one, and pointing them
   to your own privacy notice (this document describes what *we* do with
@@ -176,7 +196,7 @@ children and families, your school is responsible for:
 - Responding to requests from parents/guardians to access, correct, or
   delete their own or their child's information — the Service gives you
   the tools to do this (edit/archive records, export statements); reach out
-  to **[SUPPORT EMAIL]** if you need help with something the interface
+  to **support@crechely.co.za** if you need help with something the interface
   doesn't cover.
 
 If you (the school) are in South Africa, POPIA gives the people whose data
@@ -205,5 +225,5 @@ anything that changes how children's/families' data is handled.]
 ## Contact
 
 Questions about this policy, or to exercise a data-related request:
-**[SUPPORT/PRIVACY EMAIL ADDRESS]**, **[PHYSICAL ADDRESS if required in
+**support@crechely.co.za**, **[PHYSICAL ADDRESS if required in
 your jurisdiction]**.

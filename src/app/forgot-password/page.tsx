@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Input, Label } from "@/components/ui";
+import { Logo } from "@/components/Logo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -39,9 +40,9 @@ export default function ForgotPasswordPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
       <div className="animate-in mb-8 flex flex-col items-center text-center">
-        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand font-display text-lg font-bold text-brand-foreground">
-          T
-        </div>
+        <Link href="/" className="mb-4">
+          <Logo variant="icon" size={44} className="rounded-xl" />
+        </Link>
         <h1 className="font-display text-2xl font-semibold text-foreground">
           Reset your password
         </h1>
