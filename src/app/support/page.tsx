@@ -41,7 +41,7 @@ export default function SupportPage() {
       <MarketingHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
         <h1 className="font-display text-2xl font-semibold text-foreground">
-          Support &amp; how to use Crechely
+          Contact us &amp; how to use Crechely
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Stuck on something, found a bug, or just have a question? Email us
@@ -49,7 +49,7 @@ export default function SupportPage() {
         </p>
 
         <Card className="mt-6 p-5">
-          <p className="text-sm text-muted-foreground">Contact support</p>
+          <p className="text-sm text-muted-foreground">Contact us</p>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="font-display mt-1 inline-block text-lg font-semibold text-brand hover:underline"
