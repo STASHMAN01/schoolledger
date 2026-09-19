@@ -8,6 +8,7 @@ export default function BillingPage() {
   const { organizationId, role, subscriptionStatus, trialEndsAt, hasActiveAccess } = useOrg();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   async function checkout(plan: "monthly" | "yearly") {
     setLoading(plan);
@@ -26,19 +27,23 @@ export default function BillingPage() {
     window.location.href = data.url;
   }
 
-  async function openPortal() {
-    setLoading("portal");
+  async function cancelSubscription() {
+    setLoading("cancel");
     setError(null);
-    const res = await fetch(`/api/organizations/${organizationId}/billing/portal`, {
+    const res = await fetch(`/api/organizations/${organizationId}/billing/cancel`, {
       method: "POST",
     });
     const data = await res.json();
-    if (!res.ok || !data.url) {
-      setError(data.error ?? "Could not open billing portal.");
-      setLoading(null);
+    setLoading(null);
+    if (!res.ok) {
+      setError(data.error ?? "Could not cancel subscription.");
       return;
     }
-    window.location.href = data.url;
+    setConfirmingCancel(false);
+    // Paystack has no session/customer object to refresh client-side —
+    // simplest reliable way to reflect the new status is to reload the
+    // org context from the server.
+    window.location.reload();
   }
 
   if (role !== "ADMIN") {
@@ -71,9 +76,24 @@ export default function BillingPage() {
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {isPaid ? (
-        <Button onClick={openPortal} disabled={loading !== null}>
-          {loading === "portal" ? "Opening..." : "Manage subscription"}
-        </Button>
+        confirmingCancel ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-foreground">
+              Cancel your subscription? You&apos;ll keep access until the end of the current
+              billing period.
+            </p>
+            <Button onClick={cancelSubscription} disabled={loading !== null} variant="danger">
+              {loading === "cancel" ? "Cancelling..." : "Yes, cancel"}
+            </Button>
+            <Button onClick={() => setConfirmingCancel(false)} disabled={loading !== null} variant="secondary">
+              Never mind
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={() => setConfirmingCancel(true)} disabled={loading !== null} variant="secondary">
+            Cancel subscription
+          </Button>
+        )
       ) : (
         <div className="flex flex-wrap gap-3">
           <Card className="p-4">

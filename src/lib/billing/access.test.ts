@@ -4,7 +4,7 @@ import { hasActiveAccess } from "./access";
 // This is the other place a bug is expensive: get this wrong and either a
 // paying school gets locked out (angry customer) or a non-paying one keeps
 // full access forever (revenue leak). Every case here mirrors a state
-// Stripe's webhook can actually put an organization into.
+// the Paystack webhook handler can actually put an organization into.
 
 describe("hasActiveAccess", () => {
   it("grants access during an unexpired trial", () => {
@@ -25,7 +25,7 @@ describe("hasActiveAccess", () => {
     expect(hasActiveAccess({ subscriptionStatus: "active", trialEndsAt: null })).toBe(true);
   });
 
-  it("grants access for past_due, trusting Stripe's own dunning/retry schedule", () => {
+  it("grants access for past_due, trusting Paystack's own dunning/retry schedule", () => {
     expect(hasActiveAccess({ subscriptionStatus: "past_due", trialEndsAt: null })).toBe(true);
   });
 

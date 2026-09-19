@@ -18,7 +18,7 @@ type Org = {
   currentPeriodEnd: string | null;
   memberCount: number;
   childrenCount: number;
-  hasStripeCustomer: boolean;
+  hasPaystackCustomer: boolean;
 };
 
 const planLabel: Record<Org["plan"], string> = {

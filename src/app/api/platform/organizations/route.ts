@@ -18,8 +18,8 @@ export async function GET() {
         countryCode: true,
         currencyCode: true,
         subscriptionStatus: true,
-        stripePriceId: true,
-        stripeCustomerId: true,
+        paystackPlanCode: true,
+        paystackCustomerCode: true,
         trialEndsAt: true,
         currentPeriodEnd: true,
         createdAt: true,
@@ -41,14 +41,14 @@ export async function GET() {
         isTrialing: isTrialing(org),
         // How long they've been a paying subscriber, from signup — a
         // simple, always-available stand-in for "customer since" that
-        // needs no extra Stripe invoice-history calls. currentPeriodEnd
+        // needs no extra Paystack invoice-history calls. currentPeriodEnd
         // is included too so the table can show "renews/expires" alongside.
         createdAt: org.createdAt,
         trialEndsAt: org.trialEndsAt,
         currentPeriodEnd: org.currentPeriodEnd,
         memberCount: org._count.memberships,
         childrenCount: org._count.children,
-        hasStripeCustomer: Boolean(org.stripeCustomerId),
+        hasPaystackCustomer: Boolean(org.paystackCustomerCode),
       })),
     });
   } catch (err) {

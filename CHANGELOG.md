@@ -1,5 +1,55 @@
 # Changelog — launch-readiness audit pass
 
+## 2026-09-19 (Paystack billing — replaces the never-finished Stripe integration)
+
+- **Fixed the Billing settings page showing nothing but a broken "R500
+  offer" and no working subscribe button.** The Subscribe monthly/yearly
+  buttons were correctly wired to a checkout API route, but that route
+  was still 100% Stripe-shaped and Stripe was never configured
+  (`STRIPE_SECRET_KEY`/`STRIPE_PRICE_ID_*` were never set) — every click
+  failed immediately with "Billing is not configured yet." This wasn't a
+  copy fix, it was an unfinished payment-provider migration: the codebase
+  had switched its plan from Stripe to Paystack (see
+  `PRIVACY_POLICY.md`, which already named Paystack as the intended
+  processor — Stripe doesn't support direct South African merchant
+  payouts) but the billing code itself was never updated to match.
+- **Replaced the Stripe SDK/checkout/webhook/portal code with a Paystack
+  integration end to end**: new `src/lib/paystack.ts` client (a thin
+  fetch wrapper — Paystack has no official Node SDK), checkout now calls
+  `POST /transaction/initialize` instead of creating a Stripe Checkout
+  Session, and the webhook handler (`/api/webhooks/paystack`) verifies
+  Paystack's `x-paystack-signature` (HMAC-SHA512, not Stripe's scheme)
+  and handles `charge.success`, `subscription.create`,
+  `subscription.disable`, and `invoice.payment_failed`.
+- **Replaced "Manage subscription" (which opened a Stripe-hosted billing
+  portal) with an in-app "Cancel subscription" button**, since Paystack
+  has no hosted self-serve portal equivalent. It's a two-step confirm
+  right on the Billing page, calling a new `/billing/cancel` route that
+  disables auto-renewal via Paystack's API — access continues until the
+  current paid period ends, same as before.
+- **Renamed the Organization model's Stripe-specific fields** to their
+  Paystack equivalents (`stripeCustomerId` → `paystackCustomerCode`,
+  `stripeSubscriptionId` → `paystackSubscriptionCode`, `stripePriceId` →
+  `paystackPlanCode`, plus a new `paystackEmailToken` — Paystack's
+  cancel-subscription call needs this token, which is only ever handed
+  over once, on the `subscription.create` webhook event, so it has to be
+  captured and stored right then). **Needs `npx prisma db push` run
+  against production after this deploys** (no migrations folder in this
+  repo — see README).
+- **Fixed a real bug surfaced while touching this code**: the `/platform`
+  owner dashboard's MRR/ARR/price figures were hardcoded to format as
+  USD (`formatUsd`, with a comment claiming "always USD from Stripe's own
+  price objects") even though Crechely only ever charges ZAR. Now
+  `formatZar`, reading live plan amounts from Paystack instead of Stripe.
+- **Still needed before this goes live**: Dylan creates the actual
+  monthly/yearly Plans in the Paystack Dashboard and sets
+  `PAYSTACK_SECRET_KEY`, `PAYSTACK_PLAN_CODE_MONTHLY`,
+  `PAYSTACK_PLAN_CODE_YEARLY` in Vercel, plus a webhook endpoint pointing
+  at `/api/webhooks/paystack` in the Paystack Dashboard — none of that
+  can or should be done by an assistant, since it's live API secrets.
+  Test-mode keys work for all of this before Paystack compliance/KYC
+  verification finishes.
+
 ## 2026-09-19 (reminders email fallback)
 
 - **Added a "Copy email address" fallback next to the Reminders page's

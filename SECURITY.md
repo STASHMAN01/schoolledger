@@ -58,14 +58,15 @@ yet and must happen before onboarding real paying customers.
   principle as everywhere else, applied to a feature that combines
   multiple records into one document.
 
-- **The Stripe webhook is signature-verified before anything else runs.**
-  `/api/webhooks/stripe` is the one intentionally unauthenticated route in
-  the app (no session/membership check — Stripe itself is the caller), and
-  that's only safe because `stripe.webhooks.constructEvent()` rejects
-  anything not signed with `STRIPE_WEBHOOK_SECRET` before any database
-  write happens. Never relax this to accept unsigned requests, even
-  temporarily for testing — use the Stripe CLI's `stripe listen` (which
-  signs requests correctly) instead.
+- **The Paystack webhook is signature-verified before anything else runs.**
+  `/api/webhooks/paystack` is the one intentionally unauthenticated route
+  in the app (no session/membership check — Paystack itself is the
+  caller), and that's only safe because the handler recomputes the
+  HMAC-SHA512 of the raw body with `PAYSTACK_SECRET_KEY` and rejects
+  anything whose `x-paystack-signature` header doesn't match, before any
+  database write happens. Never relax this to accept unsigned requests,
+  even temporarily for testing — use the Paystack Dashboard's "Send test
+  webhook" feature (which signs requests correctly) instead.
 - **Access control has one enforcement point.** Whether an organization's
   trial/subscription is active is checked inside `requireMembership()`
   itself, so every API route gets the lockout automatically instead of it

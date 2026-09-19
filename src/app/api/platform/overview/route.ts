@@ -18,7 +18,7 @@ export async function GET() {
       select: {
         subscriptionStatus: true,
         trialEndsAt: true,
-        stripePriceId: true,
+        paystackPlanCode: true,
         countryCode: true,
         createdAt: true,
       },
@@ -51,7 +51,7 @@ export async function GET() {
 
     // MRR: monthly-plan orgs pay their price every month; yearly-plan orgs
     // pay once a year, so their contribution is divided by 12. Null price
-    // (Stripe not configured, or price id env vars unset/stale) means that
+    // (Paystack not configured, or plan code env vars unset/stale) means that
     // component is simply omitted from the total rather than treated as 0,
     // so the dashboard doesn't quietly under-report revenue as "0".
     const pricesKnown = priceCents.monthly !== null && priceCents.yearly !== null;

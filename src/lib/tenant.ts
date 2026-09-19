@@ -30,7 +30,7 @@ export async function requireMembership(
   options?: {
     // Only the billing checkout/portal routes should ever pass this — an
     // organization whose trial/subscription has lapsed still needs to be
-    // able to reach Stripe to pay. Every other route stays locked out,
+    // able to reach the billing page to pay. Every other route stays locked out,
     // which is what actually enforces "no subscription, no access" rather
     // than that being a UI-only suggestion.
     skipAccessCheck?: boolean;

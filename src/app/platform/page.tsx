@@ -17,12 +17,12 @@ type Overview = {
   countries: { countryCode: string; countryName: string; count: number }[];
 };
 
-// Platform revenue is always USD from Stripe's own price objects here
+// Platform revenue is always ZAR from Paystack's own plan objects here
 // (this app's per-school currencyCode is a separate, unrelated concept —
 // what a school charges parents in ZAR/USD/etc has nothing to do with
-// what that school pays Crechely).
-function formatUsd(cents: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+// what that school pays Crechely, which is billed in Rand via Paystack).
+function formatZar(cents: number) {
+  return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(cents / 100);
 }
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -78,25 +78,25 @@ export default function PlatformOverviewPage() {
         <StatCard
           label="Past due / canceled"
           value={`${data.pastDue} / ${data.canceled}`}
-          hint="Stripe still retrying past-due cards"
+          hint="Paystack still retrying past-due cards"
         />
         <StatCard
           label="MRR"
-          value={data.mrrCents !== null ? formatUsd(data.mrrCents) : "—"}
-          hint={data.mrrCents === null ? "Set STRIPE_PRICE_ID_MONTHLY/YEARLY to see this" : "Monthly recurring revenue"}
+          value={data.mrrCents !== null ? formatZar(data.mrrCents) : "—"}
+          hint={data.mrrCents === null ? "Set PAYSTACK_PLAN_CODE_MONTHLY/YEARLY to see this" : "Monthly recurring revenue"}
         />
         <StatCard
           label="ARR"
-          value={data.arrCents !== null ? formatUsd(data.arrCents) : "—"}
+          value={data.arrCents !== null ? formatZar(data.arrCents) : "—"}
           hint="Annualized run rate"
         />
         <StatCard
           label="Monthly plan price"
-          value={data.priceCents.monthly !== null ? formatUsd(data.priceCents.monthly) : "—"}
+          value={data.priceCents.monthly !== null ? formatZar(data.priceCents.monthly) : "—"}
         />
         <StatCard
           label="Yearly plan price"
-          value={data.priceCents.yearly !== null ? formatUsd(data.priceCents.yearly) : "—"}
+          value={data.priceCents.yearly !== null ? formatZar(data.priceCents.yearly) : "—"}
         />
       </div>
 

@@ -59,16 +59,16 @@ statements and financial records periodically.
   `currencyCode`? Make sure this section matches what the product
   actually does] and may change with [FILL IN NOTICE PERIOD, e.g. 30 days']
   notice before it applies to your next renewal.
-- Payment is processed by Stripe. By subscribing, you also agree to
-  Stripe's own terms for the payment method you use.
+- Payment is processed by Paystack. By subscribing, you also agree to
+  Paystack's own terms for the payment method you use.
 - [FILL IN: trial length, e.g. "New accounts get a 14-day free trial."]
 - Subscriptions [FILL IN: auto-renew? cancellation process — e.g. "auto-
   renew each billing period until cancelled; you can cancel anytime from
-  the Billing Portal, and cancellation takes effect at the end of the
+  the Billing page in Settings, and cancellation takes effect at the end of the
   current paid period, with no partial refund for the unused portion,
   unless required otherwise by law"].
 - If a payment fails, the Service may show a limited-access state while
-  Stripe retries the charge per its normal retry schedule; continued
+  Paystack retries the charge per its normal retry schedule; continued
   failure will result in suspension of access until payment succeeds or
   the subscription is cancelled.
 - [FILL IN refund policy, if any, e.g. "no refunds except as required by
@@ -134,7 +134,7 @@ counsel, don't just fill in a number here:]
 
 ## 9. Termination
 
-- You may cancel your subscription at any time through the Billing Portal;
+- You may cancel your subscription at any time from the Billing page in Settings;
   see Section 4 for what happens to access and billing.
 - We may suspend or terminate an account for material breach of these
   Terms (e.g. non-payment after a reasonable cure period, fraudulent use,

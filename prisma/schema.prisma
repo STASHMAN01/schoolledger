@@ -94,12 +94,20 @@ model Organization {
   // Null means "use the default built-in template" (REMINDER_TEMPLATES[0])
   // rather than duplicating that default text into the database.
   reminderMessageTemplate String? @db.Text
-  stripeCustomerId  String?  @unique
-  stripeSubscriptionId String? @unique
-  stripePriceId     String?
-  // trialing | active | past_due | canceled | incomplete — mirrors Stripe's
-  // own subscription status values so the webhook handler can copy them
-  // across almost verbatim (see src/app/api/webhooks/stripe/route.ts).
+  paystackCustomerCode     String?  @unique
+  paystackSubscriptionCode String?  @unique
+  paystackPlanCode         String?
+  // Only ever issued once, on the subscription.create webhook event, and
+  // never retrievable again afterwards — required (alongside the
+  // subscription code) to call Paystack's POST /subscription/disable when
+  // an admin cancels from the app. See src/lib/paystack.ts.
+  paystackEmailToken       String?
+  // trialing | active | past_due | canceled | incomplete — a payment-
+  // provider-agnostic vocabulary the app's own access checks key off of
+  // (see src/lib/billing/access.ts). The Paystack webhook handler
+  // translates Paystack's own event/status vocabulary into these values
+  // (see src/app/api/webhooks/paystack/route.ts) rather than the app
+  // adopting Paystack's vocabulary directly.
   subscriptionStatus String  @default("trialing")
   currentPeriodEnd  DateTime?
   trialEndsAt       DateTime?

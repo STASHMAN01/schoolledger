@@ -1,4 +1,4 @@
-import { getStripe } from "@/lib/stripe";
+import { getPlan } from "@/lib/paystack";
 
 // Cross-tenant SaaS metrics for the /platform owner dashboard. Deliberately
 // reads ONLY Organization-level subscription/billing fields (plan, status,
@@ -11,27 +11,27 @@ import { getStripe } from "@/lib/stripe";
 export type OrgBillingFields = {
   subscriptionStatus: string;
   trialEndsAt: Date | null;
-  stripePriceId: string | null;
+  paystackPlanCode: string | null;
   countryCode: string;
   createdAt: Date;
 };
 
 export type Plan = "monthly" | "yearly" | "trial" | "unknown";
 
-export function planForOrg(org: { stripePriceId: string | null; subscriptionStatus: string }): Plan {
-  if (org.stripePriceId && org.stripePriceId === process.env.STRIPE_PRICE_ID_MONTHLY) {
+export function planForOrg(org: { paystackPlanCode: string | null; subscriptionStatus: string }): Plan {
+  if (org.paystackPlanCode && org.paystackPlanCode === process.env.PAYSTACK_PLAN_CODE_MONTHLY) {
     return "monthly";
   }
-  if (org.stripePriceId && org.stripePriceId === process.env.STRIPE_PRICE_ID_YEARLY) {
+  if (org.paystackPlanCode && org.paystackPlanCode === process.env.PAYSTACK_PLAN_CODE_YEARLY) {
     return "yearly";
   }
   if (org.subscriptionStatus === "trialing") return "trial";
   return "unknown";
 }
 
-// "Paying" = a subscription Stripe currently considers billable (active or
-// past_due, same definition src/lib/billing/access.ts uses for product
-// access) — not just "has ever entered card details".
+// "Paying" = a subscription the payment provider currently considers
+// billable (active or past_due, same definition src/lib/billing/access.ts
+// uses for product access) — not just "has ever entered card details".
 export function isPaying(org: { subscriptionStatus: string }): boolean {
   return org.subscriptionStatus === "active" || org.subscriptionStatus === "past_due";
 }
@@ -46,12 +46,13 @@ let priceCentsCache: { monthly: number | null; yearly: number | null; fetchedAt:
 const PRICE_CACHE_MS = 5 * 60 * 1000;
 
 /**
- * Live unit-amount lookup for the two configured Stripe Prices, cached for
+ * Live unit-amount lookup for the two configured Paystack Plans, cached for
  * a few minutes in-process. Used to turn "N orgs on the monthly plan" into
  * an actual MRR figure without hardcoding the price anywhere — if the
- * price ever changes in Stripe, this dashboard reflects it automatically.
- * Returns nulls (never throws) if Stripe isn't configured — the dashboard
- * just omits the revenue figures in that case rather than 500ing.
+ * price ever changes in Paystack, this dashboard reflects it automatically.
+ * Returns nulls (never throws) if Paystack isn't configured — the
+ * dashboard just omits the revenue figures in that case rather than
+ * 500ing.
  */
 export async function getConfiguredPriceCents(): Promise<{
   monthly: number | null;
@@ -61,27 +62,26 @@ export async function getConfiguredPriceCents(): Promise<{
     return priceCentsCache;
   }
 
-  const monthlyId = process.env.STRIPE_PRICE_ID_MONTHLY;
-  const yearlyId = process.env.STRIPE_PRICE_ID_YEARLY;
-  if (!process.env.STRIPE_SECRET_KEY || (!monthlyId && !yearlyId)) {
+  const monthlyCode = process.env.PAYSTACK_PLAN_CODE_MONTHLY;
+  const yearlyCode = process.env.PAYSTACK_PLAN_CODE_YEARLY;
+  if (!process.env.PAYSTACK_SECRET_KEY || (!monthlyCode && !yearlyCode)) {
     return { monthly: null, yearly: null };
   }
 
   try {
-    const stripe = getStripe();
     const [monthly, yearly] = await Promise.all([
-      monthlyId ? stripe.prices.retrieve(monthlyId) : Promise.resolve(null),
-      yearlyId ? stripe.prices.retrieve(yearlyId) : Promise.resolve(null),
+      monthlyCode ? getPlan(monthlyCode) : Promise.resolve(null),
+      yearlyCode ? getPlan(yearlyCode) : Promise.resolve(null),
     ]);
     const result = {
-      monthly: monthly?.unit_amount ?? null,
-      yearly: yearly?.unit_amount ?? null,
+      monthly: monthly?.amount ?? null,
+      yearly: yearly?.amount ?? null,
       fetchedAt: Date.now(),
     };
     priceCentsCache = result;
     return result;
   } catch (err) {
-    console.error("Failed to fetch Stripe price amounts for platform dashboard", err);
+    console.error("Failed to fetch Paystack plan amounts for platform dashboard", err);
     return { monthly: null, yearly: null };
   }
 }

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { checkoutSchema } from "@/lib/validation";
 import { handleApiError } from "@/lib/apiError";
-import { getStripe } from "@/lib/stripe";
+import { initializeTransaction } from "@/lib/paystack";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -26,47 +26,36 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const priceId =
+    const planCode =
       body.plan === "monthly"
-        ? process.env.STRIPE_PRICE_ID_MONTHLY
-        : process.env.STRIPE_PRICE_ID_YEARLY;
-    if (!priceId) {
+        ? process.env.PAYSTACK_PLAN_CODE_MONTHLY
+        : process.env.PAYSTACK_PLAN_CODE_YEARLY;
+    if (!planCode || !process.env.PAYSTACK_SECRET_KEY) {
       return NextResponse.json(
         { error: "Billing is not configured yet." },
         { status: 500 }
       );
     }
 
-    const stripe = getStripe();
     const admin = await db.user.findUnique({ where: { id: userId } });
-
-    let stripeCustomerId = organization.stripeCustomerId;
-    if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
-        name: organization.name,
-        email: admin?.email,
-        metadata: { organizationId },
-      });
-      stripeCustomerId = customer.id;
-      await db.organization.update({
-        where: { id: organizationId },
-        data: { stripeCustomerId },
-      });
+    if (!admin?.email) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
     const origin = req.nextUrl.origin;
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: stripeCustomerId,
-      client_reference_id: organizationId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { metadata: { organizationId } },
-      allow_promotion_codes: true,
-      success_url: `${origin}/dashboard/settings/billing?checkout=success`,
-      cancel_url: `${origin}/dashboard/settings/billing?checkout=cancelled`,
+    // No separate "create the customer" call — /transaction/initialize
+    // creates (or reuses, matched by email) the Paystack customer itself.
+    // We correlate the resulting charge.success webhook back to this
+    // organization via metadata, since Paystack has no client_reference_id
+    // equivalent.
+    const { authorization_url } = await initializeTransaction({
+      email: admin.email,
+      planCode,
+      callbackUrl: `${origin}/dashboard/settings/billing?checkout=success`,
+      metadata: { organizationId, plan: body.plan },
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: authorization_url });
   } catch (err) {
     return handleApiError(err);
   }

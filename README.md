@@ -30,24 +30,26 @@ functions are pure. Run it before merging any change to
 `src/lib/billing/*` or `src/lib/tenant.ts`. `npm run test:watch` re-runs on
 file changes.
 
-## Setting up billing (Stripe)
+## Setting up billing (Paystack)
 
-1. In the Stripe Dashboard (test mode is fine for development), create a
-   Product with two Prices: one recurring monthly (~$50), one recurring
-   yearly (~$350-450). Copy each Price's id into `STRIPE_PRICE_ID_MONTHLY`
-   / `STRIPE_PRICE_ID_YEARLY` in `.env.local`.
-2. Copy your test secret key into `STRIPE_SECRET_KEY`.
-3. For local webhook testing, install the [Stripe CLI](https://docs.stripe.com/stripe-cli)
-   and run `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
-   — it prints a webhook signing secret, put that in `STRIPE_WEBHOOK_SECRET`.
-   Never accept unsigned webhook requests as a shortcut, even in
-   development — `stripe listen` signs them correctly, so there's no need
-   to.
-4. In production, add a webhook endpoint in the Stripe Dashboard pointing
-   at `https://<your-domain>/api/webhooks/stripe`, subscribed at minimum to
-   `checkout.session.completed`, `customer.subscription.updated`, and
-   `customer.subscription.deleted` — then use *that* endpoint's signing
-   secret (not the CLI's) as `STRIPE_WEBHOOK_SECRET` in production.
+1. In the Paystack Dashboard (test mode is fine for development, and works
+   even before compliance/KYC verification finishes), go to Products >
+   Plans and create two Plans: one monthly, one yearly, priced in ZAR.
+   Copy each Plan's code into `PAYSTACK_PLAN_CODE_MONTHLY` /
+   `PAYSTACK_PLAN_CODE_YEARLY` in `.env.local`.
+2. Copy your test secret key into `PAYSTACK_SECRET_KEY`.
+3. In the Paystack Dashboard, add a webhook endpoint pointing at
+   `https://<your-domain>/api/webhooks/paystack`. Unlike Stripe, Paystack
+   doesn't issue a separate webhook signing secret — the same
+   `PAYSTACK_SECRET_KEY` is used to verify the `x-paystack-signature`
+   header (HMAC-SHA512 of the raw body), so there's nothing extra to copy.
+   There is no equivalent of the Stripe CLI's `stripe listen` for local
+   testing; use the Paystack Dashboard's "Send test webhook" feature, or a
+   tunnel (ngrok, ngrok's tunnel domain registered as the webhook URL) to
+   receive real ones locally.
+4. At minimum, the app acts on the `charge.success`, `subscription.create`,
+   `subscription.disable`, and `invoice.payment_failed` events — make sure
+   those are enabled for the webhook endpoint.
 
 ## Deploying
 
@@ -60,4 +62,4 @@ them.
 ## Stack
 
 Next.js (App Router, TypeScript) · Tailwind CSS · Prisma + Postgres ·
-Auth.js (NextAuth v5) · Stripe (billing, Phase 4) · Zod (validation).
+Auth.js (NextAuth v5) · Paystack (billing) · Zod (validation).
