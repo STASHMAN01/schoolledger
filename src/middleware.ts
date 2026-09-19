@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 const PUBLIC_PATHS = [
   "/",
   "/pricing",
+  "/support",
   "/login",
   "/register",
   "/forgot-password",
