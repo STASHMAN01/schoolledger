@@ -1,5 +1,16 @@
 # Changelog — launch-readiness audit pass
 
+## 2026-09-19 (reminders email fallback)
+
+- **Added a "Copy email address" fallback next to the Reminders page's
+  Email button.** The Email button itself was already correct — a plain
+  `mailto:` link — but `mailto:` links fail completely silently (no
+  error, nothing visible) on any device with no default mail app
+  configured, which is what Dylan was hitting. Rather than depending on
+  every user's device being configured correctly, there's now a second
+  button that copies just the parent's email address so it can be
+  pasted into Gmail/webmail/whatever mail client someone actually uses.
+
 ## 2026-09-19 (trial length)
 
 - **Extended the free trial from 14 to 30 days.** 14 days never spans one

@@ -278,6 +278,22 @@ function RemindersPageInner() {
     }
   }
 
+  // Fallback for the "Email" mailto: link, which does nothing at all —
+  // silently, no error — on any device without a default mail app
+  // configured. Copies just the address, so it can be pasted straight
+  // into Gmail/webmail/whatever the person actually uses.
+  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null);
+  async function copyEmailAddress(r: Reminder) {
+    if (!r.parentEmail) return;
+    try {
+      await navigator.clipboard.writeText(r.parentEmail);
+      setCopiedEmailId(r.childId);
+      setTimeout(() => setCopiedEmailId((id) => (id === r.childId ? null : id)), 2000);
+    } catch {
+      // Same reasoning as copyMessage above — not worth a hard error.
+    }
+  }
+
   return (
     <div className="animate-in">
       <PageHeader
@@ -484,6 +500,16 @@ function RemindersPageInner() {
                     >
                       Email
                     </a>
+                  )}
+                  {r.parentEmail && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => copyEmailAddress(r)}
+                      title="If clicking Email above doesn't open anything, your device likely has no default mail app set — copy the address and paste it into Gmail/webmail instead."
+                    >
+                      {copiedEmailId === r.childId ? "Copied!" : "Copy email address"}
+                    </Button>
                   )}
                   <Button variant="secondary" size="sm" onClick={() => copyMessage(r)}>
                     Copy message
