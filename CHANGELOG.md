@@ -1,5 +1,20 @@
 # Changelog — launch-readiness audit pass
 
+## 2026-09-20 (Billing page: grey out Subscribe until Paystack is configured, real yearly price)
+
+- **The Subscribe monthly/yearly buttons are now disabled with a "Billing
+  isn't set up yet" message until Paystack is actually configured**,
+  instead of being clickable and failing with a generic error. New
+  `GET /billing/config` route reports (booleans only, never the actual
+  key/plan code values) whether `PAYSTACK_SECRET_KEY` and each plan code
+  env var are set; the Billing page checks it on load and disables
+  whichever button(s) aren't ready. Buttons re-enable automatically once
+  Dylan finishes adding the Paystack env vars in Vercel and reloads the
+  page — no further code change needed.
+- **The Yearly card now shows the real price** (R4,990/year — save R998
+  vs. paying monthly) instead of the placeholder "Save vs. paying
+  monthly" text, matching the numbers already on `/pricing`.
+
 ## 2026-09-19 (Paystack billing — replaces the never-finished Stripe integration)
 
 - **Fixed the Billing settings page showing nothing but a broken "R500

@@ -1,14 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
 import { Button, Card, PageHeader } from "@/components/ui";
+
+type BillingConfig = { monthlyConfigured: boolean; yearlyConfigured: boolean };
 
 export default function BillingPage() {
   const { organizationId, role, subscriptionStatus, trialEndsAt, hasActiveAccess } = useOrg();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  // null while loading — treated as "not yet known" so the buttons don't
+  // flash enabled-then-disabled. Checked once on mount; whoever finishes
+  // setting up Paystack just needs to reload this page afterward.
+  const [config, setConfig] = useState<BillingConfig | null>(null);
+
+  const loadConfig = useCallback(async () => {
+    const res = await fetch(`/api/organizations/${organizationId}/billing/config`);
+    if (res.ok) setConfig(await res.json());
+  }, [organizationId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
+    loadConfig();
+  }, [loadConfig]);
 
   async function checkout(plan: "monthly" | "yearly") {
     setLoading(plan);
@@ -95,21 +111,36 @@ export default function BillingPage() {
           </Button>
         )
       ) : (
-        <div className="flex flex-wrap gap-3">
-          <Card className="p-4">
-            <p className="mb-1 font-medium text-foreground">Monthly</p>
-            <p className="mb-3 text-sm text-muted-foreground">R499/month</p>
-            <Button onClick={() => checkout("monthly")} disabled={loading !== null}>
-              {loading === "monthly" ? "Redirecting..." : "Subscribe monthly"}
-            </Button>
-          </Card>
-          <Card className="p-4">
-            <p className="mb-1 font-medium text-foreground">Yearly</p>
-            <p className="mb-3 text-sm text-muted-foreground">Save vs. paying monthly</p>
-            <Button onClick={() => checkout("yearly")} disabled={loading !== null}>
-              {loading === "yearly" ? "Redirecting..." : "Subscribe yearly"}
-            </Button>
-          </Card>
+        <div>
+          {config && !config.monthlyConfigured && !config.yearlyConfigured && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              Billing isn&apos;t set up yet — check back shortly.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <Card className="p-4">
+              <p className="mb-1 font-medium text-foreground">Monthly</p>
+              <p className="mb-3 text-sm text-muted-foreground">R499/month</p>
+              <Button
+                onClick={() => checkout("monthly")}
+                disabled={loading !== null || !config?.monthlyConfigured}
+              >
+                {loading === "monthly" ? "Redirecting..." : "Subscribe monthly"}
+              </Button>
+            </Card>
+            <Card className="p-4">
+              <p className="mb-1 font-medium text-foreground">Yearly</p>
+              <p className="mb-3 text-sm text-muted-foreground">
+                R4,990/year <span className="text-muted">— save R998 vs. monthly</span>
+              </p>
+              <Button
+                onClick={() => checkout("yearly")}
+                disabled={loading !== null || !config?.yearlyConfigured}
+              >
+                {loading === "yearly" ? "Redirecting..." : "Subscribe yearly"}
+              </Button>
+            </Card>
+          </div>
         </div>
       )}
     </div>
