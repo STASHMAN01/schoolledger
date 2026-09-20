@@ -266,8 +266,8 @@ export default async function RootPage() {
             Nothing here is invented — no fake testimonials, customer
             counts, logos, or awards. Testimonials only ever come from the
             public submission form (/testimonials/new) and only appear here
-            once Dylan approves them at /platform/testimonials. The founder
-            photo is still a placeholder — everything else below is real. */}
+            once Dylan approves them at /platform/testimonials. No founder
+            photo by request — name/story only, everything below is real. */}
         <section className="border-t border-border bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <Reveal>
@@ -276,18 +276,9 @@ export default async function RootPage() {
               </h2>
             </Reveal>
             <div className="mt-8 grid gap-10 lg:grid-cols-[220px_1fr] lg:gap-16">
-              <div className="flex flex-col items-center gap-3 lg:items-start">
-                {/* [ADD REAL: founder photo] — Dylan hasn't sent one yet;
-                    everything else below is his real story. */}
-                <div className="flex h-28 w-28 items-center justify-center rounded-full border border-dashed border-border-strong bg-background text-center text-[11px] text-muted">
-                  [ADD REAL:
-                  <br />
-                  founder photo]
-                </div>
-                <div className="text-center text-sm text-muted-foreground lg:text-left">
-                  <p className="font-medium text-foreground">Dylan Maps</p>
-                  <p>Founder, Crechely</p>
-                </div>
+              <div className="text-center lg:text-left">
+                <p className="font-medium text-foreground">Dylan Maps</p>
+                <p className="text-sm text-muted-foreground">Founder, Crechely</p>
               </div>
               <div>
                 <p className="text-sm text-foreground sm:text-base">

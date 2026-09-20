@@ -1,5 +1,12 @@
 # Changelog — launch-readiness audit pass
 
+## 2026-09-20 (Homepage: drop the founder photo)
+
+- **Removed the founder-photo placeholder from the "Who's behind Crechely"
+  section**, at Dylan's request. It was still an empty dashed-border
+  placeholder box (a real photo was never actually added), so this just
+  drops it rather than replacing it — the name/story/contact info stays.
+
 ## 2026-09-20 (Billing page: grey out Subscribe until Paystack is configured, real yearly price)
 
 - **The Subscribe monthly/yearly buttons are now disabled with a "Billing
