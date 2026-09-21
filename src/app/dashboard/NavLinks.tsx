@@ -19,13 +19,14 @@ const ACCOUNTING_LINKS = [
 
 // Centre Management's nav -- Phase 1 shipped with just the Home page, so
 // this stayed empty; Phase 2 Session 1 adds the Children list/profiles,
-// so it needs a real nav now. Grows with Admissions/Enrolled/Attendance
-// etc. in later Phase 2/3 sessions.
+// so it needs a real nav now. Grew with Admissions/Enrolled (Phase 2),
+// Attendance (Phase 3 Session 1), and Pending reviews (Phase 2 Session 4).
 const CENTRE_LINKS = [
   { href: "/dashboard/centre", label: "Home", exact: true },
   { href: "/dashboard/centre/children", label: "Children" },
   { href: "/dashboard/centre/admissions", label: "Admissions" },
   { href: "/dashboard/centre/enrolled", label: "Enrolled" },
+  { href: "/dashboard/centre/attendance", label: "Attendance" },
   { href: "/dashboard/centre/pending-reviews", label: "Pending reviews" },
 ];
 

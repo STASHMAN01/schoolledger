@@ -17,6 +17,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "MANAGE_BILLING",
   "MANAGE_SETTINGS",
   "VIEW_ACTIVITY_LOG",
+  "MANAGE_ATTENDANCE",
 ];
 
 // A short label + a longer hover-tooltip description for every
@@ -86,6 +87,11 @@ export const PERMISSION_INFO: Record<Permission, { label: string; description: s
     label: "View activity log",
     description: "Can see the \"who did what, when\" activity feed.",
   },
+  MANAGE_ATTENDANCE: {
+    label: "Manage attendance",
+    description:
+      "Can take/edit daily attendance and email absent children's parents. A Teacher with this is limited to their own assigned class.",
+  },
 };
 
 // The DEFAULT permission set for each role — the "hardcode the default,
@@ -114,6 +120,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Exclude<Role, "ADMIN">, Permission
     "VIEW_ACCOUNTING",
     "MANAGE_CHILDREN",
     "MANAGE_CLASSES",
+    "MANAGE_ATTENDANCE",
     "SEND_REMINDERS",
     "REQUEST_DELETION",
     "VIEW_ACTIVITY_LOG",
@@ -133,11 +140,13 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Exclude<Role, "ADMIN">, Permission
   TEACHER: [
     "VIEW_CENTRE",
     "MANAGE_CHILDREN", // scoped server-side to Membership.assignedCategoryId
+    "MANAGE_ATTENDANCE", // scoped server-side to Membership.assignedCategoryId
     "VIEW_ACTIVITY_LOG",
   ],
   RECEPTIONIST: [
     "VIEW_CENTRE",
     "MANAGE_CHILDREN", // org-wide, unlike TEACHER
+    "MANAGE_ATTENDANCE", // org-wide, unlike TEACHER
     "VIEW_ACTIVITY_LOG",
   ],
 };

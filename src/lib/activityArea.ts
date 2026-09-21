@@ -6,7 +6,7 @@
 // reminders, team/invites, org settings) is Accounting for Phase 1: those
 // areas don't have a Centre-side equivalent yet, so there's nowhere else
 // for them to show.
-export const CENTRE_ENTITY_TYPES = ["Child", "Category", "Guardian"] as const;
+export const CENTRE_ENTITY_TYPES = ["Child", "Category", "Guardian", "Attendance"] as const;
 
 export const ACCOUNTING_ENTITY_TYPES = [
   "Payment",

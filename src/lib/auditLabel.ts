@@ -55,6 +55,16 @@ export function describeAuditAction(row: AuditRow): string {
       return `approved a parent's submitted enrolment form`;
     case "parentSubmission.rejected":
       return `rejected a parent's submitted enrolment form`;
+    case "attendance.marked": {
+      const className = typeof m.className === "string" ? m.className : "a class";
+      const present = typeof m.presentCount === "number" ? m.presentCount : 0;
+      const absent = typeof m.absentCount === "number" ? m.absentCount : 0;
+      return `marked attendance for ${className} — ${present} present, ${absent} absent`;
+    }
+    case "attendance.absentParentsNotified": {
+      const count = typeof m.notifiedCount === "number" ? m.notifiedCount : 0;
+      return `emailed ${count} absent ${count === 1 ? "parent" : "parents"} for today`;
+    }
     case "children.imported": {
       const count = typeof m.created === "number" ? m.created : 0;
       const failed = typeof m.failed === "number" && m.failed > 0 ? ` (${m.failed} row${m.failed === 1 ? "" : "s"} skipped)` : "";

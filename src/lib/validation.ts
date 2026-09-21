@@ -243,6 +243,36 @@ export const parentSubmissionSchema = z.object({
   attachments: z.array(parentSubmissionAttachmentSchema).max(12).optional(),
 });
 
+// Phase 3 Session 1 -- daily attendance register. One row per child in the
+// class being marked; `date` is a plain yyyy-mm-dd string from the client
+// (never a full timestamp -- the route turns it into the same
+// midnight-UTC convention every other date-only field in this app uses),
+// and categoryId is re-validated server-side against the caller's
+// assignedCategoryId for a TEACHER, same as every other class-scoped
+// write in this app.
+export const attendanceRegisterSchema = z.object({
+  categoryId: z.string().cuid(),
+  // A plain yyyy-mm-dd from the client, coerced the same way every other
+  // date-only field in this app is (Child.enrollmentDate etc.) -- `new
+  // Date("2026-09-21")` parses as UTC midnight, which is exactly the
+  // "date-only, never a real timestamp" convention this column uses.
+  date: z.coerce.date(),
+  records: z
+    .array(
+      z.object({
+        childId: z.string().cuid(),
+        status: z.enum(["PRESENT", "ABSENT"]),
+      })
+    )
+    .min(1)
+    .max(200),
+});
+
+export const attendanceNotifySchema = z.object({
+  date: z.coerce.date(),
+  categoryId: z.preprocess(emptyToUndefined, z.string().cuid().optional()),
+});
+
 export const deletionRequestSchema = z.object({
   targetType: z.enum(["CATEGORY", "CHILD", "PAYMENT"]),
   targetId: z.string().cuid(),

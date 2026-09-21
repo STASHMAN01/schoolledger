@@ -1,11 +1,9 @@
 "use client";
 
-// Centre Management home. Deliberately close to empty in Phase 1 -- the
-// real tiles (Admissions, Enrolled, Attendance, Staff, Upcoming Events,
-// To-do) are Phase 2/3/5 per docs/PLAN.md. What it DOES do now: show
-// that centre-side activity (children/classes) is tracked separately
-// from Accounting's activity log, per the "activity feed splits by mode"
-// Phase 1 requirement -- there just isn't much else to show here yet.
+// Centre Management home. Grew from an almost-empty Phase 1 page into a
+// real dashboard as Phase 2/3 features shipped: Admissions/Enrolled/
+// Pending reviews tiles (Phase 2), Attendance tile (Phase 3 Session 1).
+// Staff/events tiles are still Phase 5.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../OrgContext";
@@ -20,11 +18,24 @@ type ChildStat = {
   archived: boolean;
 };
 
+type AttendanceSummary = {
+  scope: "none" | "single" | "all";
+  className: string | null;
+  total: number;
+  present: number;
+  absent: number;
+  notTaken: number;
+};
+
 function daysAgo(n: number): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - n);
   return d;
+}
+
+function todayLocal(): string {
+  return new Date().toLocaleDateString("en-CA");
 }
 
 type AuditEntry = {
@@ -50,30 +61,42 @@ function formatWhen(iso: string): string {
 }
 
 export default function CentreManagementHomePage() {
-  const { organizationId } = useOrg();
+  const { organizationId, permissions } = useOrg();
+  const canSeeAttendance = permissions.includes("MANAGE_ATTENDANCE");
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState<ChildStat[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({
       entityTypes: CENTRE_ENTITY_TYPES.join(","),
     });
-    const [activityRes, childrenRes, reviewsRes] = await Promise.all([
+    const requests = [
       fetch(`/api/organizations/${organizationId}/audit?${params.toString()}`),
       fetch(`/api/organizations/${organizationId}/children`),
       fetch(`/api/organizations/${organizationId}/parent-submissions`),
-    ]);
+    ];
+    if (canSeeAttendance) {
+      requests.push(
+        fetch(`/api/organizations/${organizationId}/attendance/summary?date=${todayLocal()}`)
+      );
+    }
+    const [activityRes, childrenRes, reviewsRes, attendanceRes] = await Promise.all(requests);
     const activityData = await activityRes.json();
     if (activityRes.ok) setEntries((activityData.entries ?? []).slice(0, 8));
     const childrenData = await childrenRes.json();
     if (childrenRes.ok) setChildren(childrenData.children);
     const reviewsData = await reviewsRes.json();
     if (reviewsRes.ok) setPendingCount(reviewsData.submissions.length);
+    if (attendanceRes) {
+      const attendanceData = await attendanceRes.json();
+      if (attendanceRes.ok) setAttendance(attendanceData);
+    }
     setLoading(false);
-  }, [organizationId]);
+  }, [organizationId, canSeeAttendance]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount, standard pattern
@@ -90,11 +113,11 @@ export default function CentreManagementHomePage() {
     <div className="animate-in">
       <PageHeader
         title="Centre Management"
-        description="Enrolment, attendance, staff and the rest of centre management are on the way. Billing lives under Accounting, top-left."
+        description="Enrolment, attendance and the rest of centre management. Billing lives under Accounting, top-left."
         actions={<LinkButton href="/dashboard/centre/children" size="sm">Children</LinkButton>}
       />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/dashboard/centre/admissions"
           className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
@@ -115,6 +138,40 @@ export default function CentreManagementHomePage() {
           </p>
           <p className="mt-1 text-xs text-muted">Gender, age and class breakdown</p>
         </Link>
+
+        {canSeeAttendance && (
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="text-xs text-muted-foreground">
+              Attendance{attendance?.className ? ` · ${attendance.className}` : ""}
+            </p>
+            {loading || !attendance ? (
+              <p className="font-display mt-1 text-2xl font-semibold text-foreground">…</p>
+            ) : attendance.total === 0 ? (
+              <p className="mt-1 text-sm text-muted-foreground">No children yet</p>
+            ) : attendance.notTaken === attendance.total ? (
+              <Link
+                href="/dashboard/centre/attendance"
+                className="mt-1 block text-sm font-medium text-brand hover:underline"
+              >
+                Not taken yet — take register →
+              </Link>
+            ) : (
+              <p className="font-display mt-1 text-2xl font-semibold text-foreground">
+                {attendance.present}
+                <span className="ml-1 text-xs font-normal text-muted-foreground">present</span>
+              </p>
+            )}
+            {attendance && attendance.total > 0 && (
+              <Link
+                href="/dashboard/centre/attendance/absent"
+                className="mt-1 block text-xs font-medium text-danger hover:underline"
+              >
+                {attendance.absent} absent — notify parents
+              </Link>
+            )}
+          </div>
+        )}
+
         <Link
           href="/dashboard/centre/pending-reviews"
           className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
@@ -161,7 +218,7 @@ export default function CentreManagementHomePage() {
 
       <EmptyState
         title="More is coming here"
-        description="Attendance, staff and events all move in over the next phases — see docs/PLAN.md."
+        description="Staff and events move in over the next phases — see docs/PLAN.md."
       />
     </div>
   );

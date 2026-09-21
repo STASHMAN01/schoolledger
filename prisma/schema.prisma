@@ -52,6 +52,7 @@ enum Permission {
   MANAGE_BILLING // can manage the org's own subscription
   MANAGE_SETTINGS // can edit org profile/letterhead and payment types
   VIEW_ACTIVITY_LOG // can view the audit/activity feed
+  MANAGE_ATTENDANCE // can take/edit attendance and notify absent parents (TEACHER: own assigned class only)
 }
 
 // A child's gender, for the Enrolled tile's gender breakdown chart
@@ -182,6 +183,7 @@ model Organization {
   formDocuments FormDocument[]
   parentFormLinks ParentFormLink[]
   parentSubmissions ParentSubmission[]
+  attendanceRecords AttendanceRecord[]
 
   @@map("organizations")
 }
@@ -217,6 +219,7 @@ model User {
   formDocumentsGenerated FormDocument[]
   parentFormLinksCreated ParentFormLink[] @relation("ParentFormLinkCreatedBy")
   parentSubmissionsReviewed ParentSubmission[] @relation("ParentSubmissionReviewedBy")
+  attendanceRecordsMarked AttendanceRecord[]
 
   @@map("users")
 }
@@ -370,6 +373,7 @@ model Child {
   guardians    Guardian[]
   formDocuments FormDocument[]
   parentFormLinks ParentFormLink[]
+  attendanceRecords AttendanceRecord[]
 
   @@index([organizationId])
   @@index([categoryId])
@@ -535,6 +539,49 @@ model ParentSubmissionAttachment {
 
   @@index([submissionId])
   @@map("parent_submission_attachments")
+}
+
+// Phase 3 Session 1 (Daily running -- attendance, see docs/PLAN.md).
+// PRESENT/ABSENT only -- deliberately no Late/Excused in this first pass,
+// matching the plan's own wording and "simple beats complete." Add more
+// statuses later if a school actually asks.
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+// One row per child per calendar day. `date` is stored the same way as
+// every other date-only field in this app (Child.enrollmentDate,
+// Child.dateOfBirth) -- midnight UTC of the intended calendar day, never
+// used as a real timestamp. Deliberately NOT scoped by categoryId here:
+// a child's class can change over the year, and "which class was this
+// for" is answered by joining Child.categoryId as of now, same as every
+// other class-scoped query in this app (children list, admissions,
+// enrolled). A TEACHER can only read/write rows for children in their
+// own Membership.assignedCategoryId -- enforced in the API route, same
+// pattern as MANAGE_CHILDREN.
+model AttendanceRecord {
+  id             String            @id @default(cuid())
+  organizationId String
+  childId        String
+  date           DateTime
+  status         AttendanceStatus
+  markedByUserId String
+  markedAt       DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  // Set once an absence email has actually been sent for this record, so
+  // "Notify absent parents" never double-emails the same parent for the
+  // same day if clicked twice (or clicked by two staff members), and so
+  // the UI can show "Notified" instead of a live "Notify" action.
+  notifiedAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  markedBy     User         @relation(fields: [markedByUserId], references: [id])
+
+  @@unique([childId, date])
+  @@index([organizationId, date])
+  @@map("attendance_records")
 }
 
 model PaymentType {
