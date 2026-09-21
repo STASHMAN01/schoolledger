@@ -58,6 +58,13 @@ const ENTITY_BADGE: Record<string, "brand" | "accent" | "success" | "danger" | "
   Reminder: "neutral",
 };
 
+// Display label only — entry.entityType keeps its DB value ("Category")
+// so the badge color map and any historical entries still line up;
+// this just renders what the product now calls the thing.
+const ENTITY_LABEL: Record<string, string> = {
+  Category: "Class",
+};
+
 function describeAction(action: string): string {
   const [, verb] = action.split(".");
   return VERB_LABELS[verb] ?? verb ?? action;
@@ -78,7 +85,7 @@ function ActivityRow({ entry }: { entry: AuditEntry }) {
   return (
     <div className="flex items-start gap-3 px-4 py-3">
       <Badge variant={ENTITY_BADGE[entry.entityType] ?? "neutral"}>
-        {entry.entityType}
+        {ENTITY_LABEL[entry.entityType] ?? entry.entityType}
       </Badge>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground">

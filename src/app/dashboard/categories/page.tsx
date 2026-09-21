@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg, canManage } from "../OrgContext";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
@@ -23,10 +23,6 @@ function inputToCents(value: string): number | null {
   return Math.round(parsed * 100);
 }
 
-function buildTree(categories: Category[], parentId: string | null): Category[] {
-  return categories.filter((c) => c.parentId === parentId);
-}
-
 export default function CategoriesPage() {
   const { organizationId, role, currencyCode } = useOrg();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -36,7 +32,6 @@ export default function CategoriesPage() {
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const [name, setName] = useState("");
-  const [parentId, setParentId] = useState<string>("");
   const [fee, setFee] = useState("");
 
   const load = useCallback(async () => {
@@ -59,8 +54,11 @@ export default function CategoriesPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        // Flat list by decision (Phase 1 centre-management restructure) —
+        // classes are never nested from this form. The API/schema still
+        // accept parentId (unchanged, lower-risk than a migration), this
+        // UI just never sends one.
         name,
-        parentId: parentId || null,
         monthlyFeeCents: inputToCents(fee),
       }),
     });
@@ -91,15 +89,11 @@ export default function CategoriesPage() {
     await load();
   }
 
-  function renderNode(category: Category, depth: number) {
-    const children = buildTree(categories, category.id);
+  function renderRow(category: Category) {
     if (category.archived && !showArchived) return null;
     return (
       <div key={category.id}>
-        <div
-          className="flex items-center justify-between border-b border-border py-2 px-4 last:border-b-0"
-          style={{ paddingLeft: depth * 20 + 16 }}
-        >
+        <div className="flex items-center justify-between border-b border-border py-2 px-4 last:border-b-0">
           <div>
             <span className={category.archived ? "text-muted line-through" : "text-foreground"}>
               {category.name}
@@ -132,13 +126,11 @@ export default function CategoriesPage() {
             </div>
           )}
         </div>
-        {children.map((c) => renderNode(c, depth + 1))}
       </div>
     );
   }
 
-  const roots = buildTree(categories, null);
-  const activeCategories = categories.filter((c) => !c.archived);
+  const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="animate-in">
@@ -170,20 +162,6 @@ export default function CategoriesPage() {
               />
             </Label>
             <Label className="flex flex-col gap-1">
-              Parent class (optional)
-              <Select
-                value={parentId}
-                onChange={(e) => setParentId(e.target.value)}
-              >
-                <option value="">None (top level)</option>
-                {activeCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </Label>
-            <Label className="flex flex-col gap-1">
               Monthly fee (optional)
               <Input
                 className="w-32"
@@ -204,12 +182,12 @@ export default function CategoriesPage() {
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : roots.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No classes yet. Add your first one above — e.g. &quot;Daycare&quot;,
-          then add sub-classes like &quot;Ducks Class&quot; underneath it.
+          No classes yet. Add your first one above — e.g. &quot;Butterfly&quot;
+          or &quot;Ducks Class&quot;.
         </p>
       ) : (
         <Card>
-          {roots.map((c) => renderNode(c, 0))}
+          {sortedCategories.map((c) => renderRow(c))}
         </Card>
       )}
     </div>
