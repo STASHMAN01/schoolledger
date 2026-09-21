@@ -136,3 +136,38 @@ Membership.permissionOverrides unconditionally, so deploying this
 before the db push would 500 the entire dashboard for every user,
 immediately. Dylan needs to run db push himself against production
 first; I don't have and shouldn't use production DB credentials.
+
+## Phase 1 — closed out (commit c606179 and this note)
+
+Verified live on crechely.co.za after `prisma db push` + merge to main:
+Team page renders all 6 roles, ADMIN members correctly show
+"always full access, not customizable", and a throwaway TEACHER invite
+was created and revoked cleanly (no real member touched) to confirm the
+new role/permission plumbing works end-to-end in production. Lint,
+tests (40/40), and build were all clean before merge.
+
+Phase 1's "done when" bar is met: billing works unchanged under
+Accounting, roles/permissions/class-assignment/managers-can't-see-money
+are live, activity feed splits by mode, login rate limiting matches the
+plan (5/15min per account, 20/15min per IP), and no user-visible UI
+copy, PDF, or email says "Category"/"Categories" anymore (checked
+statementPdf.ts, outstandingReminders.ts, NavLinks.tsx, and every
+dashboard page's JSX — all say "Class(es)").
+
+One nit still open, flagged twice now, not resolved: the URL segment
+`/dashboard/accounting/categories` (and its API route
+`/api/organizations/[organizationId]/categories`) still literally says
+"categories", not "classes". Left alone again — renaming it means
+touching ~10 frontend fetch call sites and the route folder itself, for
+a URL nobody but Dylan will ever read, and no live customers exist yet
+to worry about broken bookmarks either way. Needs an explicit "yes,
+rename it" before it's worth the diff.
+
+Not done, out of Phase 1's scope, and explicitly gated in PLAN.md before
+starting: Phase 2 (Enrolment) requires Phase 0 (Paystack live + >=1
+paying school, or several prospects asking for enrolment) to be met
+first — that's Dylan's outreach status, not something visible from the
+code. Also several of PLAN.md's "open decisions" bear directly on how
+Phase 2 gets built (exits placement, pro-rata vs full-month billing,
+ethnicity field, the two undecided form templates) and the plan
+document itself says to ask rather than assume on these.
