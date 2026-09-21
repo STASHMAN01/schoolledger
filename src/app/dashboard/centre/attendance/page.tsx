@@ -50,7 +50,6 @@ export default function AttendancePage() {
       if (res.ok) {
         const active = (data.categories as Category[]).filter((c) => !c.archived);
         setCategories(active);
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- picking a sensible default once the list loads
         setPickedCategoryId((prev) => prev || active[0]?.id || "");
       }
     })();
@@ -85,10 +84,13 @@ export default function AttendancePage() {
 
   useEffect(() => {
     if (isTeacher) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
       loadRegister();
     } else if (pickedCategoryId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
       loadRegister(pickedCategoryId);
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing to load yet (no class picked)
       setLoading(false);
     }
   }, [isTeacher, pickedCategoryId, loadRegister]);
