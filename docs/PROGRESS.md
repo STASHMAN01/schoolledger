@@ -365,3 +365,47 @@ lint/test/build pass (same recurring device-shell limitations as every
 prior schema-touching session -- `npx eslint` alone hit the 170s tool
 cap this time). Needs Dylan's local verification before this can go
 live.
+
+## Phase 2, Session 3 -- verified live (2026-09-21)
+
+Dylan ran the local checks (lint, test, build all clean), `npx prisma db
+push` synced the new `form_documents` table, merged
+`phase2-session3-form-templates` into `main` (clean fast-forward, 9
+files, 958 insertions), and pushed. Vercel deploy went READY and
+aliased to crechely.co.za within ~80s of the push.
+
+Live-verified on crechely.co.za (real child: Boitshoko Kekana):
+- Generated a Medical & Allergy Information PDF via the child profile's
+  Forms card. Decoded the returned PDF's content stream directly
+  (Chrome's built-in PDF viewer doesn't screenshot/read via this
+  session's browser-automation tools -- a tooling limitation, not a
+  product bug) and confirmed: letterhead logo embedded correctly,
+  title, intro paragraph, the child's real profile data (name, DOB
+  "May 14, 2022", gender "Female", class, enrolment date), blank
+  underscore lines for the medical fields that aren't on file, the
+  "not reviewed legal wording" disclaimer box, signature line, and
+  footer stamp -- all exactly as designed.
+- Generated a Fee Agreement & Payment Mandate and confirmed the money
+  formatting: "Monthly fee: R1400.00 / month (Daycare standard rate)"
+  pulled correctly from the category's rate. The Fee Agreement button
+  was visible to Dylan (who has VIEW_MONEY) -- confirming the
+  money-gate doesn't over-hide for a user who should see it. (Did not
+  test the negative case -- a non-VIEW_MONEY user -- live, since that
+  needs a second test account; the gating logic matches the same
+  `useHasPermission` pattern already proven elsewhere in the app.)
+- Confirmed dated history: both documents persisted as separate rows
+  (not an overwrite), each showing the correct generator name and
+  timestamp, with working "View" links opening the stored PDF inline.
+- Confirmed audit logging: the activity feed shows "Dylan Maponga
+  generated a Fee agreement & payment mandate" and "...downloaded a
+  Fee agreement & payment mandate" (and the same for Medical &
+  Allergy), matching the new `auditLabel.ts` cases.
+- One button (Fee Agreement) didn't register a click through the
+  browser-automation tool on the first two tries -- confirmed via a
+  direct API call that the endpoint and generator both work correctly
+  with the identical request, so this reads as an automation-click
+  quirk (the Medical & Allergy button worked first try), not an app
+  bug. Worth a real click from Dylan next time he's in the app, just
+  to be sure.
+
+Session 3 is done, merged, and live.
