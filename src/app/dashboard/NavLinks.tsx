@@ -24,6 +24,8 @@ const ACCOUNTING_LINKS = [
 const CENTRE_LINKS = [
   { href: "/dashboard/centre", label: "Home", exact: true },
   { href: "/dashboard/centre/children", label: "Children" },
+  { href: "/dashboard/centre/admissions", label: "Admissions" },
+  { href: "/dashboard/centre/enrolled", label: "Enrolled" },
 ];
 
 const SETTINGS_LINKS = [

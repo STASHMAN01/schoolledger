@@ -196,6 +196,7 @@ export const childProfileSchema = z.object({
   dateOfBirth: z.preprocess(emptyToUndefined, z.coerce.date().optional().nullable()),
   photoImage: z.preprocess(emptyStringToUndefined, imageDataUrlSchema.optional().nullable()),
   photoConsentGiven: z.boolean().optional(),
+  gender: z.preprocess(emptyToUndefined, z.enum(["MALE", "FEMALE", "OTHER"]).optional().nullable()),
 });
 
 // A child's parent/guardian, mirroring the paper enrolment form. See the

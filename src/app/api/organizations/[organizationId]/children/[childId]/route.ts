@@ -129,6 +129,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
               : profileBody.photoConsentGiven,
           photoConsentAt:
             profileBody.photoConsentGiven === true ? new Date() : undefined,
+          gender: profileBody.gender === undefined ? undefined : profileBody.gender,
         },
       });
 

@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useOrg, useHasPermission } from "../../../OrgContext";
-import { Badge, Button, Card, Input, Label, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { ImageUploadField } from "@/components/ImageUploadField";
 
 type Guardian = {
@@ -29,6 +29,7 @@ type ChildProfile = {
   lastName: string;
   category: { name: string };
   dateOfBirth: string | null;
+  gender: "MALE" | "FEMALE" | "OTHER" | null;
   photoImage: string | null;
   photoConsentGiven: boolean;
   childIdNumber: string | null;
@@ -361,6 +362,19 @@ export default function ChildProfilePage() {
                 onChange={(e) => setDateOfBirth(e.target.value)}
                 onBlur={() => dateOfBirth && patchChild({ dateOfBirth })}
               />
+            </div>
+            <div>
+              <Label>Gender</Label>
+              <Select
+                value={child.gender ?? ""}
+                disabled={!canManage}
+                onChange={(e) => patchChild({ gender: e.target.value || null })}
+              >
+                <option value="">Not specified</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </Select>
             </div>
           </div>
         </Card>

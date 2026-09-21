@@ -7,10 +7,25 @@
 // from Accounting's activity log, per the "activity feed splits by mode"
 // Phase 1 requirement -- there just isn't much else to show here yet.
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useOrg } from "../OrgContext";
 import { Badge, Card, EmptyState, LinkButton, PageHeader } from "@/components/ui";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
 import { describeAuditAction } from "@/lib/auditLabel";
+
+type ChildStat = {
+  category: { id: string };
+  enrollmentDate: string;
+  exitDate: string | null;
+  archived: boolean;
+};
+
+function daysAgo(n: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - n);
+  return d;
+}
 
 type AuditEntry = {
   id: string;
@@ -38,17 +53,21 @@ export default function CentreManagementHomePage() {
   const { organizationId } = useOrg();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [children, setChildren] = useState<ChildStat[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({
       entityTypes: CENTRE_ENTITY_TYPES.join(","),
     });
-    const res = await fetch(
-      `/api/organizations/${organizationId}/audit?${params.toString()}`
-    );
-    const data = await res.json();
-    if (res.ok) setEntries((data.entries ?? []).slice(0, 8));
+    const [activityRes, childrenRes] = await Promise.all([
+      fetch(`/api/organizations/${organizationId}/audit?${params.toString()}`),
+      fetch(`/api/organizations/${organizationId}/children`),
+    ]);
+    const activityData = await activityRes.json();
+    if (activityRes.ok) setEntries((activityData.entries ?? []).slice(0, 8));
+    const childrenData = await childrenRes.json();
+    if (childrenRes.ok) setChildren(childrenData.children);
     setLoading(false);
   }, [organizationId]);
 
@@ -57,6 +76,12 @@ export default function CentreManagementHomePage() {
     load();
   }, [load]);
 
+  const active = children.filter((c) => !c.archived);
+  const enrolledCount = active.filter((c) => !c.exitDate).length;
+  const newThisWeekCount = active.filter(
+    (c) => new Date(c.enrollmentDate) >= daysAgo(7)
+  ).length;
+
   return (
     <div className="animate-in">
       <PageHeader
@@ -64,6 +89,29 @@ export default function CentreManagementHomePage() {
         description="Enrolment, attendance, staff and the rest of centre management are on the way. Billing lives under Accounting, top-left."
         actions={<LinkButton href="/dashboard/centre/children" size="sm">Children</LinkButton>}
       />
+
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Link
+          href="/dashboard/centre/admissions"
+          className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
+        >
+          <p className="text-xs text-muted-foreground">New this week</p>
+          <p className="font-display mt-1 text-2xl font-semibold text-foreground">
+            {loading ? "…" : newThisWeekCount}
+          </p>
+          <p className="mt-1 text-xs text-muted">Admissions, sortable by day/week/month</p>
+        </Link>
+        <Link
+          href="/dashboard/centre/enrolled"
+          className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
+        >
+          <p className="text-xs text-muted-foreground">Enrolled</p>
+          <p className="font-display mt-1 text-2xl font-semibold text-foreground">
+            {loading ? "…" : enrolledCount}
+          </p>
+          <p className="mt-1 text-xs text-muted">Gender, age and class breakdown</p>
+        </Link>
+      </div>
 
       <Card as="div" className="mb-8 p-4">
         <h2 className="font-display mb-3 text-sm font-semibold text-foreground">
@@ -99,7 +147,7 @@ export default function CentreManagementHomePage() {
 
       <EmptyState
         title="More is coming here"
-        description="Admissions, enrolled learners, attendance, staff and events all move in over the next phases — see docs/PLAN.md."
+        description="Attendance, staff and events all move in over the next phases — see docs/PLAN.md."
       />
     </div>
   );
