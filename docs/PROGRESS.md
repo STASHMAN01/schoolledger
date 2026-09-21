@@ -171,3 +171,39 @@ code. Also several of PLAN.md's "open decisions" bear directly on how
 Phase 2 gets built (exits placement, pro-rata vs full-month billing,
 ethnicity field, the two undecided form templates) and the plan
 document itself says to ask rather than assume on these.
+
+## Phase 2, Session 1 — profiles, photos, consent (branch phase2-session1-profiles, commit 874b36e)
+
+Dylan explicitly chose to skip the Phase 0 revenue gate and start Phase 2
+now (see docs/PLAN.md). Also resolved this session, before building:
+exits stay inside Admissions only; mid-month admissions bill the full
+month (no pro-rata/registration fee -- this needed no code change, it's
+already how financialPlan.ts works); ethnicity dropped entirely; the two
+extra form templates are actually four (medical/allergy, photo/media
+consent, emergency contact/pickup authorization, fee agreement/payment
+mandate) -- 7 templates total for Session 3, not 5.
+
+Schema shown to Dylan and approved before writing (per CLAUDE.md): new
+Guardian model + Child.dateOfBirth/photoImage/photoConsentGiven/
+photoConsentAt, all additive. See schema.prisma comments for the full
+reasoning, and this branch's commit message for the complete list of
+scoping calls made without asking.
+
+Shipped: masked-by-default ID numbers (child's, parent's, each
+guardian's) with an audit-logged reveal endpoint; photo upload gated on
+explicit consent, enforced server-side; a Centre Management children
+list + per-child profile page (photo, DOB, guardians CRUD). This is
+also, incidentally, the first time TEACHER/RECEPTIONIST can add a child
+at all, since neither gets VIEW_ACCOUNTING by default and the only
+add-child form used to live under Accounting.
+
+NOT YET DONE -- blocks merge to main: `npx prisma db push` against
+production (Dylan already has DATABASE_URL in his local .env from the
+roles/permissions session, so this should just be running the command
+again). Also could not get a full `tsc --noEmit` pass in this session's
+device shell (hit the 180s tool cap) -- same as every prior
+schema-touching session, needs Dylan's local lint/test/build after
+`npx prisma generate`.
+
+Not started yet: Phase 2 Sessions 2-4 (Admissions/Enrolled tiles, the 7
+form templates, the parent online form).

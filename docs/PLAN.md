@@ -130,17 +130,21 @@ from a school's own Gmail, any WhatsApp integration.
 
 ## Open decisions (see project doc for full list — ask before assuming)
 
-1. Exits: inside Admissions only, or also visible in Accounting so
-   leavers stop being billed?
-2. Mid-month admission: pro-rata from admission date, or full month?
-   Registration fee?
+1. Exits: inside Admissions only (not also broken out in Accounting) —
+   **resolved 2026-09-21.**
+2. Mid-month admission: full month regardless of admission date, no
+   pro-rata, no separate registration fee — **resolved 2026-09-21**
+   (matches existing financialPlan.ts behavior; no code change needed).
 3. Default mode on login: last-used mode, per user.
 4. Receptionist: new role (as scoped in Phase 1) — confirmed, not a
    Manager preset.
-5. Ethnicity: optional field pending legal check, or drop entirely —
-   not resolved, do not build the chart yet.
-6. Form templates: enrolment/re-registration/indemnity confirmed — two
-   more not named yet.
+5. Ethnicity: dropped entirely, no field or chart — **resolved
+   2026-09-21.**
+6. Form templates: enrolment, re-registration, indemnity, plus
+   medical/allergy information, photo/media consent, emergency
+   contact/pickup authorization, and fee agreement/payment mandate —
+   **resolved 2026-09-21** (7 total, not 5 — Dylan picked all four
+   options offered instead of two).
 8. Bring-your-own PDF: form builder + hand-recreating first schools'
    forms, not Adobe-style editing — confirmed approach.
 9. Privacy wording: "processed only on the school's instructions"
@@ -148,3 +152,10 @@ from a school's own Gmail, any WhatsApp integration.
    anywhere the old phrasing appears.
 10. Absence notifications: email only to start — confirmed.
 11. Categories are a flat list, no hierarchy — confirmed (see Phase 1).
+
+## Phase 2 gate — explicitly skipped 2026-09-21
+
+Phase 0's gate (Paystack live + a paying school, or several prospects
+asking for enrolment) was NOT confirmed met. Dylan chose to start Phase 2
+anyway rather than wait — his call, recorded here so it's not mistaken
+for the gate having actually been cleared.
