@@ -10,6 +10,7 @@ import { useParams } from "next/navigation";
 import { useOrg, useHasPermission } from "../../../OrgContext";
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { FORM_TYPES, FORM_TYPE_LABELS, MONEY_FORM_TYPES, type FormType } from "@/lib/forms/types";
 
 type Guardian = {
   id: string;
@@ -21,6 +22,13 @@ type Guardian = {
   phone: string | null;
   email: string | null;
   photoImage: string | null;
+};
+
+type FormDocumentRow = {
+  id: string;
+  formType: FormType;
+  generatedAt: string;
+  generatedBy: { name: string } | null;
 };
 
 type ChildProfile = {
@@ -197,22 +205,55 @@ export default function ChildProfilePage() {
   const [gFirstName, setGFirstName] = useState("");
   const [gLastName, setGLastName] = useState("");
   const [gRelationship, setGRelationship] = useState("");
+  const [documents, setDocuments] = useState<FormDocumentRow[]>([]);
+  const [generating, setGenerating] = useState<FormType | null>(null);
+  const canViewMoney = useHasPermission("VIEW_MONEY");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/organizations/${organizationId}/children/${childId}`);
-    if (res.status === 404) {
+    const [childRes, formsRes] = await Promise.all([
+      fetch(`/api/organizations/${organizationId}/children/${childId}`),
+      fetch(`/api/organizations/${organizationId}/children/${childId}/forms`),
+    ]);
+    if (childRes.status === 404) {
       setNotFound(true);
       setLoading(false);
       return;
     }
-    const data = await res.json();
-    if (res.ok) {
+    const data = await childRes.json();
+    if (childRes.ok) {
       setChild(data.child);
       setDateOfBirth(data.child.dateOfBirth ? data.child.dateOfBirth.slice(0, 10) : "");
     }
+    const formsData = await formsRes.json();
+    if (formsRes.ok) setDocuments(formsData.documents);
     setLoading(false);
   }, [organizationId, childId]);
+
+  async function generateForm(formType: FormType) {
+    setGenerating(formType);
+    setError(null);
+    const res = await fetch(`/api/organizations/${organizationId}/children/${childId}/forms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formType }),
+    });
+    const data = await res.json();
+    setGenerating(null);
+    if (!res.ok) {
+      setError(data.error ?? "Could not generate that form.");
+      return;
+    }
+    setDocuments((prev) => [data.document, ...prev]);
+  }
+
+  function formatGeneratedAt(iso: string) {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount, standard pattern
@@ -449,6 +490,60 @@ export default function ChildProfilePage() {
             />
           ))
         )}
+      </div>
+
+      <div className="mt-6">
+        <h2 className="font-display mb-3 text-sm font-semibold text-foreground">Forms</h2>
+        <Card as="div" className="p-5">
+          <p className="mb-4 text-xs text-muted-foreground">
+            Generates a pre-filled PDF from what&apos;s already on this profile, with blank
+            lines for anything not captured yet. Nothing is emailed automatically -- download
+            and hand it to the parent, or print it. Every generated form is kept, dated, so
+            you can always see what was produced and when.
+          </p>
+          {canManage && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {FORM_TYPES.filter((t) => canViewMoney || !MONEY_FORM_TYPES.includes(t)).map((t) => (
+                <Button
+                  key={t}
+                  size="sm"
+                  variant="secondary"
+                  disabled={generating !== null}
+                  onClick={() => generateForm(t)}
+                >
+                  {generating === t ? "Generating…" : FORM_TYPE_LABELS[t]}
+                </Button>
+              ))}
+            </div>
+          )}
+          {documents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No forms generated yet.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {FORM_TYPE_LABELS[doc.formType]}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatGeneratedAt(doc.generatedAt)}
+                      {doc.generatedBy ? ` · ${doc.generatedBy.name}` : ""}
+                    </p>
+                  </div>
+                  <a
+                    href={`/api/organizations/${organizationId}/children/${childId}/forms/${doc.id}/download`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 text-sm text-brand underline hover:text-brand-hover"
+                  >
+                    View
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );

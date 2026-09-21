@@ -41,6 +41,10 @@ export function describeAuditAction(row: AuditRow): string {
       return "removed a guardian";
     case "child.idNumber.revealed":
       return `viewed a masked ID number`;
+    case "form.generated":
+      return `generated a ${m.formLabel ?? "form"}`;
+    case "form.downloaded":
+      return `downloaded a ${m.formLabel ?? "form"}`;
     case "children.imported": {
       const count = typeof m.created === "number" ? m.created : 0;
       const failed = typeof m.failed === "number" && m.failed > 0 ? ` (${m.failed} row${m.failed === 1 ? "" : "s"} skipped)` : "";
