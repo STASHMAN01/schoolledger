@@ -37,6 +37,46 @@ Not done yet (still on this branch or not started):
 Blocker: `npm run lint`, `npm test`, and `npm run build` would not
 complete inside this session's device shell — they hang with near-zero
 CPU usage, which looks like an I/O stall specific to Node's module
-resolution over the mounted folder, not a code problem. These 3 changes
-are small and were reviewed by hand, but Dylan should run the real
-checks locally before merging.
+resolution over the mounted folder, not a code problem. These checks
+must be run locally, in a real terminal, not through the device bridge.
+
+Verified locally by Dylan (commit 7106575): lint clean, 40/40 tests
+passed, production build compiled and type-checked clean after running
+`npx prisma generate` (stale/missing generated client on this machine,
+unrelated to Phase 1 — a pre-existing issue caught by the build, now
+fixed) and after fixing one real bug of mine: a leftover `roots`
+reference in the Classes page after the flatten (commit 87b457f).
+
+## Phase 1 continued — mode switch (commit 1f911ad)
+
+Added the Centre Management / Accounting mode switch. Billing dashboard
+moved from /dashboard/* to /dashboard/accounting/* (URLs change, no
+behavior change). New /dashboard/centre home (near-empty, per plan).
+New /dashboard smart-redirect based on a `crechely-mode` cookie,
+defaulting to Accounting. Activity feed now genuinely splits: Accounting
+excludes Child/Class entries, Centre Management shows only those.
+
+Scoping calls made without asking (flag if wrong):
+- Settings (incl. Billing, Team) stays fully under Accounting — no
+  Centre-side settings exist yet, splitting it wasn't asked for.
+- Old bookmarked URLs like /dashboard/children now 404 (no redirect
+  shim added) — fine with no live customers, per Dylan.
+- Mode switch button reads "Centre Management" / "Accounting" (short
+  "Centre" on narrow screens) — not verified against a UI mockup since
+  none has been uploaded yet.
+
+Not verified yet: I could not run lint/test/build myself for this
+commit either (same device-bridge limitation as above). Dylan needs to
+run the same 3 commands plus click through: switch modes via the
+top-left toggle, confirm Accounting nav/pages all still work at their
+new /accounting/* URLs, confirm Centre Management home loads and (after
+adding/editing a child or class from Accounting) shows it in "Recent
+centre activity", and confirm the Settings dropdown/Billing/Team pages
+are unaffected.
+
+Still not done in Phase 1: Teacher/Receptionist roles + class
+assignment (needs a schema migration — will show the SQL for approval
+before writing it, per CLAUDE.md), and the route slug rename
+(/dashboard/accounting/categories still says "categories" in the URL,
+not "classes" — left as-is per the original scoping note, flag if
+Dylan wants it renamed too).
