@@ -186,6 +186,37 @@ export const organizationProfileSchema = z.object({
   timezone: z.string().trim().min(1).max(100),
 });
 
+// Phase 2 (centre management) child profile fields -- separate from
+// childSchema above (which stays the Accounting-side create/edit form).
+// dateOfBirth/photoImage/photoConsentGiven are all optional at the schema
+// level; the API route enforces the actual rule ("can't set/change a
+// photo without consent") since that's a cross-field check, not something
+// zod expresses cleanly here.
+export const childProfileSchema = z.object({
+  dateOfBirth: z.preprocess(emptyToUndefined, z.coerce.date().optional().nullable()),
+  photoImage: z.preprocess(emptyStringToUndefined, imageDataUrlSchema.optional().nullable()),
+  photoConsentGiven: z.boolean().optional(),
+});
+
+// A child's parent/guardian, mirroring the paper enrolment form. See the
+// Guardian model comment in schema.prisma for why this is a separate
+// table from Child.parentName/parentPhone/parentEmail.
+export const guardianSchema = z.object({
+  relationship: z.string().trim().min(1, "Relationship is required").max(100),
+  firstName: z.string().trim().min(1, "First name is required").max(100),
+  lastName: z.string().trim().min(1, "Last name is required").max(100),
+  idNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
+  occupation: z.preprocess(emptyToUndefined, z.string().trim().max(150).optional()),
+  // Looser than phoneE164Schema deliberately -- this is a paper-form
+  // contact field for the centre-management profile, not a number the
+  // billing/reminders system will text or call programmatically.
+  phone: z.preprocess(emptyToUndefined, z.string().trim().max(40).optional()),
+  email: z.preprocess(emptyToUndefined, emailSchema.optional()),
+  photoImage: z.preprocess(emptyStringToUndefined, imageDataUrlSchema.optional().nullable()),
+});
+
+export const guardianUpdateSchema = guardianSchema.partial();
+
 export const deletionRequestSchema = z.object({
   targetType: z.enum(["CATEGORY", "CHILD", "PAYMENT"]),
   targetId: z.string().cuid(),

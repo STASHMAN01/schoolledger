@@ -33,6 +33,14 @@ export function describeAuditAction(row: AuditRow): string {
       return "archived a child";
     case "child.restored":
       return "restored a child";
+    case "guardian.created":
+      return `added ${m.firstName ?? "a"} ${m.lastName ?? "guardian"} as a guardian`.trim();
+    case "guardian.updated":
+      return "updated a guardian's details";
+    case "guardian.deleted":
+      return "removed a guardian";
+    case "child.idNumber.revealed":
+      return `viewed a masked ID number`;
     case "children.imported": {
       const count = typeof m.created === "number" ? m.created : 0;
       const failed = typeof m.failed === "number" && m.failed > 0 ? ` (${m.failed} row${m.failed === 1 ? "" : "s"} skipped)` : "";

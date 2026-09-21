@@ -153,6 +153,7 @@ model Organization {
   events        Event[]
   deletionRequests DeletionRequest[]
   reminderSendRequests ReminderSendRequest[]
+  guardians     Guardian[]
 
   @@map("organizations")
 }
@@ -303,6 +304,20 @@ model Child {
   // loose check: this product works across countries.
   childIdNumber  String?
   parentIdNumber String?
+  // Phase 2 (centre management) profile fields -- separate from the
+  // billing-facing parentName/parentPhone/parentEmail above, which stay
+  // untouched as the Accounting side's billing contact. dateOfBirth and
+  // photoImage are both optional since a school can create a bare child
+  // record from the Accounting side without ever touching the fuller
+  // Centre Management profile.
+  dateOfBirth    DateTime?
+  // Same data: URL pattern as Organization.logoImage -- small, capped,
+  // stored directly in the row. Only ever written together with
+  // photoConsentGiven=true in the same request (see validation.ts) --
+  // the API rejects setting/changing a photo without consent.
+  photoImage        String?   @db.Text
+  photoConsentGiven  Boolean   @default(false)
+  photoConsentAt     DateTime?
   // Set whenever an admin/accountant/manager marks a payment reminder as
   // sent for this child (see /dashboard/reminders) — purely informational,
   // lets whoever's doing month-end reminders see who's already been
@@ -320,11 +335,50 @@ model Child {
   planEntries  FinancialPlanEntry[]
   payments     Payment[]
   creditBalance CreditBalance?
+  guardians    Guardian[]
 
   @@index([organizationId])
   @@index([categoryId])
   @@index([organizationId, lastName])
   @@map("children")
+}
+
+// A child's parent(s) or legal guardian(s), mirroring the paper enrolment
+// form -- a child can have more than one (mother, father, other legal
+// guardian). Deliberately separate from Child.parentName/parentPhone/
+// parentEmail, which remain the single billing contact the Accounting
+// side has always used; Guardian is the richer Centre Management profile
+// data and is never read by any billing code path.
+model Guardian {
+  id             String    @id @default(cuid())
+  organizationId String
+  childId        String
+  // Free text ("Mother", "Father", "Grandmother", "Legal guardian", ...)
+  // rather than an enum -- family/legal arrangements vary too much for a
+  // fixed list.
+  relationship   String
+  firstName      String
+  lastName       String
+  // Same "optional, free text, not format-validated" treatment as
+  // Child.childIdNumber/parentIdNumber above, and masked the same way by
+  // the API by default (see src/lib/idMask.ts) with an audit-logged
+  // reveal (AuditLog action "child.idNumber.revealed").
+  idNumber       String?
+  occupation     String?
+  phone          String?
+  email          String?
+  // Same data: URL pattern as Child.photoImage -- only ever written
+  // together with the child's photoConsentGiven=true.
+  photoImage     String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([childId])
+  @@map("guardians")
 }
 
 model PaymentType {

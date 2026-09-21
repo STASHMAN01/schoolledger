@@ -8,7 +8,7 @@
 // Phase 1 requirement -- there just isn't much else to show here yet.
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../OrgContext";
-import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
+import { Badge, Card, EmptyState, LinkButton, PageHeader } from "@/components/ui";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
 import { describeAuditAction } from "@/lib/auditLabel";
 
@@ -62,6 +62,7 @@ export default function CentreManagementHomePage() {
       <PageHeader
         title="Centre Management"
         description="Enrolment, attendance, staff and the rest of centre management are on the way. Billing lives under Accounting, top-left."
+        actions={<LinkButton href="/dashboard/centre/children" size="sm">Children</LinkButton>}
       />
 
       <Card as="div" className="mb-8 p-4">

@@ -7,9 +7,7 @@ import { useOrg } from "./OrgContext";
 
 // Accounting mode's nav -- everything that was on the single dashboard
 // nav before the Phase 1 mode-switch restructure, now scoped under
-// /dashboard/accounting. Centre Management has no sub-nav yet (Phase 1
-// gives it one page); it'll get its own LINKS list here once Phase 2+
-// gives it more than one page to link between.
+// /dashboard/accounting.
 const ACCOUNTING_LINKS = [
   { href: "/dashboard/accounting", label: "Home", exact: true },
   { href: "/dashboard/accounting/children", label: "Children" },
@@ -17,6 +15,15 @@ const ACCOUNTING_LINKS = [
   { href: "/dashboard/accounting/categories", label: "Classes" },
   { href: "/dashboard/accounting/events", label: "Events" },
   { href: "/dashboard/accounting/reminders", label: "Reminders" },
+];
+
+// Centre Management's nav -- Phase 1 shipped with just the Home page, so
+// this stayed empty; Phase 2 Session 1 adds the Children list/profiles,
+// so it needs a real nav now. Grows with Admissions/Enrolled/Attendance
+// etc. in later Phase 2/3 sessions.
+const CENTRE_LINKS = [
+  { href: "/dashboard/centre", label: "Home", exact: true },
+  { href: "/dashboard/centre/children", label: "Children" },
 ];
 
 const SETTINGS_LINKS = [
@@ -38,10 +45,10 @@ export function NavLinks() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const { permissions } = useOrg();
-  // Centre Management has nothing to link between yet (Phase 1: one
-  // page). Nav (and the Settings dropdown, which is Accounting-only --
-  // billing, team, payment types) only renders in Accounting mode.
+  // The Settings dropdown (billing, team, payment types) is
+  // Accounting-only; Centre Management gets its own, shorter link set.
   const inAccounting = pathname.startsWith("/dashboard/accounting");
+  const links = inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS;
 
   // Native <details> has no click-outside-to-close behavior, which Dylan
   // flagged as a bug (clicking anywhere else left the Settings menu open).
@@ -78,12 +85,10 @@ export function NavLinks() {
     (l) => permissions.includes("MANAGE_TEAM") || !adminOnlySettings.includes(l.href)
   );
 
-  if (!inAccounting) return null;
-
   return (
     <>
       <nav className="hidden items-center gap-1 md:flex">
-        {ACCOUNTING_LINKS.map((l) => (
+        {links.map((l) => (
           <Link
             key={l.href}
             href={l.href}
@@ -96,6 +101,7 @@ export function NavLinks() {
             {l.label}
           </Link>
         ))}
+        {inAccounting && (
         <div ref={settingsRef} className="relative">
           <button
             type="button"
@@ -141,6 +147,7 @@ export function NavLinks() {
             </div>
           )}
         </div>
+        )}
       </nav>
 
       <button
@@ -171,7 +178,7 @@ export function NavLinks() {
       {mobileOpen && (
         <div className="animate-in absolute inset-x-0 top-full z-20 border-b border-border bg-surface px-4 py-3 shadow-lg md:hidden">
           <div className="flex flex-col gap-1">
-            {[...ACCOUNTING_LINKS, ...settingsVisible].map((l) => (
+            {[...links, ...(inAccounting ? settingsVisible : [])].map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

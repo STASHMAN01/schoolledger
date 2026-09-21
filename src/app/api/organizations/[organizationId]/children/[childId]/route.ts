@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
-import { childSchema } from "@/lib/validation";
+import { childSchema, childProfileSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { cancelEntriesAfterExit } from "@/lib/billing/financialPlan";
+import { maskIdNumber } from "@/lib/idMask";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
 
@@ -22,6 +23,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           include: { paymentType: true },
           orderBy: [{ year: "asc" }, { month: "asc" }],
         },
+        guardians: { orderBy: { createdAt: "asc" } },
       },
     });
     // Same "Not found" for a real mismatch and a TEACHER outside their own
@@ -30,7 +32,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    return NextResponse.json({ child });
+    // ID numbers are masked by default everywhere -- see reveal-id/route.ts
+    // for the audit-logged endpoint that returns the real value.
+    return NextResponse.json({
+      child: {
+        ...child,
+        childIdNumber: maskIdNumber(child.childIdNumber),
+        parentIdNumber: maskIdNumber(child.parentIdNumber),
+        guardians: child.guardians.map((g) => ({ ...g, idNumber: maskIdNumber(g.idNumber) })),
+      },
+    });
   } catch (err) {
     return handleApiError(err);
   }
@@ -51,7 +62,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const body = childSchema.partial().parse(await req.json());
+    const rawBody = await req.json();
+    const body = childSchema.partial().parse(rawBody);
+    const profileBody = childProfileSchema.parse(rawBody);
+
+    // A photo can only be set/changed alongside explicit consent -- either
+    // this request is granting it (photoConsentGiven: true) or the child
+    // already has it on file from an earlier request.
+    if (
+      profileBody.photoImage !== undefined &&
+      profileBody.photoImage !== null &&
+      !profileBody.photoConsentGiven &&
+      !existing.photoConsentGiven
+    ) {
+      return NextResponse.json(
+        { error: "Photo consent is required before a photo can be saved." },
+        { status: 400 }
+      );
+    }
 
     if (role === "TEACHER" && body.categoryId && body.categoryId !== assignedCategoryId) {
       return NextResponse.json(
@@ -91,6 +119,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           exitDate: body.exitDate === undefined ? undefined : body.exitDate,
           feeOverrideCents:
             body.feeOverrideCents === undefined ? undefined : body.feeOverrideCents,
+          dateOfBirth:
+            profileBody.dateOfBirth === undefined ? undefined : profileBody.dateOfBirth,
+          photoImage:
+            profileBody.photoImage === undefined ? undefined : profileBody.photoImage,
+          photoConsentGiven:
+            profileBody.photoConsentGiven === undefined
+              ? undefined
+              : profileBody.photoConsentGiven,
+          photoConsentAt:
+            profileBody.photoConsentGiven === true ? new Date() : undefined,
         },
       });
 
