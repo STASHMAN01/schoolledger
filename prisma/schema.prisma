@@ -54,6 +54,17 @@ enum Permission {
   VIEW_ACTIVITY_LOG // can view the audit/activity feed
 }
 
+// A child's gender, for the Enrolled tile's gender breakdown chart
+// (Phase 2 Session 2). Optional -- a school can leave it blank, same as
+// ID numbers. Deliberately NOT the same category as ethnicity (dropped
+// entirely, see docs/PLAN.md decision #5, over POPIA/legal caution) --
+// gender wasn't flagged as needing that same check.
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 enum PaymentMethod {
   CASH
   EFT
@@ -311,6 +322,7 @@ model Child {
   // record from the Accounting side without ever touching the fuller
   // Centre Management profile.
   dateOfBirth    DateTime?
+  gender         Gender?
   // Same data: URL pattern as Organization.logoImage -- small, capped,
   // stored directly in the row. Only ever written together with
   // photoConsentGiven=true in the same request (see validation.ts) --
