@@ -80,3 +80,59 @@ before writing it, per CLAUDE.md), and the route slug rename
 (/dashboard/accounting/categories still says "categories" in the URL,
 not "classes" — left as-is per the original scoping note, flag if
 Dylan wants it renamed too).
+
+## Phase 1 continued — roles & permissions (branch phase1-roles-permissions, commit 1b63ae7)
+
+Added TEACHER and RECEPTIONIST roles plus a full per-person permission
+system, replacing every hardcoded role-array check in the API with a
+closed set of 14 Permissions (src/lib/permissions.ts). Each role has a
+hardcoded default permission set; an admin can now grant/revoke any one
+permission for any one person from Settings -> Team, independent of
+their role, and undo it just as easily -- this was an explicit design
+request from Dylan mid-session, replacing the earlier "just add the two
+roles" scope.
+
+Schema (NOT YET APPLIED to the database -- see below): new Permission
+enum, new membership_permissions table, Membership.assignedCategoryId
+(a Teacher's one class), Role gains TEACHER/RECEPTIONIST.
+
+Audited and fixed the thing Phase 1 asked to audit: "Managers keep their
+existing 'cannot see money' restriction" was never actually true -- a
+MANAGER could view GET /payments, the dashboard's financial totals, and
+generate statements. Fixed by gating those (plus the reminders/
+outstanding list) behind a new VIEW_MONEY permission, which MANAGER (and
+VIEWER, for the same reason) no longer gets by default. Grantable back
+per-person via an override.
+
+TEACHER's children access is scoped server-side to their
+assignedCategoryId in every children route, not just hidden in a nav
+link -- "own class only" per the plan.
+
+Scoping calls made without asking (flag if wrong):
+- Individual child records (GET /children/:id) stay visible to any
+  member, including their fee/plan-entry data -- only fixed the
+  "list of money" surfaces (payments list, dashboard totals, statements,
+  reminders list) that the audit specifically found. Fully redacting an
+  individual child's own financial history from Manager would be a much
+  bigger Children-page redesign and wasn't what was asked.
+- A role with SEND_REMINDERS but not VIEW_MONEY (Manager, by default)
+  can no longer open the Reminders page at all, since that list is
+  inherently shaped like money (shows exactly what each parent owes).
+  They keep SEND_REMINDERS for whenever Centre Management grows its own
+  reminders view; there's no page for it to power yet.
+- Payment-types management (create/edit/deactivate) mapped to the new
+  MANAGE_SETTINGS permission (was ADMIN-only already, unchanged).
+- Team page tooltips use the native `title` attribute (hover to see a
+  description), not a custom tooltip component.
+
+NOT YET DONE -- blocks this from being pushed to main:
+`npx prisma db push` (this project has no tracked migrations directory,
+so db push is how schema changes reach the database here) has NOT been
+run. Vercel's build will regenerate the Prisma Client fine on its own
+(prisma's own postinstall hook), but nothing applies the new
+enum values/table/column to the actual database -- and dashboard/
+layout.tsx (used by every single /dashboard/* page) now queries
+Membership.permissionOverrides unconditionally, so deploying this
+before the db push would 500 the entire dashboard for every user,
+immediately. Dylan needs to run db push himself against production
+first; I don't have and shouldn't use production DB credentials.
