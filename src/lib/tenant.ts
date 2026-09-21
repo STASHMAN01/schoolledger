@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import type { Permission, Role } from "@prisma/client";
+import type { Permission } from "@prisma/client";
 import { hasActiveAccess } from "@/lib/billing/access";
 import { getEffectivePermissions } from "@/lib/permissions";
 

@@ -60,7 +60,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId, role, permissions } = await requireMembership(
+    const { userId, permissions } = await requireMembership(
       organizationId,
       "REQUEST_DELETION"
     );
