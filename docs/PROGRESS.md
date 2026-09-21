@@ -503,3 +503,44 @@ Session 4 is done, merged, and live. Phase 2 (all four sessions --
 statement PDF, admissions/enrolled workflow, seven form templates,
 parent online enrolment form) is now complete and verified live on
 crechely.co.za.
+
+## Phase 3, Session 1 -- daily attendance (2026-09-21, built, not yet verified)
+
+First session of Phase 3 (Daily running). New `AttendanceRecord` model
+(one row per child per calendar day, `AttendanceStatus` PRESENT/ABSENT
+only -- deliberately no Late/Excused in this first pass, matching the
+plan's own wording) plus a new `MANAGE_ATTENDANCE` permission, defaulted
+to Teacher (scoped server-side to their own assigned class, same rule as
+MANAGE_CHILDREN), Receptionist (org-wide), and Manager.
+
+Shipped:
+- Teacher-facing register at `/dashboard/centre/attendance`: everyone
+  defaults to Present, tap a child to flip them Absent, one "Save
+  register" call upserts the whole class/day in one request -- built to
+  match the plan's own "under a minute on a phone" bar. A TEACHER never
+  sees a class picker (the API forces their assignedCategoryId); any
+  other MANAGE_ATTENDANCE role picks a class from a dropdown first.
+- Centre Management dashboard gets a fourth tile, Attendance (grid moved
+  to 4 columns on desktop): Present is a plain number, Absent is a
+  clickable link straight into the notify flow, and an untaken register
+  shows "Not taken yet -- take register" instead of a 0.
+- `/dashboard/centre/attendance/absent`: today's absent children (a
+  TEACHER's own class only; anyone else sees every class) with a single
+  "Notify absent parents (N)" button that emails every not-yet-notified
+  parent with an email on file in one tap and marks `notifiedAt`, so a
+  second tap never double-sends. Deliberately no 2-person approval gate
+  here (unlike the money-reminders "send all") -- this is a same-day
+  informational notice, not a request for money, and the plan explicitly
+  wants it to be an immediate single tap.
+- Audit-logged: one `attendance.marked` entry per register save (with
+  the class name and present/absent counts, not one entry per child --
+  would be noisy for a daily action) and one
+  `attendance.absentParentsNotified` entry per notify tap (with the
+  count actually sent).
+
+NOT YET DONE -- blocks merge to main: `npx prisma db push` against
+production for the new table, and Dylan's local lint/test/build pass
+(same device-shell limitations as every prior schema-touching session --
+`npx prisma validate` still 403s fetching engine binaries here). Manual
+brace/paren-balance check across all 14 changed/new files passed; full
+local verification is the real gate before this goes live.
