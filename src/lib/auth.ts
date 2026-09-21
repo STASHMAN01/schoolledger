@@ -36,7 +36,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // emails from one source doesn't fly under the per-email limit.
         const ip = request?.headers?.get("x-forwarded-for") ?? "unknown";
         const byEmail = rateLimit(`login:email:${email}`, {
-          limit: 5,
+          limit: 10,
           windowMs: 15 * 60 * 1000,
         });
         const byIp = rateLimit(`login:ip:${ip}`, {
