@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHeader } from "@/components/MarketingHeader";
+import { auth } from "@/lib/auth";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { Card } from "@/components/ui";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
@@ -48,10 +49,11 @@ const GUIDE_SECTIONS = [
   },
 ];
 
-export default function SupportPage() {
+export default async function SupportPage() {
+  const session = await auth();
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <MarketingHeader />
+      <MarketingHeader isAuthenticated={Boolean(session?.user?.id)} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
         <h1 className="font-display text-2xl font-semibold text-foreground">
           Contact us &amp; how to use Crechely

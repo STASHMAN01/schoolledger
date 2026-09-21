@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LinkButton } from "@/components/ui";
 import { MarketingHeader } from "@/components/MarketingHeader";
+import { auth } from "@/lib/auth";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
 import { TRIAL_DAYS } from "@/lib/trial";
@@ -80,10 +81,11 @@ const FAQ = [
   },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const session = await auth();
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <MarketingHeader />
+      <MarketingHeader isAuthenticated={Boolean(session?.user?.id)} />
 
       <main className="flex-1">
         <section className="mx-auto max-w-3xl px-4 pb-6 pt-14 sm:px-6 sm:pt-20">

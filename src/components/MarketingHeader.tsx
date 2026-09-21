@@ -3,7 +3,14 @@ import { LinkButton } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
 
-export function MarketingHeader() {
+// isAuthenticated: pass true from a server-component page that already
+// checked auth() -- otherwise this header has no idea the visitor is
+// signed in and always shows "Log in"/"Start free trial", which looks
+// like the app just logged them out the moment they click, say, Support
+// from inside the dashboard (real bug Dylan hit, 2026-09-21: the session
+// was never actually gone, this header just can't see it). Defaults to
+// false so a caller that hasn't been updated yet keeps today's behavior.
+export function MarketingHeader({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
   return (
     <header className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
@@ -33,12 +40,20 @@ export function MarketingHeader() {
             Contact Us
           </Link>
           <ThemeToggle />
-          <LinkButton href="/login" variant="ghost" size="sm">
-            Log in
-          </LinkButton>
-          <LinkButton href="/register" size="sm">
-            Start free trial
-          </LinkButton>
+          {isAuthenticated ? (
+            <LinkButton href="/dashboard" size="sm">
+              Dashboard
+            </LinkButton>
+          ) : (
+            <>
+              <LinkButton href="/login" variant="ghost" size="sm">
+                Log in
+              </LinkButton>
+              <LinkButton href="/register" size="sm">
+                Start free trial
+              </LinkButton>
+            </>
+          )}
         </nav>
       </div>
     </header>

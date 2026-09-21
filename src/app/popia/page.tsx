@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Link from "next/link";
 import { MarketingHeader } from "@/components/MarketingHeader";
+import { auth } from "@/lib/auth";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { LegalDoc } from "@/components/LegalDoc";
 
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function PopiaPage() {
+export default async function PopiaPage() {
+  const session = await auth();
   const markdown = fs.readFileSync(
     path.join(process.cwd(), "legal", "POPIA_NOTICE.md"),
     "utf-8"
@@ -22,7 +24,7 @@ export default function PopiaPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <MarketingHeader />
+      <MarketingHeader isAuthenticated={Boolean(session?.user?.id)} />
       <main className="flex-1">
         <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
           <div className="rounded-lg border border-accent/40 bg-accent-soft px-4 py-3 text-sm text-accent-soft-foreground">
