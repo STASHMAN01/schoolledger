@@ -12,13 +12,22 @@ statements, reminders). No paying customers yet.
 - If something isn't in the plan or contradicts it, stop and ask.
 
 # Workflow
-- One branch per phase. Commit small. NEVER push or merge to main; I do
-  that.
-- Before saying a phase is done: run `npm run test`, `npm run lint` and
-  `npm run build`, and show me the output.
-- Database changes: show me the migration SQL and wait for approval. Use
-  the local dev database only. Never use production credentials and never
-  edit .env files.
+- Updated 2026-09-21, replaces the earlier "never push/merge" rule:
+  local verification (lint/test/build) was too slow/manual for Dylan
+  to keep running. New flow: build the full phase, merge and push to
+  main directly (main deploys straight to crechely.co.za via Vercel --
+  no staging buffer), then do a joint bug-hunt pass against the live
+  site afterward instead of checking before every merge.
+- Still commit small, still one branch per phase, so there's a real
+  diff to look at and a revert point if something's wrong.
+- After merging, check the Vercel deployment (build status/logs) before
+  calling it done -- that's the one automated check standing in for the
+  local build step.
+- EXCEPTION, still requires stopping and asking first: any database
+  migration. Show Dylan the migration SQL and wait for approval before
+  running it -- a bad migration can lose data in a way a bad UI change
+  can't, so this one stays gated regardless of the rest of this policy.
+  Never use production credentials directly; never edit .env files.
 - Payments: Paystack, not Stripe. Don't touch the billing checkout unless
   the task says so.
 
