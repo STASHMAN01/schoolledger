@@ -58,6 +58,14 @@ export function describeAuditAction(row: AuditRow): string {
       return "revoked a pending invite";
     case "invite.accepted":
       return "accepted an invite and joined the team";
+    case "membership.updated": {
+      const prev = m.previousRole ?? "";
+      const next = m.newRole ?? "";
+      const name = m.memberName ?? "a team member";
+      return prev && next && prev !== next
+        ? `changed ${name}'s role from ${prev} to ${next}`
+        : `updated ${name}'s access`;
+    }
     case "billing.subscriptionUpdated":
       return `updated the subscription (${m.status ?? ""})`.trim();
     case "credit.applied":

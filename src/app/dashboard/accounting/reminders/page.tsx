@@ -6,7 +6,7 @@ import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, PageHeader, Textarea } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
-import { canHandleReminderSend, REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
+import { REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
 import {
   DEFAULT_REMINDER_TEMPLATE,
   REMINDER_TEMPLATES,
@@ -51,9 +51,9 @@ type SendRequest = {
 };
 
 function RemindersPageInner() {
-  const { organizationId, organizationName, role, currencyCode } = useOrg();
-  const canSend = role !== "VIEWER";
-  const canHandleSendAll = canHandleReminderSend(role);
+  const { organizationId, organizationName, permissions, currencyCode } = useOrg();
+  const canSend = permissions.includes("SEND_REMINDERS");
+  const canHandleSendAll = permissions.includes("VIEW_MONEY");
   const { confirm, dialog } = useConfirmDialog();
   const searchParams = useSearchParams();
   const filterParam = searchParams.get("filter"); // "sent" | "unsent" | null
@@ -82,7 +82,7 @@ function RemindersPageInner() {
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [templateSaved, setTemplateSaved] = useState(false);
-  const canEditTemplate = canHandleReminderSend(role);
+  const canEditTemplate = permissions.includes("VIEW_MONEY");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -292,6 +292,19 @@ function RemindersPageInner() {
     } catch {
       // Same reasoning as copyMessage above — not worth a hard error.
     }
+  }
+
+  if (!canHandleSendAll) {
+    // canHandleSendAll === permissions.includes("VIEW_MONEY") here -- the
+    // reminders list shows exactly what each parent owes, so it needs the
+    // same gate as Payments. A role with SEND_REMINDERS but not VIEW_MONEY
+    // (e.g. MANAGER by default) can still mark things sent from elsewhere
+    // once Centre Management grows its own reminders view -- not built yet.
+    return (
+      <p className="text-sm text-muted-foreground">
+        You don&apos;t have permission to view reminders. Ask an admin.
+      </p>
+    );
   }
 
   return (

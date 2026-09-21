@@ -126,7 +126,7 @@ export const checkoutSchema = z.object({
 
 export const createInviteSchema = z.object({
   email: emailSchema,
-  role: z.enum(["ADMIN", "ACCOUNTANT", "MANAGER", "VIEWER"]),
+  role: z.enum(["ADMIN", "ACCOUNTANT", "MANAGER", "VIEWER", "TEACHER", "RECEPTIONIST"]),
 });
 
 export const acceptInviteSchema = z.object({

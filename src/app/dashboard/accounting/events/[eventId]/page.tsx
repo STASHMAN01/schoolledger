@@ -26,9 +26,9 @@ type EventDetail = {
 };
 
 export default function EventDetailPage() {
-  const { organizationId, role, currencyCode } = useOrg();
+  const { organizationId, permissions, currencyCode } = useOrg();
   const params = useParams<{ eventId: string }>();
-  const canManage = role === "ADMIN" || role === "ACCOUNTANT";
+  const canManage = permissions.includes("MANAGE_EVENTS");
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);

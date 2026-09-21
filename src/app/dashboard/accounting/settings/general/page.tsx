@@ -214,8 +214,8 @@ function ImageUploadField({
 }
 
 export default function GeneralSettingsPage() {
-  const { organizationId, role } = useOrg();
-  const isAdmin = role === "ADMIN";
+  const { organizationId, permissions } = useOrg();
+  const isAdmin = permissions.includes("MANAGE_SETTINGS");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

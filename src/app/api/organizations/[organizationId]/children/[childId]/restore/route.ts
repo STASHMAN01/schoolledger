@@ -9,11 +9,7 @@ type Params = { params: Promise<{ organizationId: string; childId: string }> };
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_CHILDREN");
 
     const existing = await db.child.findFirst({
       where: { id: childId, organizationId },

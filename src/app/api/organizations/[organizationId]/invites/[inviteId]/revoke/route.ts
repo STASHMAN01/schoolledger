@@ -9,7 +9,7 @@ type Params = { params: Promise<{ organizationId: string; inviteId: string }> };
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, inviteId } = await params;
-    const { userId } = await requireMembership(organizationId, ["ADMIN"]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_TEAM");
 
     const invite = await db.invite.findFirst({
       where: { id: inviteId, organizationId },

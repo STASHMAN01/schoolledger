@@ -43,7 +43,8 @@ const statusColor: Record<string, string> = {
 };
 
 export default function ChildDetailPage() {
-  const { organizationId, currencyCode } = useOrg();
+  const { organizationId, currencyCode, permissions } = useOrg();
+  const canViewMoney = permissions.includes("VIEW_MONEY");
   const params = useParams<{ childId: string }>();
   const [child, setChild] = useState<ChildDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -210,33 +211,35 @@ export default function ChildDetailPage() {
             ))}
           </div>
         )}
-        <div className="flex flex-wrap gap-2">
-          <a
-            href={statementUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
-          >
-            View statement
-          </a>
-          <a
-            href={downloadUrl}
-            download
-            className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-background"
-          >
-            Download PDF
-          </a>
-          {canShareFiles && (
-            <button
-              type="button"
-              onClick={shareStatement}
-              disabled={sharing}
-              className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50"
+        {canViewMoney && (
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={statementUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
             >
-              {sharing ? "Preparing…" : "Share"}
-            </button>
-          )}
-        </div>
+              View statement
+            </a>
+            <a
+              href={downloadUrl}
+              download
+              className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-background"
+            >
+              Download PDF
+            </a>
+            {canShareFiles && (
+              <button
+                type="button"
+                onClick={shareStatement}
+                disabled={sharing}
+                className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-background disabled:opacity-50"
+              >
+                {sharing ? "Preparing…" : "Share"}
+              </button>
+            )}
+          </div>
+        )}
         {shareError && <p className="w-full text-xs text-danger">{shareError}</p>}
       </Card>
 

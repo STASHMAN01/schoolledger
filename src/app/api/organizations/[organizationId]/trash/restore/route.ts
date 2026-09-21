@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { isHighPositionRole } from "@/lib/deletion";
+// (isHighPositionRole retired — see src/lib/permissions.ts APPROVE_DELETION)
 import { deletionRequestSchema } from "@/lib/validation";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -13,10 +13,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId, role } = await requireMembership(organizationId);
-    if (!isHighPositionRole(role)) {
-      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
-    }
+    const { userId } = await requireMembership(organizationId, "APPROVE_DELETION");
 
     // Reuses the same {targetType, targetId} shape as a deletion request.
     const body = deletionRequestSchema.parse(await req.json());

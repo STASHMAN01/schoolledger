@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getPrimaryMembership } from "@/lib/org";
+import { getEffectivePermissions } from "@/lib/permissions";
 import { OrgProvider } from "./OrgContext";
 import { SignOutButton } from "./SignOutButton";
 import { TrialBanner } from "./TrialBanner";
@@ -28,6 +29,7 @@ export default async function DashboardLayout({
 
   const org = membership.organization;
   const isPlatformAdmin = await checkIsPlatformAdmin(session.user.id);
+  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides);
 
   return (
     <OrgProvider
@@ -35,6 +37,7 @@ export default async function DashboardLayout({
         organizationId: membership.organizationId,
         organizationName: org.name,
         role: membership.role,
+        permissions,
         hasActiveAccess: hasActiveAccess(org),
         subscriptionStatus: org.subscriptionStatus,
         trialEndsAt: org.trialEndsAt ? org.trialEndsAt.toISOString() : null,

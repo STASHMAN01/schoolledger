@@ -15,7 +15,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function POST(_req: Request, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId, ["ADMIN"], { skipAccessCheck: true });
+    await requireMembership(organizationId, "MANAGE_BILLING", { skipAccessCheck: true });
 
     const organization = await db.organization.findUnique({
       where: { id: organizationId },

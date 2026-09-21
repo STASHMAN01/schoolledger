@@ -16,13 +16,13 @@ function csvField(value: string): string {
   return value;
 }
 
-// Same view permission as GET /payments (any member) — this is just a
-// different rendering of data they can already see on the Payments page,
-// not a new disclosure.
+// Same view permission as GET /payments — this is just a different
+// rendering of data they can already see on the Payments page, not a new
+// disclosure.
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId);
+    await requireMembership(organizationId, "VIEW_MONEY");
 
     const method = req.nextUrl.searchParams.get("method") ?? undefined;
     const categoryId = req.nextUrl.searchParams.get("categoryId") ?? undefined;

@@ -13,6 +13,6 @@ export async function getPrimaryMembership(userId: string) {
   return db.membership.findFirst({
     where: { userId },
     orderBy: { createdAt: "asc" },
-    include: { organization: true },
+    include: { organization: true, permissionOverrides: true },
   });
 }

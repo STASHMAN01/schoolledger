@@ -37,7 +37,7 @@ export function NavLinks() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
-  const { role } = useOrg();
+  const { permissions } = useOrg();
   // Centre Management has nothing to link between yet (Phase 1: one
   // page). Nav (and the Settings dropdown, which is Accounting-only --
   // billing, team, payment types) only renders in Accounting mode.
@@ -75,7 +75,7 @@ export function NavLinks() {
     "/dashboard/accounting/settings/trash",
   ];
   const settingsVisible = SETTINGS_LINKS.filter(
-    (l) => role === "ADMIN" || !adminOnlySettings.includes(l.href)
+    (l) => permissions.includes("MANAGE_TEAM") || !adminOnlySettings.includes(l.href)
   );
 
   if (!inAccounting) return null;

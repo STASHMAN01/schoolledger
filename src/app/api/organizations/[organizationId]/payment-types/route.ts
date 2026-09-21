@@ -10,7 +10,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId);
+    await requireMembership(organizationId); // any member may view
 
     const paymentTypes = await db.paymentType.findMany({
       where: { organizationId },
@@ -26,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, ["ADMIN"]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_SETTINGS");
 
     const body = paymentTypeSchema.parse(await req.json());
 

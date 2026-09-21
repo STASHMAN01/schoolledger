@@ -11,10 +11,20 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId); // any role may view
+    const { userId, role, assignedCategoryId } = await requireMembership(organizationId); // any member may view
 
-    const categoryId = req.nextUrl.searchParams.get("categoryId") ?? undefined;
+    let categoryId = req.nextUrl.searchParams.get("categoryId") ?? undefined;
     const includeArchived = req.nextUrl.searchParams.get("archived") === "true";
+
+    // TEACHER is scoped to their one assigned class ("own class only" per
+    // the plan) — this overrides whatever categoryId the client asked
+    // for, it never widens it.
+    if (role === "TEACHER") {
+      if (!assignedCategoryId) {
+        return NextResponse.json({ children: [] });
+      }
+      categoryId = assignedCategoryId;
+    }
 
     // deletedAt (trashed, pending purge) is always excluded regardless of
     // the archived filter — same reasoning as categories.
@@ -65,13 +75,20 @@ export async function GET(req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId, role, assignedCategoryId } = await requireMembership(
+      organizationId,
+      "MANAGE_CHILDREN"
+    );
 
     const body = childSchema.parse(await req.json());
+
+    // TEACHER can only add children to their own assigned class.
+    if (role === "TEACHER" && body.categoryId !== assignedCategoryId) {
+      return NextResponse.json(
+        { error: "You can only add children to your own class." },
+        { status: 403 }
+      );
+    }
 
     // The category MUST belong to this organization — same reasoning as
     // categories.parentId: never trust a foreign-key id from the client

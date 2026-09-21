@@ -16,7 +16,7 @@ const PAGE_SIZE = 30;
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId);
+    await requireMembership(organizationId, "VIEW_ACTIVITY_LOG");
 
     const cursor = req.nextUrl.searchParams.get("cursor");
     // "since" (ISO datetime) powers the dashboard's recent-activity card

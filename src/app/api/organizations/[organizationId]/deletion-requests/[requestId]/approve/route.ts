@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { REQUIRED_DELETION_APPROVALS, isHighPositionRole } from "@/lib/deletion";
+import { REQUIRED_DELETION_APPROVALS } from "@/lib/deletion";
 import { statusForEntry } from "@/lib/billing/allocation";
 
 type Params = { params: Promise<{ organizationId: string; requestId: string }> };
@@ -15,10 +15,7 @@ type Params = { params: Promise<{ organizationId: string; requestId: string }> }
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, requestId } = await params;
-    const { userId, role } = await requireMembership(organizationId);
-    if (!isHighPositionRole(role)) {
-      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
-    }
+    const { userId } = await requireMembership(organizationId, "APPROVE_DELETION");
 
     const request = await db.deletionRequest.findFirst({
       where: { id: requestId, organizationId },

@@ -13,7 +13,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: Request, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId, ["ADMIN"], { skipAccessCheck: true });
+    await requireMembership(organizationId, "MANAGE_BILLING", { skipAccessCheck: true });
 
     const hasSecretKey = Boolean(process.env.PAYSTACK_SECRET_KEY);
     const hasMonthly = Boolean(process.env.PAYSTACK_PLAN_CODE_MONTHLY);

@@ -5,7 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { reminderTemplateSchema } from "@/lib/validation";
 import { DEFAULT_REMINDER_TEMPLATE } from "@/lib/billing/reminderTemplates";
-import { canHandleReminderSend } from "@/lib/reminderSend";
+// (canHandleReminderSend retired — see src/lib/permissions.ts VIEW_MONEY)
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -19,7 +19,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId); // any role may view
+    await requireMembership(organizationId); // any member may view
 
     const organization = await db.organization.findUnique({
       where: { id: organizationId },
@@ -41,10 +41,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId, role } = await requireMembership(organizationId);
-    if (!canHandleReminderSend(role)) {
-      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
-    }
+    const { userId } = await requireMembership(organizationId, "VIEW_MONEY");
 
     const body = reminderTemplateSchema.parse(await req.json());
 

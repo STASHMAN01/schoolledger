@@ -12,7 +12,7 @@ type Params = {
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, paymentTypeId } = await params;
-    const { userId } = await requireMembership(organizationId, ["ADMIN"]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_SETTINGS");
 
     const existing = await db.paymentType.findFirst({
       where: { id: paymentTypeId, organizationId },
@@ -78,7 +78,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, paymentTypeId } = await params;
-    const { userId } = await requireMembership(organizationId, ["ADMIN"]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_SETTINGS");
 
     const existing = await db.paymentType.findFirst({
       where: { id: paymentTypeId, organizationId },

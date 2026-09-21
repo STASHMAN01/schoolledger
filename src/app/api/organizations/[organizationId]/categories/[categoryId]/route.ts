@@ -10,11 +10,7 @@ type Params = { params: Promise<{ organizationId: string; categoryId: string }> 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, categoryId } = await params;
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_CLASSES");
 
     const existing = await db.category.findFirst({
       where: { id: categoryId, organizationId },
@@ -74,11 +70,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, categoryId } = await params;
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_CLASSES");
 
     const existing = await db.category.findFirst({
       where: { id: categoryId, organizationId },

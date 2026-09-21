@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
-import { isHighPositionRole, trashPurgeCutoff, TRASH_RETENTION_DAYS } from "@/lib/deletion";
+import { trashPurgeCutoff, TRASH_RETENTION_DAYS } from "@/lib/deletion";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -49,10 +49,7 @@ async function purgeExpired(organizationId: string) {
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { role } = await requireMembership(organizationId);
-    if (!isHighPositionRole(role)) {
-      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
-    }
+    await requireMembership(organizationId, "APPROVE_DELETION");
 
     await purgeExpired(organizationId);
 

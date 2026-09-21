@@ -12,7 +12,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId); // any role may view
+    const { userId } = await requireMembership(organizationId, "VIEW_MONEY");
 
     const method = req.nextUrl.searchParams.get("method") ?? undefined;
     const categoryId = req.nextUrl.searchParams.get("categoryId") ?? undefined;
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     // Recording money movement is intentionally narrower than
     // categories/children management — MANAGER can organize the school but
     // does not record payments, per the original role spec.
-    const { userId } = await requireMembership(organizationId, ["ADMIN", "ACCOUNTANT"]);
+    const { userId } = await requireMembership(organizationId, "RECORD_PAYMENTS");
 
     const body = recordPaymentSchema.parse(await req.json());
 

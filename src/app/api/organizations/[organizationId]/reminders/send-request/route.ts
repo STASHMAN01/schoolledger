@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { canHandleReminderSend, REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
+import { REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
 import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -14,7 +14,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId); // any role may view
+    const { userId } = await requireMembership(organizationId); // any member may view
 
     const request = await db.reminderSendRequest.findFirst({
       where: { organizationId, status: "PENDING" },
@@ -47,10 +47,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId, role } = await requireMembership(organizationId);
-    if (!canHandleReminderSend(role)) {
-      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
-    }
+    const { userId } = await requireMembership(organizationId, "VIEW_MONEY");
 
     const existing = await db.reminderSendRequest.findFirst({
       where: { organizationId, status: "PENDING" },

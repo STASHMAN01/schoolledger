@@ -27,8 +27,8 @@ const emptyForm = {
 };
 
 export default function EventsPage() {
-  const { organizationId, role, currencyCode } = useOrg();
-  const canManage = role === "ADMIN" || role === "ACCOUNTANT";
+  const { organizationId, permissions, currencyCode } = useOrg();
+  const canManage = permissions.includes("MANAGE_EVENTS");
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [events, setEvents] = useState<EventRow[]>([]);

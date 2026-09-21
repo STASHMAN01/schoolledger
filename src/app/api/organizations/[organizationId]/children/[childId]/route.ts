@@ -11,7 +11,7 @@ type Params = { params: Promise<{ organizationId: string; childId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    await requireMembership(organizationId);
+    const { role, assignedCategoryId } = await requireMembership(organizationId);
 
     const child = await db.child.findFirst({
       where: { id: childId, organizationId },
@@ -24,7 +24,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
         },
       },
     });
-    if (!child) {
+    // Same "Not found" for a real mismatch and a TEACHER outside their own
+    // class — never confirm a child exists in a class they can't see.
+    if (!child || (role === "TEACHER" && child.categoryId !== assignedCategoryId)) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
@@ -37,20 +39,26 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId, role, assignedCategoryId } = await requireMembership(
+      organizationId,
+      "MANAGE_CHILDREN"
+    );
 
     const existing = await db.child.findFirst({
       where: { id: childId, organizationId },
     });
-    if (!existing) {
+    if (!existing || (role === "TEACHER" && existing.categoryId !== assignedCategoryId)) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
     const body = childSchema.partial().parse(await req.json());
+
+    if (role === "TEACHER" && body.categoryId && body.categoryId !== assignedCategoryId) {
+      return NextResponse.json(
+        { error: "You can only move children within your own class." },
+        { status: 403 }
+      );
+    }
 
     if (body.categoryId) {
       const category = await db.category.findFirst({
@@ -119,16 +127,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId, role, assignedCategoryId } = await requireMembership(
+      organizationId,
+      "MANAGE_CHILDREN"
+    );
 
     const existing = await db.child.findFirst({
       where: { id: childId, organizationId },
     });
-    if (!existing) {
+    if (!existing || (role === "TEACHER" && existing.categoryId !== assignedCategoryId)) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 

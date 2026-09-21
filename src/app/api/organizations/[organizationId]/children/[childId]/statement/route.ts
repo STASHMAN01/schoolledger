@@ -10,7 +10,9 @@ type Params = { params: Promise<{ organizationId: string; childId: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { userId } = await requireMembership(organizationId); // any role may view/generate
+    // Generates a PDF of amounts due/paid — money — so this needs VIEW_MONEY
+    // now, same reasoning as GET /payments (see src/lib/permissions.ts).
+    const { userId } = await requireMembership(organizationId, "VIEW_MONEY");
 
     const year = Number(req.nextUrl.searchParams.get("year")) || new Date().getFullYear();
 

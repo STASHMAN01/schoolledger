@@ -4,7 +4,7 @@ import { requireMembership } from "@/lib/tenant";
 import { deletionRequestSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { isHighPositionRole } from "@/lib/deletion";
+// (isHighPositionRole retired — see src/lib/permissions.ts APPROVE_DELETION)
 import { formatCents } from "@/lib/formatMoney";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -15,10 +15,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { role } = await requireMembership(organizationId);
-    if (!isHighPositionRole(role)) {
-      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
-    }
+    await requireMembership(organizationId, "APPROVE_DELETION");
 
     const requests = await db.deletionRequest.findMany({
       where: { organizationId, status: "PENDING" },
@@ -53,28 +50,30 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }
 }
 
-// Anyone who could already archive a category (ADMIN/ACCOUNTANT/MANAGER)
-// can request its deletion; only an ADMIN can request a child's deletion —
-// "no other roles may delete records" per the org owner. Either way this
-// only ever creates a request: nothing is deleted here.
+// Anyone who can manage children/classes can also request their deletion;
+// requesting a child's deletion (or a payment's) additionally needs a
+// permission most roles don't have by default — APPROVE_DELETION for a
+// child (only an admin, by default, per the org owner's original "no
+// other roles may delete records" rule) and VIEW_MONEY for a payment
+// (matches who can see the amount being deleted). Either way this only
+// ever creates a request: nothing is deleted here.
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId, role } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId, role, permissions } = await requireMembership(
+      organizationId,
+      "REQUEST_DELETION"
+    );
 
     const body = deletionRequestSchema.parse(await req.json());
 
-    if (body.targetType === "CHILD" && !isHighPositionRole(role)) {
+    if (body.targetType === "CHILD" && !permissions.includes("APPROVE_DELETION")) {
       return NextResponse.json(
         { error: "Only an admin can request deletion of a child's records." },
         { status: 403 }
       );
     }
-    if (body.targetType === "PAYMENT" && role === "MANAGER") {
+    if (body.targetType === "PAYMENT" && !permissions.includes("VIEW_MONEY")) {
       return NextResponse.json(
         { error: "Only an admin or accountant can request deletion of a payment." },
         { status: 403 }

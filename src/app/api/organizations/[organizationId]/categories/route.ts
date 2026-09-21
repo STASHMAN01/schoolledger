@@ -10,7 +10,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId); // any role may view
+    const { userId } = await requireMembership(organizationId); // any member may view
 
     // deletedAt is a stronger, separate state than `archived` — a category
     // pending/awaiting trash purge never shows up here, "show archived" or
@@ -56,11 +56,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_CLASSES");
 
     const body = categorySchema.parse(await req.json());
 

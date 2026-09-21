@@ -16,11 +16,36 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId); // any role may view for now — see SECURITY.md re: per-field VIEWER scoping (Phase 5)
+    const { permissions } = await requireMembership(organizationId); // any member may view — money fields below are gated per-field on VIEW_MONEY
+    const canViewMoney = permissions.includes("VIEW_MONEY");
 
     const childrenCount = await db.child.count({
       where: { organizationId, archived: false },
     });
+
+    const recentAudit = await db.auditLog.findMany({
+      where: { organizationId },
+      include: { user: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    const activity = recentAudit.map((a) => ({
+      id: a.id,
+      userName: a.user?.name ?? "Someone",
+      label: describeAuditAction(a),
+      createdAt: a.createdAt,
+    }));
+
+    // Everything below this point is money — outstanding/paid totals,
+    // accounts due, reminder counts — so a member without VIEW_MONEY
+    // (e.g. MANAGER by default) gets childrenCount/activity only.
+    if (!canViewMoney) {
+      return NextResponse.json({
+        childrenCount,
+        canViewMoney: false,
+        activity,
+      });
+    }
 
     const outstandingEntries = await db.financialPlanEntry.findMany({
       where: {
@@ -101,15 +126,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
       amountCents: a.amountCents,
     }));
 
-    const recentAudit = await db.auditLog.findMany({
-      where: { organizationId },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
-
     return NextResponse.json({
       childrenCount,
+      canViewMoney: true,
       outstandingTotalCents: outstandingRows.reduce((s, r) => s + r.amountCents, 0),
       outstandingTree: buildDrilldownTree(outstandingRows),
       paidThisMonthTotalCents: paidThisMonthRows.reduce((s, r) => s + r.amountCents, 0),
@@ -117,12 +136,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       accountsDue,
       remindersSentCount,
       remindersUnsentCount,
-      activity: recentAudit.map((a) => ({
-        id: a.id,
-        userName: a.user?.name ?? "Someone",
-        label: describeAuditAction(a),
-        createdAt: a.createdAt,
-      })),
+      activity,
     });
   } catch (err) {
     return handleApiError(err);

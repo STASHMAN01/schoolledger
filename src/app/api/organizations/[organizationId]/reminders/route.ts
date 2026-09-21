@@ -16,7 +16,9 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId); // any role may view
+    // Shows exactly what each parent owes — money — so this needs VIEW_MONEY
+    // now (see src/lib/permissions.ts).
+    await requireMembership(organizationId, "VIEW_MONEY");
 
     const organization = await db.organization.findUnique({
       where: { id: organizationId },

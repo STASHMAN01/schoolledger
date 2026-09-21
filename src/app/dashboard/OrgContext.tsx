@@ -1,12 +1,17 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { Role } from "@prisma/client";
+import type { Permission, Role } from "@prisma/client";
 
 type OrgContextValue = {
   organizationId: string;
   organizationName: string;
   role: Role;
+  // The caller's actual effective permissions (role default + any
+  // per-person overrides an admin has set — see src/lib/permissions.ts).
+  // UI should check THIS, never the role directly, so a permission
+  // override actually changes what someone sees without a code change.
+  permissions: Permission[];
   hasActiveAccess: boolean;
   subscriptionStatus: string;
   trialEndsAt: string | null;
@@ -31,9 +36,7 @@ export function useOrg() {
   return ctx;
 }
 
-// A user with this role can create/edit/archive categories & children.
-// Kept in one place so the rule matches the server-side check in every
-// API route under /api/organizations/[organizationId]/... exactly.
-export function canManage(role: Role) {
-  return role === "ADMIN" || role === "ACCOUNTANT" || role === "MANAGER";
+export function useHasPermission(permission: Permission) {
+  const { permissions } = useOrg();
+  return permissions.includes(permission);
 }

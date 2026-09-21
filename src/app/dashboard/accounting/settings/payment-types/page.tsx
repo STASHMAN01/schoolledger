@@ -15,7 +15,7 @@ type PaymentType = {
 };
 
 export default function PaymentTypesPage() {
-  const { organizationId, role, currencyCode } = useOrg();
+  const { organizationId, permissions, currencyCode } = useOrg();
   const [types, setTypes] = useState<PaymentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export default function PaymentTypesPage() {
     await load();
   }
 
-  if (role !== "ADMIN") {
+  if (!permissions.includes("MANAGE_SETTINGS")) {
     return <p className="text-sm text-muted-foreground">Only an admin can manage payment types.</p>;
   }
 

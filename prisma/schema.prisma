@@ -23,8 +23,35 @@ datasource db {
 enum Role {
   ADMIN // full access: billing, settings, invite/remove users, all data
   ACCOUNTANT // record payments, manage children/categories, generate statements
-  MANAGER // manage children/categories, view financials, cannot manage billing/users
+  MANAGER // manage children/categories, cannot see money (see src/lib/permissions.ts)
   VIEWER // read-only, scope limited by ViewerScope
+  TEACHER // Centre Management only, own assigned class only (assignedCategoryId)
+  RECEPTIONIST // Centre Management only, can add children org-wide
+}
+
+// A specific, closed-set capability a member may or may not have. Roles
+// (above) only decide the DEFAULT set of these (see
+// src/lib/permissions.ts's ROLE_DEFAULT_PERMISSIONS) — the actual
+// effective set for any one person is that default, adjusted by whatever
+// MembershipPermission override rows exist for them. This is what lets an
+// admin loosen/tighten one specific person's access without inventing a
+// new role for them. ADMIN is special-cased in code to always have every
+// permission, not stored/overridable as rows.
+enum Permission {
+  VIEW_CENTRE // can switch into Centre Management mode
+  VIEW_ACCOUNTING // can switch into Accounting mode
+  VIEW_MONEY // can see payment amounts, statements, financial totals
+  RECORD_PAYMENTS // can record/edit payments
+  MANAGE_CHILDREN // can add/edit/archive children (TEACHER: own assigned class only)
+  MANAGE_CLASSES // can add/edit/archive classes
+  MANAGE_EVENTS // can create one-time class-wide charges (events)
+  SEND_REMINDERS // can mark reminders sent; combined with VIEW_MONEY, can run/approve "send all"
+  REQUEST_DELETION // can request a category/child/payment be deleted
+  APPROVE_DELETION // can approve a pending deletion request (2 needed) or restore from trash
+  MANAGE_TEAM // can invite/remove members, change their role/permissions
+  MANAGE_BILLING // can manage the org's own subscription
+  MANAGE_SETTINGS // can edit org profile/letterhead and payment types
+  VIEW_ACTIVITY_LOG // can view the audit/activity feed
 }
 
 enum PaymentMethod {
@@ -170,14 +197,40 @@ model Membership {
   userId         String
   organizationId String
   role           Role
+  // TEACHER only: the one class this teacher is scoped to ("own class
+  // only" per the plan). Null for every other role. Set/cleared from
+  // Settings -> Team by an admin. On delete of the category, this just
+  // clears rather than blocking the category's own deletion flow.
+  assignedCategoryId String?
   createdAt      DateTime @default(now())
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedCategory Category? @relation(fields: [assignedCategoryId], references: [id], onDelete: SetNull)
+  permissionOverrides MembershipPermission[]
 
   @@unique([userId, organizationId])
   @@index([organizationId])
+  @@index([assignedCategoryId])
   @@map("memberships")
+}
+
+// One row per (membership, permission) that differs from that member's
+// role default — see the Permission enum comment. Most members have zero
+// rows here (they just get their role's defaults); this table only holds
+// the deltas an admin has explicitly set from Settings -> Team.
+model MembershipPermission {
+  id           String     @id @default(cuid())
+  membershipId String
+  permission   Permission
+  granted      Boolean
+  createdAt    DateTime   @default(now())
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, permission])
+  @@index([membershipId])
+  @@map("membership_permissions")
 }
 
 // Pending invitations. Token is a random opaque string (never the invite id)
@@ -222,6 +275,7 @@ model Category {
   children     Category[]   @relation("CategoryToParent")
   learners     Child[]
   eventCategories EventCategory[]
+  teacherAssignments Membership[]
 
   @@index([organizationId])
   @@index([parentId])

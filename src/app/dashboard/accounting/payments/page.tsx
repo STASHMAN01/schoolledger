@@ -34,10 +34,10 @@ const emptyForm = {
 };
 
 export default function PaymentsPage() {
-  const { organizationId, role, currencyCode } = useOrg();
-  const canRecord = role === "ADMIN" || role === "ACCOUNTANT";
-  const canRequestDeletion = role === "ADMIN" || role === "ACCOUNTANT";
-  const isAdmin = role === "ADMIN";
+  const { organizationId, permissions, currencyCode } = useOrg();
+  const canRecord = permissions.includes("RECORD_PAYMENTS");
+  const canRequestDeletion = permissions.includes("VIEW_MONEY");
+  const isAdmin = permissions.includes("APPROVE_DELETION");
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -128,6 +128,17 @@ export default function PaymentsPage() {
     );
     setForm({ ...emptyForm, categoryId: form.categoryId });
     await loadPayments();
+  }
+
+  if (!canRequestDeletion) {
+    // canRequestDeletion === permissions.includes("VIEW_MONEY") here --
+    // reused rather than a third boolean, since "can see payment amounts"
+    // is exactly the gate for this whole page.
+    return (
+      <p className="text-sm text-muted-foreground">
+        You don&apos;t have permission to view payments. Ask an admin.
+      </p>
+    );
   }
 
   return (

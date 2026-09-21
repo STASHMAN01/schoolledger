@@ -23,7 +23,7 @@ function maskAccountNumber(plain: string): string {
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { role } = await requireMembership(organizationId);
+    const { permissions } = await requireMembership(organizationId);
 
     const org = await db.organization.findUnique({ where: { id: organizationId } });
     if (!org) {
@@ -35,7 +35,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       try {
         const decrypted = decryptField(org.bankAccountNumber);
         bankAccountNumberDisplay =
-          role === "ADMIN" ? decrypted : maskAccountNumber(decrypted);
+          permissions.includes("MANAGE_SETTINGS") ? decrypted : maskAccountNumber(decrypted);
       } catch {
         // A malformed/legacy value should never 500 the whole settings
         // page — surface it as unreadable so an admin knows to re-enter it.
@@ -71,7 +71,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, ["ADMIN"]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_SETTINGS");
 
     const body = organizationProfileSchema.parse(await req.json());
 

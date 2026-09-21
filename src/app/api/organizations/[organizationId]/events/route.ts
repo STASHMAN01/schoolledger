@@ -10,7 +10,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId); // any role may view
+    await requireMembership(organizationId); // any member may view
 
     const events = await db.event.findMany({
       where: { organizationId },
@@ -51,9 +51,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    // Same role boundary as recording payments/payment types — events move
-    // money, so MANAGER (organize-only) is deliberately excluded.
-    const { userId } = await requireMembership(organizationId, ["ADMIN", "ACCOUNTANT"]);
+    // Events move money, so MANAGE_EVENTS (default ADMIN/ACCOUNTANT only)
+    // is deliberately narrower than MANAGE_CLASSES/MANAGE_CHILDREN.
+    const { userId } = await requireMembership(organizationId, "MANAGE_EVENTS");
 
     const body = eventSchema.parse(await req.json());
 

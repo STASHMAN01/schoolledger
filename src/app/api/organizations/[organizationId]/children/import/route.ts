@@ -39,11 +39,7 @@ function pick(row: Record<string, string>, field: keyof typeof FIELD_ALIASES): s
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_CHILDREN");
 
     const body = childImportSchema.parse(await req.json());
 

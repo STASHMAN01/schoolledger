@@ -37,8 +37,8 @@ const TARGET_TYPE_BADGE: Record<PendingRequest["targetType"], "accent" | "brand"
 };
 
 export default function TrashPage() {
-  const { organizationId, role } = useOrg();
-  const isAdmin = role === "ADMIN";
+  const { organizationId, permissions } = useOrg();
+  const isAdmin = permissions.includes("APPROVE_DELETION");
   const [items, setItems] = useState<TrashItem[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);

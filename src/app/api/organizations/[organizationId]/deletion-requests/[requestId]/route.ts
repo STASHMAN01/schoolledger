@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { isHighPositionRole } from "@/lib/deletion";
+// (isHighPositionRole retired — see src/lib/permissions.ts APPROVE_DELETION)
 
 type Params = { params: Promise<{ organizationId: string; requestId: string }> };
 
@@ -14,7 +14,7 @@ type Params = { params: Promise<{ organizationId: string; requestId: string }> }
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, requestId } = await params;
-    const { userId, role } = await requireMembership(organizationId);
+    const { userId, permissions } = await requireMembership(organizationId);
 
     const request = await db.deletionRequest.findFirst({
       where: { id: requestId, organizationId },
@@ -28,7 +28,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
         { status: 400 }
       );
     }
-    if (!isHighPositionRole(role) && request.requestedByUserId !== userId) {
+    if (!permissions.includes("APPROVE_DELETION") && request.requestedByUserId !== userId) {
       return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
     }
 

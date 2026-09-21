@@ -5,6 +5,7 @@ import { createInviteSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateInviteToken } from "@/lib/inviteToken";
+import { getEffectivePermissions } from "@/lib/permissions";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -16,7 +17,7 @@ const INVITE_EXPIRY_DAYS = 7;
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId, ["ADMIN"]);
+    await requireMembership(organizationId, "MANAGE_TEAM");
 
     const [invites, members] = await Promise.all([
       db.invite.findMany({
@@ -25,7 +26,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
       }),
       db.membership.findMany({
         where: { organizationId },
-        include: { user: { select: { id: true, name: true, email: true } } },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          permissionOverrides: true,
+        },
         orderBy: { createdAt: "asc" },
       }),
     ]);
@@ -44,6 +48,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
         name: m.user.name,
         email: m.user.email,
         role: m.role,
+        assignedCategoryId: m.assignedCategoryId,
+        permissions: getEffectivePermissions(m.role, m.permissionOverrides),
       })),
     });
   } catch (err) {
@@ -54,7 +60,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, ["ADMIN"]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_TEAM");
 
     const body = createInviteSchema.parse(await req.json());
 

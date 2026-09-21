@@ -13,7 +13,7 @@ import { Button } from "@/components/ui";
  * they understand why things stopped working, and knows to ask their admin.
  */
 export function TrialBanner() {
-  const { organizationId, role, hasActiveAccess, subscriptionStatus, trialEndsAt } = useOrg();
+  const { organizationId, permissions, hasActiveAccess, subscriptionStatus, trialEndsAt } = useOrg();
   const [loading, setLoading] = useState<"monthly" | "yearly" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +45,7 @@ export function TrialBanner() {
     <div className="border-b border-accent/30 bg-accent-soft px-6 py-3 text-sm text-accent-soft-foreground">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
         <span>{reason} Access is paused until an admin subscribes.</span>
-        {role === "ADMIN" && (
+        {permissions.includes("MANAGE_BILLING") && (
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => subscribe("monthly")} disabled={loading !== null}>
               {loading === "monthly" ? "Redirecting…" : "Subscribe monthly"}

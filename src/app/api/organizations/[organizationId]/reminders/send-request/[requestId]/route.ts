@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { canHandleReminderSend } from "@/lib/reminderSend";
+// (canHandleReminderSend retired — see src/lib/permissions.ts VIEW_MONEY)
 
 type Params = { params: Promise<{ organizationId: string; requestId: string }> };
 
@@ -13,7 +13,7 @@ type Params = { params: Promise<{ organizationId: string; requestId: string }> }
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, requestId } = await params;
-    const { userId, role } = await requireMembership(organizationId);
+    const { userId, permissions } = await requireMembership(organizationId);
 
     const request = await db.reminderSendRequest.findFirst({
       where: { id: requestId, organizationId },
@@ -27,7 +27,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
         { status: 400 }
       );
     }
-    if (request.requestedByUserId !== userId && !canHandleReminderSend(role)) {
+    if (request.requestedByUserId !== userId && !permissions.includes("VIEW_MONEY")) {
       return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
     }
 

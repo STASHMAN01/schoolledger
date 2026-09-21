@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useOrg, canManage } from "../../OrgContext";
+import { useOrg } from "../../OrgContext";
 import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
@@ -24,7 +24,8 @@ function inputToCents(value: string): number | null {
 }
 
 export default function CategoriesPage() {
-  const { organizationId, role, currencyCode } = useOrg();
+  const { organizationId, permissions, currencyCode } = useOrg();
+  const canManage = permissions.includes("MANAGE_CLASSES");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +105,7 @@ export default function CategoriesPage() {
               </span>
             )}
           </div>
-          {canManage(role) && (
+          {canManage && (
             <div className="flex items-center gap-3">
               <button
                 onClick={() => toggleArchive(category)}
@@ -118,8 +119,8 @@ export default function CategoriesPage() {
                 targetId={category.id}
                 targetLabel={category.name}
                 deletionRequest={category.deletionRequest}
-                canRequest={canManage(role)}
-                isAdmin={role === "ADMIN"}
+                canRequest={canManage}
+                isAdmin={permissions.includes("APPROVE_DELETION")}
                 onChanged={load}
                 confirm={confirm}
               />
@@ -149,7 +150,7 @@ export default function CategoriesPage() {
         }
       />
 
-      {canManage(role) && (
+      {canManage && (
         <Card as="div" className="mb-8 p-4">
           <form onSubmit={addCategory} className="flex flex-wrap items-end gap-3">
             <Label className="flex flex-col gap-1">

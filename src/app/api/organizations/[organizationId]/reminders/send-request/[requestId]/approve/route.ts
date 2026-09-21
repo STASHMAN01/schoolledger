@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { canHandleReminderSend, REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
+import { REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
 import { buildReminderEmailHtml, buildReminderMessage } from "@/lib/billing/reminders";
 import { DEFAULT_REMINDER_TEMPLATE } from "@/lib/billing/reminderTemplates";
 import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
@@ -24,10 +24,7 @@ type Params = { params: Promise<{ organizationId: string; requestId: string }> }
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, requestId } = await params;
-    const { userId, role } = await requireMembership(organizationId);
-    if (!canHandleReminderSend(role)) {
-      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
-    }
+    const { userId } = await requireMembership(organizationId, "VIEW_MONEY");
 
     const request = await db.reminderSendRequest.findFirst({
       where: { id: requestId, organizationId },

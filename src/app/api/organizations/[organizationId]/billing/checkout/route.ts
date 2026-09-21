@@ -13,7 +13,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, ["ADMIN"], {
+    const { userId } = await requireMembership(organizationId, "MANAGE_BILLING", {
       skipAccessCheck: true,
     });
 

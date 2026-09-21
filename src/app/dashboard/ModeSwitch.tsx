@@ -9,6 +9,7 @@
 // preference (which mode /dashboard redirects to next time), never
 // anything sensitive. Read server-side by src/app/dashboard/page.tsx.
 import { usePathname, useRouter } from "next/navigation";
+import { useOrg } from "./OrgContext";
 
 export const MODE_COOKIE = "crechely-mode";
 
@@ -28,12 +29,21 @@ export function ModeSwitch() {
   const pathname = usePathname();
   const router = useRouter();
   const mode = modeFromPathname(pathname);
+  const { permissions } = useOrg();
+  const canCentre = permissions.includes("VIEW_CENTRE");
+  const canAccounting = permissions.includes("VIEW_ACCOUNTING");
 
   function go(next: Mode) {
     if (next === mode) return;
     setModeCookie(next);
     router.push(next === "accounting" ? "/dashboard/accounting" : "/dashboard/centre");
   }
+
+  // Someone who can only reach one mode (e.g. an Accountant with no
+  // VIEW_CENTRE, or a Teacher/Receptionist with no VIEW_ACCOUNTING) has
+  // nothing to switch between — the mode switch itself is the wrong
+  // affordance for them, not just a smaller version of it.
+  if (!canCentre || !canAccounting) return null;
 
   return (
     <div

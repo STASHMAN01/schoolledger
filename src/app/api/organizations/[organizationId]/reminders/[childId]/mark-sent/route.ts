@@ -18,14 +18,9 @@ const bodySchema = z.object({
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    // Same "anyone but VIEWER" boundary as organizing children/categories —
-    // sending a reminder isn't moving money, so it doesn't need the
-    // ADMIN/ACCOUNTANT-only restriction payments do.
-    const { userId } = await requireMembership(organizationId, [
-      "ADMIN",
-      "ACCOUNTANT",
-      "MANAGER",
-    ]);
+    // Sending a reminder isn't moving money, so it doesn't need the
+    // VIEW_MONEY/RECORD_PAYMENTS restriction payments do.
+    const { userId } = await requireMembership(organizationId, "SEND_REMINDERS");
 
     const child = await db.child.findFirst({ where: { id: childId, organizationId } });
     if (!child) {

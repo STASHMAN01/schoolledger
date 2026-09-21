@@ -18,7 +18,7 @@ type Params = {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, eventId, childId } = await params;
-    const { userId } = await requireMembership(organizationId, ["ADMIN", "ACCOUNTANT"]);
+    const { userId } = await requireMembership(organizationId, "MANAGE_EVENTS");
 
     const event = await db.event.findFirst({ where: { id: eventId, organizationId } });
     if (!event) {

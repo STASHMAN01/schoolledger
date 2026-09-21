@@ -7,7 +7,7 @@ import { Button, Card, PageHeader } from "@/components/ui";
 type BillingConfig = { monthlyConfigured: boolean; yearlyConfigured: boolean };
 
 export default function BillingPage() {
-  const { organizationId, role, subscriptionStatus, trialEndsAt, hasActiveAccess } = useOrg();
+  const { organizationId, permissions, subscriptionStatus, trialEndsAt, hasActiveAccess } = useOrg();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -62,7 +62,7 @@ export default function BillingPage() {
     window.location.reload();
   }
 
-  if (role !== "ADMIN") {
+  if (!permissions.includes("MANAGE_BILLING")) {
     return <p className="text-sm text-muted-foreground">Only an admin can manage billing.</p>;
   }
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useOrg, canManage } from "../../OrgContext";
+import { useOrg } from "../../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
@@ -34,7 +34,8 @@ const emptyForm = {
 };
 
 export default function ChildrenPage() {
-  const { organizationId, role } = useOrg();
+  const { organizationId, permissions } = useOrg();
+  const canManage = permissions.includes("MANAGE_CHILDREN");
   const [categories, setCategories] = useState<Category[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
   const [filterCategory, setFilterCategory] = useState("");
@@ -144,7 +145,7 @@ export default function ChildrenPage() {
       <PageHeader
         title="Children"
         actions={
-          canManage(role) ? (
+          canManage ? (
             <ImportChildrenCsv
               organizationId={organizationId}
               categories={categories}
@@ -154,7 +155,7 @@ export default function ChildrenPage() {
         }
       />
 
-      {canManage(role) && (
+      {canManage && (
         <div className="mb-8">
           <button
             type="button"
@@ -179,7 +180,7 @@ export default function ChildrenPage() {
         </div>
       )}
 
-      {canManage(role) && showAddForm && (
+      {canManage && showAddForm && (
         <Card as="div" className="mb-8 p-4">
           <form onSubmit={addChild} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Label className="flex flex-col gap-1">
@@ -313,7 +314,7 @@ export default function ChildrenPage() {
                 <th className="px-3 py-2">Class</th>
                 <th className="px-3 py-2">Parent</th>
                 <th className="px-3 py-2">Enrolled</th>
-                {canManage(role) && <th className="px-3 py-2"></th>}
+                {canManage && <th className="px-3 py-2"></th>}
               </tr>
             </thead>
             <tbody>
@@ -332,7 +333,7 @@ export default function ChildrenPage() {
                   <td className="px-3 py-2">
                     {new Date(c.enrollmentDate).toLocaleDateString()}
                   </td>
-                  {canManage(role) && (
+                  {canManage && (
                     <td className="px-3 py-2 text-right">
                       <div className="flex flex-col items-end gap-1">
                         <button
@@ -347,8 +348,8 @@ export default function ChildrenPage() {
                           targetId={c.id}
                           targetLabel={`${c.firstName} ${c.lastName}`}
                           deletionRequest={c.deletionRequest}
-                          canRequest={role === "ADMIN"}
-                          isAdmin={role === "ADMIN"}
+                          canRequest={permissions.includes("APPROVE_DELETION")}
+                          isAdmin={permissions.includes("APPROVE_DELETION")}
                           onChanged={loadChildren}
                           confirm={confirm}
                         />
