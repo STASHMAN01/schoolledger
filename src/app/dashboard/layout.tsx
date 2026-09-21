@@ -6,6 +6,7 @@ import { OrgProvider } from "./OrgContext";
 import { SignOutButton } from "./SignOutButton";
 import { TrialBanner } from "./TrialBanner";
 import { NavLinks } from "./NavLinks";
+import { ModeSwitch } from "./ModeSwitch";
 import { hasActiveAccess } from "@/lib/billing/access";
 import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -45,6 +46,7 @@ export default async function DashboardLayout({
         <header className="relative border-b border-border bg-surface">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
+              <ModeSwitch />
               {org.logoImage ? (
                 // eslint-disable-next-line @next/next/no-img-element -- base64 data: URL, next/image can't optimize these anyway
                 <img

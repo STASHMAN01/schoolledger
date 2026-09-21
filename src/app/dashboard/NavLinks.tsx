@@ -5,22 +5,27 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useOrg } from "./OrgContext";
 
-const LINKS = [
-  { href: "/dashboard", label: "Home", exact: true },
-  { href: "/dashboard/children", label: "Children" },
-  { href: "/dashboard/payments", label: "Payments" },
-  { href: "/dashboard/categories", label: "Classes" },
-  { href: "/dashboard/events", label: "Events" },
-  { href: "/dashboard/reminders", label: "Reminders" },
+// Accounting mode's nav -- everything that was on the single dashboard
+// nav before the Phase 1 mode-switch restructure, now scoped under
+// /dashboard/accounting. Centre Management has no sub-nav yet (Phase 1
+// gives it one page); it'll get its own LINKS list here once Phase 2+
+// gives it more than one page to link between.
+const ACCOUNTING_LINKS = [
+  { href: "/dashboard/accounting", label: "Home", exact: true },
+  { href: "/dashboard/accounting/children", label: "Children" },
+  { href: "/dashboard/accounting/payments", label: "Payments" },
+  { href: "/dashboard/accounting/categories", label: "Classes" },
+  { href: "/dashboard/accounting/events", label: "Events" },
+  { href: "/dashboard/accounting/reminders", label: "Reminders" },
 ];
 
 const SETTINGS_LINKS = [
-  { href: "/dashboard/settings/general", label: "General" },
-  { href: "/dashboard/settings/payment-types", label: "Payment types" },
-  { href: "/dashboard/settings/team", label: "Team" },
-  { href: "/dashboard/settings/activity", label: "Activity log" },
-  { href: "/dashboard/settings/trash", label: "Trash" },
-  { href: "/dashboard/settings/billing", label: "Billing" },
+  { href: "/dashboard/accounting/settings/general", label: "General" },
+  { href: "/dashboard/accounting/settings/payment-types", label: "Payment types" },
+  { href: "/dashboard/accounting/settings/team", label: "Team" },
+  { href: "/dashboard/accounting/settings/activity", label: "Activity log" },
+  { href: "/dashboard/accounting/settings/trash", label: "Trash" },
+  { href: "/dashboard/accounting/settings/billing", label: "Billing" },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean) {
@@ -33,6 +38,10 @@ export function NavLinks() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const { role } = useOrg();
+  // Centre Management has nothing to link between yet (Phase 1: one
+  // page). Nav (and the Settings dropdown, which is Accounting-only --
+  // billing, team, payment types) only renders in Accounting mode.
+  const inAccounting = pathname.startsWith("/dashboard/accounting");
 
   // Native <details> has no click-outside-to-close behavior, which Dylan
   // flagged as a bug (clicking anywhere else left the Settings menu open).
@@ -61,18 +70,20 @@ export function NavLinks() {
   // and adding a pathname-watching effect just to call setState is an
   // anti-pattern (cascading renders) for no extra benefit here.
   const adminOnlySettings = [
-    "/dashboard/settings/billing",
-    "/dashboard/settings/team",
-    "/dashboard/settings/trash",
+    "/dashboard/accounting/settings/billing",
+    "/dashboard/accounting/settings/team",
+    "/dashboard/accounting/settings/trash",
   ];
   const settingsVisible = SETTINGS_LINKS.filter(
     (l) => role === "ADMIN" || !adminOnlySettings.includes(l.href)
   );
 
+  if (!inAccounting) return null;
+
   return (
     <>
       <nav className="hidden items-center gap-1 md:flex">
-        {LINKS.map((l) => (
+        {ACCOUNTING_LINKS.map((l) => (
           <Link
             key={l.href}
             href={l.href}
@@ -91,7 +102,7 @@ export function NavLinks() {
             onClick={() => setSettingsOpen((v) => !v)}
             aria-expanded={settingsOpen}
             className={`transition-standard flex cursor-pointer list-none items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium ${
-              pathname.startsWith("/dashboard/settings")
+              pathname.startsWith("/dashboard/accounting/settings")
                 ? "bg-brand-soft text-brand-soft-foreground"
                 : "text-muted-foreground hover:bg-background hover:text-foreground"
             }`}
@@ -160,7 +171,7 @@ export function NavLinks() {
       {mobileOpen && (
         <div className="animate-in absolute inset-x-0 top-full z-20 border-b border-border bg-surface px-4 py-3 shadow-lg md:hidden">
           <div className="flex flex-col gap-1">
-            {[...LINKS, ...settingsVisible].map((l) => (
+            {[...ACCOUNTING_LINKS, ...settingsVisible].map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

@@ -22,20 +22,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const emailResult = emailSchema.safeParse(credentials?.email);
         if (!emailResult.success || typeof credentials?.password !== "string") {
           return null;
         }
         const email = emailResult.data;
 
-        // Rate limit by email, not just IP: stops credential-stuffing
-        // against one account from behind a shared/rotating IP.
-        const { allowed } = rateLimit(`login:${email}`, {
+        // Rate limit on two dimensions, both generic-failure (no "which
+        // one tripped" signal to the client): per email, so credential
+        // stuffing against one account from a shared/rotating IP is
+        // still capped; and per IP, so spraying one password across many
+        // emails from one source doesn't fly under the per-email limit.
+        const ip = request?.headers?.get("x-forwarded-for") ?? "unknown";
+        const byEmail = rateLimit(`login:email:${email}`, {
           limit: 10,
           windowMs: 15 * 60 * 1000,
         });
-        if (!allowed) return null;
+        const byIp = rateLimit(`login:ip:${ip}`, {
+          limit: 20,
+          windowMs: 15 * 60 * 1000,
+        });
+        if (!byEmail.allowed || !byIp.allowed) return null;
 
         const user = await db.user.findUnique({ where: { email } });
         if (!user) return null;
