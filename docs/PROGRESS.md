@@ -282,3 +282,34 @@ lint/test/build pass (this session's device shell couldn't run
 network-restricted -- or finish `npm run lint` before hitting the 180s
 tool cap, same recurring limitation as every prior schema-touching
 session). Needs Dylan's local verification before this can go live.
+
+## Phase 2, Session 2 — verified live (2026-09-21)
+
+Merged to main (39dd0b1), `prisma db push` applied, deployed and
+confirmed on crechely.co.za:
+
+- Set Boitshoko Kekana's date of birth (2022-05-14) and gender (Female)
+  from the Centre child profile page -- both saved and persisted
+  through a reload.
+- Enrolled page recalculated live: total 2, Gender chart showed Female
+  1/50% (orange) and Not specified 1/50% (gray), Age chart showed the
+  "4" band 1/50% (blue) and Unknown 1/50% (gray) -- correct given the
+  DOB set above and Joseph Mwenda having none. Classes section listed
+  Daycare (1) and Aftercare (1); expanding Daycare correctly showed
+  Boitshoko Kekana linking to her profile.
+- Admissions page: filter tabs showed live counts (Today/This
+  week/This month all 0, All 2 -- both children were enrolled before
+  this session). Switching to "All" listed both children, newest
+  first, each linking to their profile. Exits section correctly showed
+  empty (neither child has an exit date).
+
+Also hit the CRLF line-ending drift bug again on `git checkout main`
+after merging (11 tracked files flipped to CRLF, equal
+insertions/deletions per file, `core.autocrlf` still unset at both
+local and global scope) -- fixed with `git checkout -- .` before
+committing anything further. Same root cause as before, still
+unidentified; keep checking `git status`/`git diff --stat` for
+disproportionate changes after every checkout in this repo, not just
+after edits.
+
+Starting Phase 2 Session 3 (7 pre-built form templates) next.
