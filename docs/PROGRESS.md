@@ -229,3 +229,56 @@ incorrect data. Flagging in case Dylan wants entity-type tagging
 tightened later.
 
 Starting Phase 2 Session 2 (Admissions + Enrolled tiles) next.
+
+## Phase 2, Session 2 — built, not yet verified (2026-09-21)
+
+Branch `phase2-session2-admissions-enrolled`. Schema change: optional
+`Child.gender` (enum MALE/FEMALE/OTHER), approved by Dylan
+(AskUserQuestion, "Yes, add it as optional") specifically to support the
+Enrolled tile's gender chart -- deliberately not the same call as
+ethnicity (dropped entirely, decision #5): gender wasn't flagged as
+needing that same POPIA caution.
+
+Shipped:
+- **Admissions** (`/dashboard/centre/admissions`): children sorted
+  newest-enrollment-first, with Today/This week/This month/All filter
+  tabs (each showing a live count), plus an **Exits** section beneath
+  it listing every child with an exit date set, newest exit first --
+  inside Admissions, not a separate tile, per decision #1.
+- **Enrolled** (`/dashboard/centre/enrolled`): total currently-enrolled
+  count (excludes archived and anyone with an exit date -- Admissions'
+  Exits section owns those), a gender breakdown chart, an age breakdown
+  chart (computed from dateOfBirth in whole years, bucketed 0/1/2/3/4/5/6+
+  plus Unknown), then classes with counts that expand in place to the
+  children in that class, each linking to their profile.
+- Chart colors follow the dataviz skill's method: gender is nominal
+  categorical (fixed hue order, slots 1-3 of the skill's validated
+  default palette -- documented in `palette.md` as clearing every
+  CVD/contrast gate including all-pairs for exactly a 3-series chart
+  like this), age is ordinal (one hue, monotone weight via opacity
+  since only 3 categorical slots needed a light/dark hex pair and a
+  full per-mode sequential step table wasn't available -- noted as a
+  deliberate simplification in the component's comment, appropriate for
+  an internal admin chart). New `--chart-cat-1/2/3` tokens in
+  globals.css, defined for both light and dark like every other color
+  in this app (no Tailwind `dark:` variant anywhere in this codebase --
+  the whole app swaps via `:root[data-theme="dark"]`, so the chart
+  tokens follow that same pattern rather than introducing a new one).
+- Gender selector added to the Centre child profile page, wired to the
+  same PATCH endpoint as date of birth.
+- Two new stat tiles on the Centre Management home page ("New this
+  week" -> Admissions, "Enrolled" -> Enrolled), plus nav links, per the
+  plan's "every dashboard tile is a number that's also a link"
+  principle.
+
+No new API endpoints -- both pages reuse the existing
+`/children` list endpoint and compute buckets/breakdowns client-side,
+same as the Accounting dashboard's own pattern.
+
+NOT YET DONE -- blocks merge to main: `npx prisma db push` against
+production for the new `gender` column, and a full local
+lint/test/build pass (this session's device shell couldn't run
+`npx prisma generate` -- blocked fetching the engine checksum,
+network-restricted -- or finish `npm run lint` before hitting the 180s
+tool cap, same recurring limitation as every prior schema-touching
+session). Needs Dylan's local verification before this can go live.
