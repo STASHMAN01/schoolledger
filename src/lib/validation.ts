@@ -158,7 +158,7 @@ const emptyStringToUndefined = (v: unknown) => (v === "" ? undefined : v);
 // resizes/re-compresses an image client-side before it ever reaches this
 // schema — this max is a server-side safety net for that, not something a
 // person is expected to hit or work around themselves.
-const imageDataUrlSchema = z
+export const imageDataUrlSchema = z
   .string()
   .trim()
   .regex(
@@ -217,6 +217,31 @@ export const guardianSchema = z.object({
 });
 
 export const guardianUpdateSchema = guardianSchema.partial();
+
+// Phase 2 Session 4 -- the parent-facing online form. Deliberately reuses
+// childProfileSchema's fields (dateOfBirth/gender/photoImage/
+// photoConsentGiven) plus childIdNumber, and guardianSchema unchanged for
+// each guardian, rather than inventing a parallel set of rules -- the
+// submission just becomes a Child/Guardian write later (on approval), so
+// it should be validated by the same rules that write will use.
+export const parentSubmissionChildSchema = childProfileSchema.extend({
+  childIdNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
+});
+
+export const parentSubmissionAttachmentSchema = z.object({
+  kind: z.enum(["CHILD_ID", "GUARDIAN_ID"]),
+  // Index into the submitted guardians array this photo backs, when
+  // kind is GUARDIAN_ID. Ignored for CHILD_ID.
+  guardianIndex: z.number().int().min(0).max(5).optional(),
+  label: z.string().trim().min(1).max(150),
+  image: imageDataUrlSchema,
+});
+
+export const parentSubmissionSchema = z.object({
+  child: parentSubmissionChildSchema,
+  guardians: z.array(guardianSchema).min(1, "Add at least one parent/guardian.").max(6),
+  attachments: z.array(parentSubmissionAttachmentSchema).max(12).optional(),
+});
 
 export const deletionRequestSchema = z.object({
   targetType: z.enum(["CATEGORY", "CHILD", "PAYMENT"]),

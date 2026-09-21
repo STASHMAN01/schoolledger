@@ -54,20 +54,24 @@ export default function CentreManagementHomePage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState<ChildStat[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({
       entityTypes: CENTRE_ENTITY_TYPES.join(","),
     });
-    const [activityRes, childrenRes] = await Promise.all([
+    const [activityRes, childrenRes, reviewsRes] = await Promise.all([
       fetch(`/api/organizations/${organizationId}/audit?${params.toString()}`),
       fetch(`/api/organizations/${organizationId}/children`),
+      fetch(`/api/organizations/${organizationId}/parent-submissions`),
     ]);
     const activityData = await activityRes.json();
     if (activityRes.ok) setEntries((activityData.entries ?? []).slice(0, 8));
     const childrenData = await childrenRes.json();
     if (childrenRes.ok) setChildren(childrenData.children);
+    const reviewsData = await reviewsRes.json();
+    if (reviewsRes.ok) setPendingCount(reviewsData.submissions.length);
     setLoading(false);
   }, [organizationId]);
 
@@ -90,7 +94,7 @@ export default function CentreManagementHomePage() {
         actions={<LinkButton href="/dashboard/centre/children" size="sm">Children</LinkButton>}
       />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link
           href="/dashboard/centre/admissions"
           className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
@@ -110,6 +114,16 @@ export default function CentreManagementHomePage() {
             {loading ? "…" : enrolledCount}
           </p>
           <p className="mt-1 text-xs text-muted">Gender, age and class breakdown</p>
+        </Link>
+        <Link
+          href="/dashboard/centre/pending-reviews"
+          className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
+        >
+          <p className="text-xs text-muted-foreground">Pending reviews</p>
+          <p className="font-display mt-1 text-2xl font-semibold text-foreground">
+            {loading ? "…" : pendingCount}
+          </p>
+          <p className="mt-1 text-xs text-muted">Parent-submitted enrolment forms awaiting approval</p>
         </Link>
       </div>
 

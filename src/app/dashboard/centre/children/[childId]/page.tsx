@@ -12,6 +12,14 @@ import { Badge, Button, Card, Input, Label, PageHeader, Select } from "@/compone
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { FORM_TYPES, FORM_TYPE_LABELS, MONEY_FORM_TYPES, type FormType } from "@/lib/forms/types";
 
+type ParentFormLinkRow = {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  createdBy: { name: string } | null;
+  submission: { id: string; status: "PENDING" | "APPROVED" | "REJECTED"; submittedAt: string | null } | null;
+};
+
 type Guardian = {
   id: string;
   relationship: string;
@@ -207,13 +215,18 @@ export default function ChildProfilePage() {
   const [gRelationship, setGRelationship] = useState("");
   const [documents, setDocuments] = useState<FormDocumentRow[]>([]);
   const [generating, setGenerating] = useState<FormType | null>(null);
+  const [links, setLinks] = useState<ParentFormLinkRow[]>([]);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [newLinkUrl, setNewLinkUrl] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const canViewMoney = useHasPermission("VIEW_MONEY");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [childRes, formsRes] = await Promise.all([
+    const [childRes, formsRes, linksRes] = await Promise.all([
       fetch(`/api/organizations/${organizationId}/children/${childId}`),
       fetch(`/api/organizations/${organizationId}/children/${childId}/forms`),
+      fetch(`/api/organizations/${organizationId}/children/${childId}/parent-form-links`),
     ]);
     if (childRes.status === 404) {
       setNotFound(true);
@@ -227,8 +240,47 @@ export default function ChildProfilePage() {
     }
     const formsData = await formsRes.json();
     if (formsRes.ok) setDocuments(formsData.documents);
+    const linksData = await linksRes.json();
+    if (linksRes.ok) setLinks(linksData.links);
     setLoading(false);
   }, [organizationId, childId]);
+
+  async function generateLink(sendEmail: boolean) {
+    setGeneratingLink(true);
+    setError(null);
+    setNewLinkUrl(null);
+    setLinkCopied(false);
+    const res = await fetch(
+      `/api/organizations/${organizationId}/children/${childId}/parent-form-links`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sendEmail }),
+      }
+    );
+    const data = await res.json();
+    setGeneratingLink(false);
+    if (!res.ok) {
+      setError(data.error ?? "Could not generate a link.");
+      return;
+    }
+    setNewLinkUrl(data.url);
+    const linksRes = await fetch(
+      `/api/organizations/${organizationId}/children/${childId}/parent-form-links`
+    );
+    const linksData = await linksRes.json();
+    if (linksRes.ok) setLinks(linksData.links);
+  }
+
+  function formatLinkStatus(link: ParentFormLinkRow) {
+    if (link.submission) {
+      if (link.submission.status === "PENDING") return "Submitted, awaiting review";
+      if (link.submission.status === "APPROVED") return "Submitted, approved";
+      return "Submitted, rejected";
+    }
+    if (new Date(link.expiresAt) < new Date()) return "Expired, not used";
+    return "Sent, not yet used";
+  }
 
   async function generateForm(formType: FormType) {
     setGenerating(formType);
@@ -539,6 +591,72 @@ export default function ChildProfilePage() {
                   >
                     View
                   </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <h2 className="font-display mb-3 text-sm font-semibold text-foreground">
+          Parent enrolment form
+        </h2>
+        <Card as="div" className="p-5">
+          <p className="mb-4 text-xs text-muted-foreground">
+            Send a one-time link for a parent to fill in on their phone -- date of birth,
+            gender, guardians, and photos of ID documents. Nothing they submit is saved to
+            this profile until you review and approve it below. Links expire after 7 days.
+          </p>
+          {canManage && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" disabled={generatingLink} onClick={() => generateLink(false)}>
+                {generatingLink ? "Generating…" : "Generate link"}
+              </Button>
+              <Button size="sm" variant="secondary" disabled={generatingLink} onClick={() => generateLink(true)}>
+                Generate & email to parent
+              </Button>
+            </div>
+          )}
+          {newLinkUrl && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-background p-3">
+              <code className="min-w-0 flex-1 truncate text-xs text-foreground">{newLinkUrl}</code>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(newLinkUrl);
+                  setLinkCopied(true);
+                }}
+              >
+                {linkCopied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          )}
+          {links.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No links generated yet.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {links.map((link) => (
+                <div key={link.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {formatLinkStatus(link)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatGeneratedAt(link.createdAt)}
+                      {link.createdBy ? ` · ${link.createdBy.name}` : ""}
+                    </p>
+                  </div>
+                  {link.submission && (
+                    <a
+                      href={`/dashboard/centre/pending-reviews/${link.submission.id}`}
+                      className="shrink-0 text-sm text-brand underline hover:text-brand-hover"
+                    >
+                      Review
+                    </a>
+                  )}
                 </div>
               ))}
             </div>

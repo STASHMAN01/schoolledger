@@ -26,6 +26,7 @@ const CENTRE_LINKS = [
   { href: "/dashboard/centre/children", label: "Children" },
   { href: "/dashboard/centre/admissions", label: "Admissions" },
   { href: "/dashboard/centre/enrolled", label: "Enrolled" },
+  { href: "/dashboard/centre/pending-reviews", label: "Pending reviews" },
 ];
 
 const SETTINGS_LINKS = [

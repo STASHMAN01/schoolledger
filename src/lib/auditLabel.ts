@@ -45,6 +45,16 @@ export function describeAuditAction(row: AuditRow): string {
       return `generated a ${m.formLabel ?? "form"}`;
     case "form.downloaded":
       return `downloaded a ${m.formLabel ?? "form"}`;
+    case "parentFormLink.created":
+      return `sent a parent enrolment-form link`;
+    case "parentSubmission.submitted":
+      return `a parent submitted an enrolment form for review`;
+    case "parentSubmission.viewed":
+      return `reviewed a parent's submitted enrolment form`;
+    case "parentSubmission.approved":
+      return `approved a parent's submitted enrolment form`;
+    case "parentSubmission.rejected":
+      return `rejected a parent's submitted enrolment form`;
     case "children.imported": {
       const count = typeof m.created === "number" ? m.created : 0;
       const failed = typeof m.failed === "number" && m.failed > 0 ? ` (${m.failed} row${m.failed === 1 ? "" : "s"} skipped)` : "";

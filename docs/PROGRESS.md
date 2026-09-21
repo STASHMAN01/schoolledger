@@ -409,3 +409,54 @@ Live-verified on crechely.co.za (real child: Boitshoko Kekana):
   to be sure.
 
 Session 3 is done, merged, and live.
+
+## Phase 2, Session 4 -- parent online form (2026-09-21, built, not yet verified)
+
+Scoped with Dylan via three questions before building: submissions land
+in a **pending-review queue** (never write straight to Child/Guardian),
+**one link per child that expires** (7 days, not yet configurable),
+and ID-document photos **back a specific existing field** (the child's
+ID number, or a guardian's) rather than being a loose document dump.
+Schema shown and approved before writing anything, per CLAUDE.md.
+
+Shipped:
+- New `SubmissionStatus` enum + `ParentFormLink` / `ParentSubmission` /
+  `ParentSubmissionAttachment` models. The link stores only a token hash
+  (same pattern as password-reset/invite tokens, reused directly from
+  `src/lib/inviteToken.ts` rather than duplicated); the submission
+  stores the parent's answers as one JSON blob (validated by the same
+  `childProfileSchema`/`guardianSchema` rules that will eventually write
+  it for real) so nothing is a real column until approved.
+- Public, unauthenticated route: `/apply/[token]` (page) +
+  `/api/apply/[token]` (GET to check/render, POST to submit). Rate
+  limited two ways (per-IP and per-token-hash), same `rateLimit()`
+  helper as forgot-password/reset-password. The parent enters DOB,
+  gender, child ID number, one or more guardians (relationship, name,
+  ID, occupation, phone, email), an explicit photo-consent checkbox,
+  and can photograph the child's and each guardian's ID document
+  (reuses the existing `ImageUploadField` client compressor unchanged).
+- Staff side: a "Parent enrolment form" card on the child profile
+  (generate a link, optionally email it to the child's billing contact
+  email via the existing `sendMail` helper, dated history of links and
+  their status) and a new **Pending reviews** page (list + a per-
+  submission review page showing submitted-vs-current side by side,
+  the ID-document photos, and Approve/Reject). Approving always creates
+  **new** Guardian rows rather than trying to guess-match existing ones
+  -- simplest safe first pass; staff can remove a duplicate manually.
+  New "Pending reviews" nav link and a third dashboard tile (count,
+  links to the list) alongside New this week / Enrolled.
+- Audit-logged: link created, submission received, submission viewed
+  (opening the review page, same reasoning as the ID-reveal audit --
+  this page IS the reveal), approved, rejected.
+- Gated by the existing `MANAGE_CHILDREN` permission throughout (no new
+  permission needed) -- a TEACHER only sees/reviews submissions for
+  their own assigned class, same scoping as every other child-facing
+  endpoint.
+
+NOT YET DONE -- blocks merge to main: `npx prisma db push` against
+production for the three new tables, and a full local lint/test/build
+pass (device-shell `npx tsc --noEmit` and `npx eslint` both hit their
+usual limits this session -- network-restricted engine-checksum fetch
+and the 170-180s tool cap -- so neither ran to completion here). Needs
+Dylan's local verification before this can go live, same as every
+prior schema-touching session.

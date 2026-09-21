@@ -180,6 +180,8 @@ model Organization {
   reminderSendRequests ReminderSendRequest[]
   guardians     Guardian[]
   formDocuments FormDocument[]
+  parentFormLinks ParentFormLink[]
+  parentSubmissions ParentSubmission[]
 
   @@map("organizations")
 }
@@ -213,6 +215,8 @@ model User {
   reminderSendApprovals ReminderSendApproval[]
   reviewedTestimonials Testimonial[]
   formDocumentsGenerated FormDocument[]
+  parentFormLinksCreated ParentFormLink[] @relation("ParentFormLinkCreatedBy")
+  parentSubmissionsReviewed ParentSubmission[] @relation("ParentSubmissionReviewedBy")
 
   @@map("users")
 }
@@ -365,6 +369,7 @@ model Child {
   creditBalance CreditBalance?
   guardians    Guardian[]
   formDocuments FormDocument[]
+  parentFormLinks ParentFormLink[]
 
   @@index([organizationId])
   @@index([categoryId])
@@ -440,6 +445,96 @@ model FormDocument {
   @@index([organizationId])
   @@index([childId, formType])
   @@map("form_documents")
+}
+
+// The parent-facing online-form flow (Phase 2 Session 4): staff generates
+// a one-time link for a specific child, the parent fills it in on their
+// phone (no account needed -- the token itself is the proof, same
+// pattern as password-reset/invite links), and it lands as a
+// ParentSubmission for staff to review. Nothing here writes to the real
+// Child/Guardian records until a staff member explicitly approves it --
+// see decision made 2026-09-21: this is deliberately a staging area, not
+// a direct write, so a typo or a wrong/bad-faith submission never
+// silently overwrites real data.
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ParentFormLink {
+  id              String    @id @default(cuid())
+  organizationId  String
+  childId         String
+  // Only the SHA-256 hash is stored, same reasoning as
+  // PasswordResetToken/InviteToken -- see src/lib/inviteToken.ts, reused
+  // here rather than duplicated.
+  tokenHash       String    @unique
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  // Set the moment a submission comes in, so the link can't be reused --
+  // one link, one attempt. A parent who needs to redo it gets a fresh
+  // link from staff.
+  submittedAt     DateTime?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  createdBy    User?             @relation("ParentFormLinkCreatedBy", fields: [createdByUserId], references: [id])
+  submission   ParentSubmission?
+
+  @@index([organizationId])
+  @@index([childId])
+  @@map("parent_form_links")
+}
+
+model ParentSubmission {
+  id               String           @id @default(cuid())
+  linkId           String           @unique
+  // Denormalized from the link at submission time so this row can be
+  // queried/scoped directly (the "Pending reviews" list) without joining
+  // through ParentFormLink for every row.
+  organizationId   String
+  // The parent's answers, as one JSON blob (child fields + a guardians
+  // array) validated by parentSubmissionSchema at write time --
+  // deliberately not split into real columns since none of it is real
+  // until approved; see ParentSubmissionAttachment for the accompanying
+  // ID-document photos.
+  data             String           @db.Text
+  submittedAt      DateTime         @default(now())
+  status           SubmissionStatus @default(PENDING)
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  reviewNotes      String?
+
+  link         ParentFormLink               @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  organization Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reviewedBy   User?                        @relation("ParentSubmissionReviewedBy", fields: [reviewedByUserId], references: [id])
+  attachments  ParentSubmissionAttachment[]
+
+  @@index([organizationId, status])
+  @@map("parent_submissions")
+}
+
+model ParentSubmissionAttachment {
+  id           String   @id @default(cuid())
+  submissionId String
+  // "CHILD_ID" or "GUARDIAN_ID" -- which proof field this photo backs,
+  // per Dylan's explicit choice (2026-09-21) that attachments back a
+  // specific existing ID field rather than being a loose document dump.
+  kind         String
+  // Human-readable, e.g. "Child's ID document" or "Naledi Kekana's ID
+  // document" -- shown as-is on the staff review page.
+  label        String
+  // Same data: URL-in-row pattern as every other photo field in this
+  // app (Child.photoImage, FormDocument.pdf, ...).
+  image        String   @db.Text
+  uploadedAt   DateTime @default(now())
+
+  submission ParentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("parent_submission_attachments")
 }
 
 model PaymentType {
