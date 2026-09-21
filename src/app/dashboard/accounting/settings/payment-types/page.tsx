@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useOrg } from "../../OrgContext";
+import { useOrg } from "../../../OrgContext";
 import { Badge, Button, Card, Input, Label, PageHeader } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 

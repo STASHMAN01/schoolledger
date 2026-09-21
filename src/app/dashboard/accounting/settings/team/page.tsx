@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useOrg } from "../../OrgContext";
+import { useOrg } from "../../../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
 type Member = { membershipId: string; userId: string; name: string; email: string; role: string };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useOrg } from "../../OrgContext";
+import { useOrg } from "../../../OrgContext";
 import { Button, Card, Disclosure, Input, Label } from "@/components/ui";
 
 type Profile = {

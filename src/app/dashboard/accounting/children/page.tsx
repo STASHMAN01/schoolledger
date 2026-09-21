@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useOrg, canManage } from "../OrgContext";
+import { useOrg, canManage } from "../../OrgContext";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
@@ -321,7 +321,7 @@ export default function ChildrenPage() {
                 <tr key={c.id} className="border-t border-border">
                   <td className="px-3 py-2">
                     <Link
-                      href={`/dashboard/children/${c.id}`}
+                      href={`/dashboard/accounting/children/${c.id}`}
                       className="text-foreground underline transition-standard hover:text-brand"
                     >
                       {c.firstName} {c.lastName}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useOrg } from "../../OrgContext";
+import { useOrg } from "../../../OrgContext";
 import { Card, Input } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 
@@ -150,7 +150,7 @@ export default function ChildDetailPage() {
   return (
     <div className="animate-in">
       <Link
-        href="/dashboard/children"
+        href="/dashboard/accounting/children"
         className="transition-standard text-sm text-muted-foreground underline hover:text-foreground"
       >
         &larr; Back to children

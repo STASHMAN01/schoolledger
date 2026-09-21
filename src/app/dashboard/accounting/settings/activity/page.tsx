@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useOrg } from "../../OrgContext";
+import { useOrg } from "../../../OrgContext";
+import { ACCOUNTING_ENTITY_TYPES } from "@/lib/activityArea";
 import { Badge, Button, Card, EmptyState, PageHeader, Select } from "@/components/ui";
 
 type AuditEntry = {
@@ -119,6 +120,7 @@ export default function ActivityLogPage() {
     setError(null);
     try {
       const params = new URLSearchParams();
+      params.set("entityTypes", ACCOUNTING_ENTITY_TYPES.join(","));
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`
@@ -148,6 +150,7 @@ export default function ActivityLogPage() {
     setLoadingMore(true);
     try {
       const params = new URLSearchParams({ cursor });
+      params.set("entityTypes", ACCOUNTING_ENTITY_TYPES.join(","));
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`

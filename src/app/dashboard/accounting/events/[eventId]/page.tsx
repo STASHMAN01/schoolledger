@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useOrg } from "../../OrgContext";
+import { useOrg } from "../../../OrgContext";
 import { Card } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
@@ -82,7 +82,7 @@ export default function EventDetailPage() {
     <div className="animate-in">
       {confirmDialog}
       <Link
-        href="/dashboard/events"
+        href="/dashboard/accounting/events"
         className="transition-standard mb-4 inline-block text-sm text-muted-foreground underline hover:text-foreground"
       >
         ← All events

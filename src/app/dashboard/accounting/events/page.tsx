@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useOrg } from "../OrgContext";
+import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, Input, Label, PageHeader } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 
@@ -195,7 +195,7 @@ export default function EventsPage() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Link
-                      href={`/dashboard/events/${e.id}`}
+                      href={`/dashboard/accounting/events/${e.id}`}
                       className="transition-standard text-xs text-muted-foreground underline hover:text-foreground"
                     >
                       View

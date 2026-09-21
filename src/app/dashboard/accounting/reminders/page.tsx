@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useOrg } from "../OrgContext";
+import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, PageHeader, Textarea } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";

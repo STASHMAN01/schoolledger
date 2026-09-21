@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useOrg } from "../../OrgContext";
+import { useOrg } from "../../../OrgContext";
 import { Badge, Button, Card, EmptyState, PageHeader } from "@/components/ui";
 import { REQUIRED_DELETION_APPROVALS } from "@/lib/deletion";
 

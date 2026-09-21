@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useOrg } from "../OrgContext";
+import { useOrg } from "../../OrgContext";
 import { Button, Card, Input, Label, LinkButton, PageHeader, Select } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";

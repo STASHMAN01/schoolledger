@@ -59,7 +59,7 @@ export function DrilldownTree({
                       {pt.children.map((c) => (
                         <Link
                           key={c.childId}
-                          href={`/dashboard/children/${c.childId}`}
+                          href={`/dashboard/accounting/children/${c.childId}`}
                           className="transition-standard flex items-center justify-between py-1.5 text-sm text-muted-foreground hover:text-foreground"
                         >
                           <span className="underline">{c.name}</span>

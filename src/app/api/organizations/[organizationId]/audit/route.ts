@@ -27,12 +27,22 @@ export async function GET(req: NextRequest, { params }: Params) {
     // "userId" is the Activity log page's "sort by user" filter — any
     // member, so an accountant can be filtered same as an admin.
     const userId = req.nextUrl.searchParams.get("userId");
+    // "entityTypes" (comma-separated) is how the Accounting and Centre
+    // Management activity feeds each show only their own mode's entries
+    // (Phase 1 restructure) -- see src/lib/activityArea.ts for the two
+    // lists. Omit it to get everything (used nowhere in the UI right now,
+    // kept for API flexibility / debugging).
+    const entityTypesParam = req.nextUrl.searchParams.get("entityTypes");
+    const entityTypes = entityTypesParam
+      ? entityTypesParam.split(",").filter(Boolean)
+      : null;
 
     const entries = await db.auditLog.findMany({
       where: {
         organizationId,
         ...(since ? { createdAt: { gte: new Date(since) } } : {}),
         ...(userId ? { userId } : {}),
+        ...(entityTypes ? { entityType: { in: entityTypes } } : {}),
       },
       orderBy: { createdAt: "desc" },
       take: PAGE_SIZE + 1,

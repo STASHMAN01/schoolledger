@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const { authorization_url } = await initializeTransaction({
       email: admin.email,
       planCode,
-      callbackUrl: `${origin}/dashboard/settings/billing?checkout=success`,
+      callbackUrl: `${origin}/dashboard/accounting/settings/billing?checkout=success`,
       metadata: { organizationId, plan: body.plan },
     });
 
