@@ -410,7 +410,7 @@ Live-verified on crechely.co.za (real child: Boitshoko Kekana):
 
 Session 3 is done, merged, and live.
 
-## Phase 2, Session 4 -- parent online form (2026-09-21, built, not yet verified)
+## Phase 2, Session 4 -- parent online form (2026-09-21, verified live)
 
 Scoped with Dylan via three questions before building: submissions land
 in a **pending-review queue** (never write straight to Child/Guardian),
@@ -453,10 +453,53 @@ Shipped:
   their own assigned class, same scoping as every other child-facing
   endpoint.
 
-NOT YET DONE -- blocks merge to main: `npx prisma db push` against
-production for the three new tables, and a full local lint/test/build
-pass (device-shell `npx tsc --noEmit` and `npx eslint` both hit their
-usual limits this session -- network-restricted engine-checksum fetch
-and the 170-180s tool cap -- so neither ran to completion here). Needs
-Dylan's local verification before this can go live, same as every
-prior schema-touching session.
+Dylan ran the local checks, `npx prisma db push` synced the three new
+tables, merged `phase2-session4-parent-form` into `main` (clean
+fast-forward, 16 files, 1576 insertions), and pushed. Vercel deploy
+went READY and aliased to crechely.co.za.
+
+Live-verified on crechely.co.za (real child: Boitshoko Kekana):
+- Generated a link from the child profile's new "Parent enrolment
+  form" card; it rendered correctly (`https://www.crechely.co.za/apply/
+  <token>`), showed a "Sent, not yet used" history entry, and Copy
+  worked.
+- Opened the link unauthenticated in a separate tab: correct child
+  first name and centre name, full expected field set (DOB, gender,
+  child ID number, child photo/ID-document uploads, one or more
+  guardians with relationship/name/ID/occupation/phone/email/photo/
+  ID-document, an explicit photo-consent checkbox).
+- Submitted a full parent-style answer (DOB, gender, child ID number,
+  one guardian) and got the "Thank you -- your submission has been
+  sent to DEES DUCKLING CENTRE" success state; POST returned 201.
+- The submission appeared immediately on the staff **Pending reviews**
+  list with the correct child name and date, and the review-detail
+  page rendered the submitted-vs-current diff table, the guardian
+  block, and the Approve/Reject decision panel correctly.
+- **Approve path**: clicked "Approve -- save to child & guardians" and
+  confirmed via direct API reads afterward that `Child.photoConsentGiven`
+  flipped to `true` with a fresh `photoConsentAt`, a brand-new Guardian
+  row ("Thabo Kekana", Father) was created alongside the existing
+  "Naledi Kekana" (Mother) rather than overwriting her, the submission
+  left the pending list, and the child profile's photo-consent banner
+  and guardians list both updated to match.
+- **Reject path**: rejected a second (duplicate test) submission with a
+  review note; it also left the pending list and the child profile's
+  "Parent enrolment form" history correctly shows two dated entries,
+  "Submitted, approved" and "Submitted, rejected", each with the
+  reviewing staff member's name.
+- Found and fixed a **test-tooling gap, not an app bug**: setting the
+  photo-consent checkbox via the browser-automation tool's generic
+  `form_input` action visibly checked the box on screen but didn't
+  trigger the page's React state update, so that first submission was
+  recorded with `photoConsentGiven: false` even though the checkbox
+  looked checked. A native coordinate click on the same checkbox
+  updated state correctly (confirmed by the Upload buttons unlocking
+  live, and by `photoConsentGiven: true` in the resulting submission).
+  Lesson for future live verification in this repo: always drive
+  checkboxes with a real click, never `form_input`, and re-verify
+  anything `form_input` touched.
+
+Session 4 is done, merged, and live. Phase 2 (all four sessions --
+statement PDF, admissions/enrolled workflow, seven form templates,
+parent online enrolment form) is now complete and verified live on
+crechely.co.za.
