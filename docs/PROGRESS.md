@@ -207,3 +207,25 @@ schema-touching session, needs Dylan's local lint/test/build after
 
 Not started yet: Phase 2 Sessions 2-4 (Admissions/Enrolled tiles, the 7
 form templates, the parent online form).
+
+## Phase 2, Session 1 — verified live (2026-09-21)
+
+Confirmed end-to-end on crechely.co.za with a real child (Boitshoko
+Kekana, Dees Duckling Centre): the photo-consent checkbox gates the
+Upload control (hidden until checked, appears immediately after), added
+a real guardian (Naledi Kekana, Mother) through the new form, and both
+actions showed up correctly in the Centre Management activity feed
+("added Naledi Kekana as a guardian", "updated a child's details").
+`git push origin main` (c606179..6452f1e) and the Vercel deploy both
+went out clean.
+
+Noted, not fixed (pre-existing since Phase 1, not part of this
+session's scope): the Centre activity feed shows every AuditLog entry
+tagged entityType "Child", including ones that are really Accounting
+actions logged against a child (payment reminders sent, statements
+generated) — because CENTRE_ENTITY_TYPES matches on entityType, not on
+which mode the action actually belongs to. Cosmetic/confusing, not
+incorrect data. Flagging in case Dylan wants entity-type tagging
+tightened later.
+
+Starting Phase 2 Session 2 (Admissions + Enrolled tiles) next.
