@@ -65,6 +65,20 @@ enum Gender {
   OTHER
 }
 
+// The 7 pre-built form templates (Phase 2 Session 3, see docs/PLAN.md
+// decision #6) -- a fixed catalog defined in code (src/lib/forms/), not a
+// user-editable list, per decision #8 (form builder approach, not
+// arbitrary PDF editing/bring-your-own-PDF).
+enum FormType {
+  ENROLMENT
+  RE_REGISTRATION
+  INDEMNITY
+  MEDICAL_ALLERGY
+  PHOTO_MEDIA_CONSENT
+  EMERGENCY_CONTACT_PICKUP
+  FEE_AGREEMENT
+}
+
 enum PaymentMethod {
   CASH
   EFT
@@ -165,6 +179,7 @@ model Organization {
   deletionRequests DeletionRequest[]
   reminderSendRequests ReminderSendRequest[]
   guardians     Guardian[]
+  formDocuments FormDocument[]
 
   @@map("organizations")
 }
@@ -197,6 +212,7 @@ model User {
   deletionApprovals DeletionApproval[]
   reminderSendApprovals ReminderSendApproval[]
   reviewedTestimonials Testimonial[]
+  formDocumentsGenerated FormDocument[]
 
   @@map("users")
 }
@@ -348,6 +364,7 @@ model Child {
   payments     Payment[]
   creditBalance CreditBalance?
   guardians    Guardian[]
+  formDocuments FormDocument[]
 
   @@index([organizationId])
   @@index([categoryId])
@@ -391,6 +408,38 @@ model Guardian {
   @@index([organizationId])
   @@index([childId])
   @@map("guardians")
+}
+
+// A generated form-template PDF for one child, e.g. an Indemnity form
+// filled with today's data and handed to a parent to sign on paper
+// (Phase 2 Session 3 -- staff-generated only; a parent-facing online
+// version that writes structured answers back is Session 4, a separate
+// build). Every "Generate" click creates a brand-new row rather than
+// overwriting the last one for that childId+formType, per Dylan's
+// explicit choice: these documents (especially indemnity, photo/media
+// consent, medical/allergy) are dated records of what was generated and
+// handed out, not just a "current state" like the photo-consent
+// checkbox -- so a school can always show what an earlier version said.
+// The PDF itself is stored (not just a data snapshot it's rendered
+// from), same reasoning and same data: URL-in-row pattern as
+// Organization.logoImage/Child.photoImage: it's the actual document as
+// it was generated, immune to the layout changing under it later.
+model FormDocument {
+  id                String   @id @default(cuid())
+  organizationId    String
+  childId           String
+  formType          FormType
+  pdf               String   @db.Text
+  generatedAt       DateTime @default(now())
+  generatedByUserId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  generatedBy  User?        @relation(fields: [generatedByUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([childId, formType])
+  @@map("form_documents")
 }
 
 model PaymentType {
