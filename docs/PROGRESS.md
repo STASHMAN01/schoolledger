@@ -313,3 +313,55 @@ disproportionate changes after every checkout in this repo, not just
 after edits.
 
 Starting Phase 2 Session 3 (7 pre-built form templates) next.
+
+## Phase 2, Session 3 — built, not yet verified (2026-09-21)
+
+Branch `phase2-session3-form-templates`. Schema change: new `FormType`
+enum + `FormDocument` model (one new table, no changes to any existing
+model). Approved by Dylan via two rounds of questions first: (1) scope
+-- PDF generation only for this session, pre-filled from data already on
+file with blank lines for the rest (no in-app digital-capture form; that's
+Session 4's parent-facing online form, a separate build); (2) history --
+every "Generate" click creates a new dated FormDocument row rather than
+overwriting the last one for that child+formType, since indemnity/photo-
+consent/medical forms are dated records of what was handed out, not a
+"current state" toggle like the existing photo-consent checkbox.
+
+Shipped:
+- 7 templates (`src/lib/forms/types.ts`): Enrolment, Re-registration,
+  Indemnity, Medical & Allergy, Photo & Media Consent, Emergency
+  Contact & Pickup Authorization, Fee Agreement & Payment Mandate.
+- Generic pdf-lib renderer (`src/lib/forms/formPdf.ts`) -- letterhead
+  header (same pattern as statementPdf.ts), title, intro paragraph,
+  sections of label/value fields (printed where the system already has
+  the value -- child/guardian/org data -- an underscored blank line
+  otherwise), an optional disclaimer box, signature/date line, footer.
+  Static only, no AcroForm fields -- matches decision #8 (form builder,
+  not Adobe-style PDF editing) and this session's PDF-only scope.
+- Per-template field builders (`src/lib/forms/templates.ts`) mapping
+  child + guardians + org data into each template's sections.
+  Indemnity/Medical & Allergy/Photo & Media Consent/Fee Agreement carry
+  a visible "this is a fill-in-the-blank draft, not reviewed legal
+  wording -- have a lawyer review it" disclaimer, since none of this
+  wording has had that review (same caution the plan's own POPIA
+  checklist already flags for site-wide legal wording generally).
+- New API: GET/POST `.../children/[childId]/forms` (list metadata only
+  / generate a new dated document) and GET
+  `.../forms/[formId]/download` (serves the stored PDF, audit-logged
+  the same way as the ID-number reveal -- these documents can carry
+  real ID numbers, addresses, and for Fee Agreement, a fee amount).
+  Fee Agreement additionally requires VIEW_MONEY on top of
+  MANAGE_CHILDREN -- the one template with money in it, per "Centre
+  Management shows personal info only, never money" -- so a
+  Teacher/Receptionist without VIEW_MONEY sees the other 6 buttons but
+  not that one.
+- Forms card added to the Centre child profile page: a button per
+  template plus a dated history list (type, date, who generated it, a
+  View link).
+
+NOT YET DONE -- blocks merge to main: `npx prisma db push` against
+production for the new `form_documents` table, and a full local
+lint/test/build pass (same recurring device-shell limitations as every
+prior schema-touching session -- `npx eslint` alone hit the 170s tool
+cap this time). Needs Dylan's local verification before this can go
+live.
