@@ -10,11 +10,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../OrgContext";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
+import { describeAuditAction } from "@/lib/auditLabel";
 
 type AuditEntry = {
   id: string;
   action: string;
   entityType: string;
+  metadata: unknown;
   createdAt: string;
   actor: { name: string; email: string } | null;
 };
@@ -22,18 +24,6 @@ type AuditEntry = {
 const ENTITY_LABEL: Record<string, string> = {
   Category: "Class",
 };
-
-const VERB_LABELS: Record<string, string> = {
-  created: "added",
-  updated: "updated",
-  archived: "archived",
-  restored: "restored",
-};
-
-function describeAction(action: string): string {
-  const [, verb] = action.split(".");
-  return VERB_LABELS[verb] ?? verb ?? action;
-}
 
 function formatWhen(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -95,7 +85,7 @@ export default function CentreManagementHomePage() {
                   <span className="font-medium">
                     {entry.actor ? entry.actor.name : "System"}
                   </span>{" "}
-                  {describeAction(entry.action)}
+                  {describeAuditAction(entry)}
                 </p>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {formatWhen(entry.createdAt)}
