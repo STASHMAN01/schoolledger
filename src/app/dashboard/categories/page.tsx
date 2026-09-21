@@ -180,7 +180,7 @@ export default function CategoriesPage() {
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : roots.length === 0 ? (
+      ) : sortedCategories.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No classes yet. Add your first one above — e.g. &quot;Butterfly&quot;
           or &quot;Ducks Class&quot;.
