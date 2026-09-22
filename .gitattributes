@@ -1,0 +1,7 @@
+# Force LF line endings for all text files, regardless of a
+# contributor's local core.autocrlf setting (Windows Git commonly
+# defaults to autocrlf=true, which silently converts the working tree
+# to CRLF on checkout even though every blob in this repo is stored as
+# LF -- that drift showed up as a whole-repo "everything modified" diff
+# during Phase 3 Session 2. This pins the convention so it can't recur).
+* text=auto eol=lf
