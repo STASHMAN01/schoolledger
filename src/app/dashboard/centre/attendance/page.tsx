@@ -87,10 +87,8 @@ export default function AttendancePage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
       loadRegister();
     } else if (pickedCategoryId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
       loadRegister(pickedCategoryId);
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing to load yet (no class picked)
       setLoading(false);
     }
   }, [isTeacher, pickedCategoryId, loadRegister]);
