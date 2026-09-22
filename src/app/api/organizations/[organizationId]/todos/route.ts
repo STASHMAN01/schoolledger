@@ -148,7 +148,11 @@ export async function GET(req: NextRequest, { params }: Params) {
         where: {
           organizationId,
           status: "PENDING",
-          child: role === "TEACHER" ? { categoryId: assignedCategoryId } : undefined,
+          // ParentSubmission has no direct child/categoryId of its own
+          // (see the model comment -- nothing about the submission is
+          // real until approved), so scope through the link it came from,
+          // which does point at an existing Child.
+          link: role === "TEACHER" ? { child: { categoryId: assignedCategoryId } } : undefined,
         },
       });
       if (pendingCount > 0) {
