@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useOrg } from "../OrgContext";
+import { TodoList } from "../TodoList";
 import { DrilldownTree } from "./DrilldownTree";
 import { formatCents } from "@/lib/formatMoney";
 import type { CategoryNode } from "@/lib/billing/dashboard";
@@ -136,6 +137,8 @@ export default function DashboardPage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="flex flex-col gap-6">
+          <TodoList />
+
           {!data.canViewMoney && (
             <p className="text-sm text-muted-foreground">
               Financial figures are hidden for your role. Ask an admin if you need to see them.

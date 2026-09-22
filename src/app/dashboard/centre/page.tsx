@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../OrgContext";
+import { TodoList } from "../TodoList";
 import { Badge, Card, EmptyState, LinkButton, PageHeader } from "@/components/ui";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
 import { describeAuditAction } from "@/lib/auditLabel";
@@ -116,6 +117,8 @@ export default function CentreManagementHomePage() {
         description="Enrolment, attendance and the rest of centre management. Billing lives under Accounting, top-left."
         actions={<LinkButton href="/dashboard/centre/children" size="sm">Children</LinkButton>}
       />
+
+      <TodoList />
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
