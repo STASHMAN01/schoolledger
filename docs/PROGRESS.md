@@ -544,3 +544,75 @@ production for the new table, and Dylan's local lint/test/build pass
 `npx prisma validate` still 403s fetching engine binaries here). Manual
 brace/paren-balance check across all 14 changed/new files passed; full
 local verification is the real gate before this goes live.
+
+## Phase 3, Session 1 -- daily attendance (2026-09-22, built and deployed)
+
+Branch `phase3-session1-attendance` merged to `main` (commit `19aa372`,
+then two follow-up lint/CRLF-hygiene commits) and pushed. Dylan's local
+lint/test/build all passed clean (40/40 tests), `npx prisma db push`
+synced the new `AttendanceRecord` table + `MANAGE_ATTENDANCE`
+permission to production, and the Vercel production deploy is READY.
+
+New: `AttendanceRecord` model (one row per child per day,
+`@@unique([childId, date])`), `MANAGE_ATTENDANCE` permission (Teacher
+scoped to own class via `resolveAttendanceScope`, also Receptionist/
+Manager), a fast teacher register page
+(`/dashboard/centre/attendance`), a dashboard Attendance tile, and a
+one-tap "notify absent parents" flow
+(`/dashboard/centre/attendance/absent`) with no 2-person approval gate
+(deliberately different from the money-reminders pattern -- see the
+comment in the route -- since this is same-day informational, and the
+plan wants a single immediate tap). Audit-logged: one
+`attendance.marked` per register save (aggregate counts, not per
+child) and one `attendance.absentParentsNotified` per notify tap.
+
+Two real bugs caught and fixed during the local-build gate (both
+genuine code errors, not tooling artifacts): a `react-hooks/
+set-state-in-effect` violation on the register page's initial-load
+effect, and a Prisma Client type gap that resolved itself once
+`prisma generate`/`db push` ran against the updated schema.
+
+Also fixed a real, separate CRLF-drift bug surfaced while working
+across the device bridge: Windows Git's `core.autocrlf=true` silently
+converts the whole working tree to CRLF on any checkout even though
+every blob in this repo is stored as LF. Added `.gitattributes`
+(`* text=auto eol=lf`) and renormalized once so this can't recur.
+
+NOT YET DONE: a live click-through on crechely.co.za (take a register,
+mark someone absent, send the notify email, confirm the dashboard tile
+updates). I can't do this myself -- it needs a staff login, and
+entering a password to authenticate is outside what I'll do
+automatically. Dylan, next time you're in the app: take today's
+register for any class, flip one child to absent, save, then open
+"Notify absent parents" and send -- if that all works end to end this
+can be marked verified live.
+
+## Phase 3, Session 2 -- to-do engine v1 (2026-09-22, built and deployed)
+
+Same branch history as above, no schema change (deliberately designed
+that way -- see the route's own comment -- so it didn't need a
+migration-approval round trip). New `GET /api/organizations/
+[organizationId]/todos` route + a shared `<TodoList />` widget
+rendered at the top of both dashboard home pages (Centre Management,
+Accounting). Every item is a live COUNT against existing data
+(AttendanceRecord, ParentSubmission, the reminders helper) -- no new
+table, no manual ticking, an item just stops being returned once its
+underlying condition clears. Same TEACHER-vs-everyone-else scoping as
+the rest of the app via the same `resolveAttendanceScope` helper.
+
+One real bug caught by the Vercel production build (Dylan's local
+build against the already-generated client didn't catch it until a
+fresh install re-ran the type check): the pending-review to-do
+queried `ParentSubmission.child`, which doesn't exist --
+`ParentSubmission` has no direct child relation (nothing about a
+submission is real until approved, per the model's own comment); fixed
+to scope through `ParentSubmission.link.child` instead. A second,
+related type error (`assignedCategoryId` typed as possibly `null`
+even though the TEACHER-with-no-class case is already filtered out a
+few lines earlier) needed an explicit narrowing rewrite. Both fixed
+and redeployed; production build is clean as of commit `f1eb6d1`.
+
+NOT YET DONE: live click-through of the to-do widget itself (same
+login limitation as above) -- take an action that should clear a
+to-do item (e.g. finish today's register) and confirm the widget
+updates/disappears.
