@@ -38,7 +38,9 @@ export function MarketingFooter() {
             <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-foreground">
               {SUPPORT_EMAIL}
             </a>
-            {WHATSAPP_NUMBER ? (
+            {/* Shown only once a real number is set in src/lib/support.ts --
+                no public "coming soon" placeholder (final inspection N3). */}
+            {WHATSAPP_NUMBER && (
               <a
                 href={WHATSAPP_LINK}
                 target="_blank"
@@ -47,12 +49,6 @@ export function MarketingFooter() {
               >
                 WhatsApp us
               </a>
-            ) : (
-              // [ADD REAL: WhatsApp number] in src/lib/support.ts — until
-              // then this stays a visible placeholder, not a dead link.
-              <span className="italic text-muted" title="WhatsApp number not set yet — see OPEN_QUESTIONS.md">
-                WhatsApp us (number coming soon)
-              </span>
             )}
           </div>
           <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">

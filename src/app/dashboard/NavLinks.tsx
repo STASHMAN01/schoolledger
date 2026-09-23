@@ -44,6 +44,30 @@ const SETTINGS_LINKS = [
   { href: "/dashboard/accounting/settings/backup", label: "Backup & export" },
 ];
 
+// Which permission(s) a nav link needs -- any one of them is enough. A
+// link is hidden when its page would only show an error or "no
+// permission" for this person (final inspection B1). Links not listed
+// here are visible to everyone who can see the mode at all.
+const LINK_REQUIRES: Record<string, string[]> = {
+  "/dashboard/accounting/payments": ["VIEW_MONEY"],
+  "/dashboard/accounting/events": ["VIEW_MONEY"],
+  "/dashboard/accounting/reminders": ["VIEW_MONEY"],
+  "/dashboard/centre/attendance": ["MANAGE_ATTENDANCE"],
+  "/dashboard/centre/pending-reviews": ["MANAGE_CHILDREN"],
+  "/dashboard/centre/staff": ["MANAGE_CLASSES", "MANAGE_TEAM"],
+  "/dashboard/accounting/settings/payment-types": ["MANAGE_SETTINGS"],
+  "/dashboard/accounting/settings/team": ["MANAGE_TEAM"],
+  "/dashboard/accounting/settings/billing": ["MANAGE_TEAM"],
+  "/dashboard/accounting/settings/trash": ["MANAGE_TEAM"],
+  "/dashboard/accounting/settings/activity": ["VIEW_ACTIVITY_LOG"],
+  "/dashboard/accounting/settings/backup": ["EXPORT_DATA"],
+};
+
+function canSeeLink(href: string, permissions: readonly string[]): boolean {
+  const needed = LINK_REQUIRES[href];
+  return !needed || needed.some((p) => permissions.includes(p));
+}
+
 function isActive(pathname: string, href: string, exact?: boolean) {
   return exact ? pathname === href : pathname.startsWith(href);
 }
@@ -57,12 +81,8 @@ export function NavLinks() {
   // The Settings dropdown (billing, team, payment types) is
   // Accounting-only; Centre Management gets its own, shorter link set.
   const inAccounting = pathname.startsWith("/dashboard/accounting");
-  const links = (inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS).filter(
-    // Staff list is for whoever runs the centre or the team (Phase 5).
-    (l) =>
-      l.href !== "/dashboard/centre/staff" ||
-      permissions.includes("MANAGE_CLASSES") ||
-      permissions.includes("MANAGE_TEAM")
+  const links = (inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS).filter((l) =>
+    canSeeLink(l.href, permissions)
   );
 
   // Native <details> has no click-outside-to-close behavior, which Dylan
@@ -91,17 +111,7 @@ export function NavLinks() {
   // the menu already closes it directly via its own onClick (see below),
   // and adding a pathname-watching effect just to call setState is an
   // anti-pattern (cascading renders) for no extra benefit here.
-  const adminOnlySettings = [
-    "/dashboard/accounting/settings/billing",
-    "/dashboard/accounting/settings/team",
-    "/dashboard/accounting/settings/trash",
-  ];
-  const settingsVisible = SETTINGS_LINKS.filter(
-    (l) => permissions.includes("MANAGE_TEAM") || !adminOnlySettings.includes(l.href)
-  ).filter(
-    // Its own permission (Phase 4), not lumped in with MANAGE_TEAM.
-    (l) => l.href !== "/dashboard/accounting/settings/backup" || permissions.includes("EXPORT_DATA")
-  );
+  const settingsVisible = SETTINGS_LINKS.filter((l) => canSeeLink(l.href, permissions));
 
   return (
     <>

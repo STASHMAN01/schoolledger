@@ -8,7 +8,8 @@ type Params = { params: Promise<{ organizationId: string; eventId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, eventId } = await params;
-    await requireMembership(organizationId); // any member may view
+    // Per-child charges and payments -- money, so VIEW_MONEY (R2).
+    await requireMembership(organizationId, "VIEW_MONEY");
 
     const event = await db.event.findFirst({
       where: { id: eventId, organizationId },

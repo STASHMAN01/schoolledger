@@ -3,6 +3,23 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { logAudit } from "@/lib/audit";
+import { maskIdNumber } from "@/lib/idMask";
+
+// Masks every "...idNumber" string anywhere in the submitted answers
+// (child and each guardian), same default as the rest of the app. The
+// ID-document photos stay visible -- checking them IS the review.
+function maskIdsDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(maskIdsDeep);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+        k,
+        /idnumber$/i.test(k) && typeof v === "string" ? maskIdNumber(v) : maskIdsDeep(v),
+      ])
+    );
+  }
+  return value;
+}
 
 type Params = { params: Promise<{ organizationId: string; submissionId: string }> };
 
@@ -41,7 +58,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    if (submission.status === "PENDING") {
+    // Every view is logged, not only while pending (final inspection R6).
+    {
       await logAudit({
         organizationId,
         userId,
@@ -59,7 +77,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         submittedAt: submission.submittedAt,
         reviewedAt: submission.reviewedAt,
         reviewNotes: submission.reviewNotes,
-        data: JSON.parse(submission.data),
+        data: maskIdsDeep(JSON.parse(submission.data)),
         attachments: submission.attachments.map((a) => ({
           id: a.id,
           kind: a.kind,
@@ -74,7 +92,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           lastName: child.lastName,
           dateOfBirth: child.dateOfBirth,
           gender: child.gender,
-          childIdNumber: child.childIdNumber,
+          childIdNumber: maskIdNumber(child.childIdNumber),
         },
         guardians: child.guardians.map((g) => ({
           id: g.id,

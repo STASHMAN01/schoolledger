@@ -41,8 +41,16 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(password);
 
-    await db.$transaction([
-      db.user.update({
+    // Claim the token first, atomically: only the request that flips
+    // usedAt from null wins, so two simultaneous submits of the same link
+    // can't both reset the password (final inspection R12).
+    const claimed = await db.$transaction(async (tx) => {
+      const claim = await tx.passwordResetToken.updateMany({
+        where: { id: resetToken.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (claim.count === 0) return false;
+      await tx.user.update({
         where: { id: resetToken.userId },
         data: {
           passwordHash,
@@ -51,19 +59,22 @@ export async function POST(req: NextRequest) {
           // out immediately — see the jwt callback in src/lib/auth.ts.
           tokenVersion: { increment: 1 },
         },
-      }),
-      db.passwordResetToken.update({
-        where: { id: resetToken.id },
-        data: { usedAt: new Date() },
-      }),
+      });
       // Any other still-pending reset tokens for this user are now moot —
       // close them out so a stale, previously-requested link can't also
       // be used right after this one.
-      db.passwordResetToken.updateMany({
-        where: { userId: resetToken.userId, usedAt: null, id: { not: resetToken.id } },
+      await tx.passwordResetToken.updateMany({
+        where: { userId: resetToken.userId, usedAt: null },
         data: { usedAt: new Date() },
-      }),
-    ]);
+      });
+      return true;
+    });
+    if (!claimed) {
+      return NextResponse.json(
+        { error: "This password reset link is invalid or has expired." },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

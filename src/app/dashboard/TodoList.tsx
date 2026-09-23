@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "./OrgContext";
 import { Badge, Card } from "@/components/ui";
+import { todayLocal } from "@/lib/date";
 
 type TodoItem = {
   id: string;
@@ -20,9 +21,6 @@ type TodoItem = {
   href: string;
 };
 
-function todayLocal(): string {
-  return new Date().toLocaleDateString("en-CA");
-}
 
 export function TodoList() {
   const { organizationId } = useOrg();

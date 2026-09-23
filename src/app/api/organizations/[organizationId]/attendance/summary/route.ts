@@ -64,7 +64,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         select: { status: true },
       }),
       scope.mode === "single"
-        ? db.category.findUnique({ where: { id: scope.categoryId }, select: { name: true } })
+        ? db.category.findFirst({ where: { id: scope.categoryId, organizationId }, select: { name: true } })
         : Promise.resolve(null),
     ]);
 

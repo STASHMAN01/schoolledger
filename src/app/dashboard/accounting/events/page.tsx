@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, Input, Label, PageHeader } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
+import { todayLocal } from "@/lib/date";
 
 type Category = { id: string; name: string; archived: boolean };
 type EventRow = {
@@ -19,12 +20,14 @@ type EventRow = {
   totalOutstandingCents: number;
 };
 
-const emptyForm = {
+// A function, not a constant, so the default date is today *now* -- a
+// module-level constant froze it at page load (final inspection B3).
+const emptyForm = () => ({
   name: "",
-  date: new Date().toISOString().slice(0, 10),
+  date: todayLocal(),
   amount: "",
   categoryIds: [] as string[],
-};
+});
 
 export default function EventsPage() {
   const { organizationId, permissions, currencyCode } = useOrg();
@@ -86,7 +89,7 @@ export default function EventsPage() {
       return;
     }
     setSuccess(`Created "${form.name}" — charged ${data.chargedChildCount} children.`);
-    setForm(emptyForm);
+    setForm(emptyForm());
     await load();
   }
 

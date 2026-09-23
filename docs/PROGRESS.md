@@ -672,3 +672,20 @@ No new permissions: MANAGE_CLASSES edits timetables; MANAGE_CHILDREN ticks the c
 - Phase 4 backup now also includes timetables.json and whatsapp-group-checks.json.
 
 NOT YET DONE: live click-through (see project-plan.md next steps).
+
+## Final inspection + fix session A -- data exposure (2026-09-23)
+
+Final inspection report: project doc claude/final-inspection-report.md. Fix plan (with Dylan's revision notes
+and dashboard mock-up): claude/fix-plan.md. Session A shipped (no schema change):
+- BUG (found by Dylan): /apply and /api/apply were missing from middleware PUBLIC_PATHS, so parents got sent
+  to /login. Fixed.
+- All child API responses go through src/lib/childView.ts: ID numbers always masked; fees, plan entries and
+  credit blanked without VIEW_MONEY. Parent-submission review masks IDs and logs every view.
+- Events routes need VIEW_MONEY. Fee Agreement download needs VIEW_MONEY. Fee override create/edit needs
+  VIEW_MONEY. Activity feeds strip amounts for non-money roles; the Accounting dashboard shows Accounting activity only.
+- TEACHER scoped on child restore, CSV import and sibling suggestions.
+- Trashed children excluded from outstanding totals and reminders.
+- Reset-password token claimed atomically; attendance summary class lookup org-scoped.
+- Nav/settings links hidden when the page would only show "no permission".
+- Default dates use the local date (lib/date.ts) -- no more "yesterday" before 02:00.
+- Removed the Stripe editor's note from the privacy policy and the public "WhatsApp coming soon" lines.

@@ -127,9 +127,6 @@ Service. Each only sees the minimum data needed to do its specific job:
   received; nothing is charged through the Service today. When online
   billing goes live, the payment processor (planned: **Paystack**) will
   be named here and this policy updated before that feature launches.
-  [PRIOR DRAFT NAMED STRIPE — CORRECTED: Stripe does not support direct
-  South African merchant payouts, see the project's money/infrastructure
-  research; Paystack, which Stripe owns, is the actual plan.]
 
 We do not sell personal information, and we do not share it with anyone
 else except: (a) the subprocessors above, each bound by their own

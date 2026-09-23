@@ -39,9 +39,22 @@ function pick(row: Record<string, string>, field: keyof typeof FIELD_ALIASES): s
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, "MANAGE_CHILDREN");
+    const { userId, role, assignedCategoryId } = await requireMembership(
+      organizationId,
+      "MANAGE_CHILDREN"
+    );
 
     const body = childImportSchema.parse(await req.json());
+
+    // A TEACHER can only import into their own class -- every row lands
+    // there regardless of any class column in the file.
+    const teacherOnly = role === "TEACHER";
+    if (teacherOnly && body.defaultCategoryId !== assignedCategoryId) {
+      return NextResponse.json(
+        { error: "You can only import children into your own class." },
+        { status: 403 }
+      );
+    }
 
     const defaultCategory = await db.category.findFirst({
       where: { id: body.defaultCategoryId, organizationId, deletedAt: null },
@@ -50,9 +63,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Default class not found." }, { status: 400 });
     }
 
-    const categories = await db.category.findMany({
-      where: { organizationId, deletedAt: null },
-    });
+    const categories = teacherOnly
+      ? [defaultCategory]
+      : await db.category.findMany({ where: { organizationId, deletedAt: null } });
     const categoryByName = new Map(categories.map((c) => [c.name.trim().toLowerCase(), c]));
 
     let created = 0;

@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { buildDrilldownTree, type LeafRow } from "@/lib/billing/dashboard";
-import { describeAuditAction } from "@/lib/auditLabel";
+import { describeAuditAction, redactMoneyMetadata } from "@/lib/auditLabel";
+import { ACCOUNTING_ENTITY_TYPES } from "@/lib/activityArea";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -20,11 +21,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const canViewMoney = permissions.includes("VIEW_MONEY");
 
     const childrenCount = await db.child.count({
-      where: { organizationId, archived: false },
+      where: { organizationId, archived: false, deletedAt: null },
     });
 
+    // Accounting dashboard: Accounting activity only (Centre has its own
+    // feed -- Dylan's revision notes, 23 Sept).
     const recentAudit = await db.auditLog.findMany({
-      where: { organizationId },
+      where: { organizationId, entityType: { in: [...ACCOUNTING_ENTITY_TYPES] } },
       include: { user: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -32,7 +35,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const activity = recentAudit.map((a) => ({
       id: a.id,
       userName: a.user?.name ?? "Someone",
-      label: describeAuditAction(a),
+      // Amounts only for VIEW_MONEY (final inspection R2).
+      label: describeAuditAction(canViewMoney ? a : redactMoneyMetadata(a)),
       createdAt: a.createdAt,
     }));
 
@@ -51,7 +55,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       where: {
         organizationId,
         status: { in: ["OUTSTANDING", "PARTIALLY_PAID"] },
-        child: { archived: false },
+        // Trashed children never count (final inspection R8).
+        child: { archived: false, deletedAt: null },
       },
       include: {
         child: { include: { category: true } },

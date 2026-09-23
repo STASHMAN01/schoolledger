@@ -10,7 +10,10 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId); // any member may view
+    // Events are billing: every figure here is money, so VIEW_MONEY is
+    // required (final inspection R2). Centre Management uses the money-free
+    // events/upcoming route instead.
+    await requireMembership(organizationId, "VIEW_MONEY");
 
     const events = await db.event.findMany({
       where: { organizationId },

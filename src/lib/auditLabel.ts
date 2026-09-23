@@ -12,19 +12,34 @@ function meta(row: AuditRow): Record<string, unknown> {
   return (row.metadata as Record<string, unknown>) ?? {};
 }
 
+// Money-free view of an audit row for anyone without VIEW_MONEY (final
+// inspection R2): drops every amount/fee/total field from the metadata, and
+// the label of payment-related entries (it contains the amount). The
+// describeAuditAction() wording already falls back to "a payment" etc.
+const MONEY_KEY = /cents|amount|total|fee/i;
+export function redactMoneyMetadata<T extends { action: string; metadata: unknown }>(row: T): T {
+  if (!row.metadata || typeof row.metadata !== "object") return row;
+  const cleaned = Object.fromEntries(
+    Object.entries(row.metadata as Record<string, unknown>).filter(
+      ([k]) => !MONEY_KEY.test(k) && !(k === "targetLabel" && /payment/i.test(row.action))
+    )
+  );
+  return { ...row, metadata: cleaned };
+}
+
 export function describeAuditAction(row: AuditRow): string {
   const m = meta(row);
   switch (row.action) {
     case "organization.created":
       return "created the school account";
     case "category.created":
-      return `added category "${m.name ?? ""}"`;
+      return `added class "${m.name ?? ""}"`;
     case "category.updated":
-      return "updated a category";
+      return "updated a class";
     case "category.archived":
-      return "archived a category";
+      return "archived a class";
     case "category.restored":
-      return "restored a category";
+      return "restored a class";
     case "child.created":
       return `added ${m.name ?? "a child"}`;
     case "child.updated":
@@ -123,29 +138,29 @@ export function describeAuditAction(row: AuditRow): string {
     case "reminder.sent":
       return `sent a payment reminder to ${m.childName ?? "a parent"}${m.channel && m.channel !== "manual" ? ` (${m.channel})` : ""}`;
     case "category.deletionRequested":
-      return `requested deletion of category "${m.targetLabel ?? ""}"`;
+      return `requested deletion of class "${m.targetLabel ?? ""}"`;
     case "child.deletionRequested":
       return `requested deletion of ${m.targetLabel ?? "a child's records"}`;
     case "payment.deletionRequested":
-      return `requested deletion of a payment (${m.targetLabel ?? ""})`;
+      return `requested deletion of a payment${m.targetLabel ? ` (${m.targetLabel})` : ""}`;
     case "category.deletionApproved":
-      return `approved deleting category "${m.targetLabel ?? ""}"`;
+      return `approved deleting class "${m.targetLabel ?? ""}"`;
     case "child.deletionApproved":
       return `approved deleting ${m.targetLabel ?? "a child's records"}`;
     case "payment.deletionApproved":
-      return `approved deleting a payment (${m.targetLabel ?? ""})`;
+      return `approved deleting a payment${m.targetLabel ? ` (${m.targetLabel})` : ""}`;
     case "category.deleted":
-      return `deleted category "${m.targetLabel ?? ""}" (approved by ${typeof m.approvalCount === "number" ? m.approvalCount : "2"} admins)`;
+      return `deleted class "${m.targetLabel ?? ""}" (approved by ${typeof m.approvalCount === "number" ? m.approvalCount : "2"} admins)`;
     case "child.deleted":
       return `deleted ${m.targetLabel ?? "a child's records"} (approved by ${typeof m.approvalCount === "number" ? m.approvalCount : "2"} admins)`;
     case "payment.deleted":
-      return `deleted a payment: ${m.targetLabel ?? ""} (approved by ${typeof m.approvalCount === "number" ? m.approvalCount : "2"} admins)`;
+      return `deleted a payment${m.targetLabel ? `: ${m.targetLabel}` : ""} (approved by ${typeof m.approvalCount === "number" ? m.approvalCount : "2"} admins)`;
     case "category.deletionCancelled":
-      return `cancelled a deletion request for category "${m.targetLabel ?? ""}"`;
+      return `cancelled a deletion request for class "${m.targetLabel ?? ""}"`;
     case "child.deletionCancelled":
       return `cancelled a deletion request for ${m.targetLabel ?? "a child's records"}`;
     case "payment.deletionCancelled":
-      return `cancelled a deletion request for a payment (${m.targetLabel ?? ""})`;
+      return `cancelled a deletion request for a payment${m.targetLabel ? ` (${m.targetLabel})` : ""}`;
     case "reminders.sendAllRequested":
       return `requested sending reminders to everyone owing (${typeof m.reminderCountAtRequest === "number" ? m.reminderCountAtRequest : ""} accounts)`;
     case "reminders.sendAllApproved":

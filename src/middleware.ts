@@ -43,6 +43,12 @@ const PUBLIC_PATHS = [
   // reason — the token itself is what's checked, not a session.
   "/platform/join",
   "/api/platform/join",
+  // Parent online form (Phase 2 Session 4). Parents have no account --
+  // the one-time token in the link is what's checked server-side, not a
+  // session. Missing from this list sent parents to /login (found by Dylan
+  // 23 Sept; it only "worked" in testing because the tester was logged in).
+  "/apply",
+  "/api/apply",
 ];
 
 function isPublicPath(pathname: string) {

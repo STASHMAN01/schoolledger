@@ -24,7 +24,8 @@ export async function getOutstandingReminders(
     where: {
       organizationId,
       status: { in: ["OUTSTANDING", "PARTIALLY_PAID"] },
-      child: { archived: false },
+      // Trashed children never get reminders (final inspection R8).
+      child: { archived: false, deletedAt: null },
     },
     select: {
       childId: true,

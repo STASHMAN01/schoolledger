@@ -5,13 +5,15 @@ import { childSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
+import { serializeChild } from "@/lib/childView";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId, role, assignedCategoryId } = await requireMembership(organizationId); // any member may view
+    const { userId, role, assignedCategoryId, permissions } = await requireMembership(organizationId); // any member may view
+    const canViewMoney = permissions.includes("VIEW_MONEY");
 
     let categoryId = req.nextUrl.searchParams.get("categoryId") ?? undefined;
     const includeArchived = req.nextUrl.searchParams.get("archived") === "true";
@@ -54,7 +56,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       children: children.map((c) => {
         const request = requestByChildId.get(c.id);
         return {
-          ...c,
+          ...serializeChild(c, canViewMoney),
           deletionRequest: request
             ? {
                 id: request.id,
@@ -75,12 +77,21 @@ export async function GET(req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId, role, assignedCategoryId } = await requireMembership(
+    const { userId, role, assignedCategoryId, permissions } = await requireMembership(
       organizationId,
       "MANAGE_CHILDREN"
     );
+    const canViewMoney = permissions.includes("VIEW_MONEY");
 
     const body = childSchema.parse(await req.json());
+
+    // A fee override is money -- only VIEW_MONEY may set one.
+    if (body.feeOverrideCents != null && !canViewMoney) {
+      return NextResponse.json(
+        { error: "You don't have permission to set a fee." },
+        { status: 403 }
+      );
+    }
 
     // TEACHER can only add children to their own assigned class.
     if (role === "TEACHER" && body.categoryId !== assignedCategoryId) {
@@ -98,7 +109,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
     if (!category) {
       return NextResponse.json(
-        { error: "Category not found." },
+        { error: "Class not found." },
         { status: 400 }
       );
     }
@@ -119,6 +130,9 @@ export async function POST(req: NextRequest, { params }: Params) {
         organizationId,
         lastName: { equals: body.lastName, mode: "insensitive" },
         archived: false,
+        deletedAt: null,
+        // A TEACHER only ever sees their own class.
+        ...(role === "TEACHER" ? { categoryId: assignedCategoryId ?? undefined } : {}),
       },
       select: { id: true, firstName: true, lastName: true, categoryId: true },
     });
@@ -165,7 +179,10 @@ export async function POST(req: NextRequest, { params }: Params) {
       metadata: { name: `${child.firstName} ${child.lastName}` },
     });
 
-    return NextResponse.json({ child, possibleSiblings }, { status: 201 });
+    return NextResponse.json(
+      { child: serializeChild(child, canViewMoney), possibleSiblings },
+      { status: 201 }
+    );
   } catch (err) {
     return handleApiError(err);
   }

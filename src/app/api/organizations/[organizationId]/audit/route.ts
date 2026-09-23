@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
+import { redactMoneyMetadata } from "@/lib/auditLabel";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -16,7 +17,8 @@ const PAGE_SIZE = 30;
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    await requireMembership(organizationId, "VIEW_ACTIVITY_LOG");
+    const { permissions } = await requireMembership(organizationId, "VIEW_ACTIVITY_LOG");
+    const canViewMoney = permissions.includes("VIEW_MONEY");
 
     const cursor = req.nextUrl.searchParams.get("cursor");
     // "since" (ISO datetime) powers the dashboard's recent-activity card
@@ -73,7 +75,8 @@ export async function GET(req: NextRequest, { params }: Params) {
         action: e.action,
         entityType: e.entityType,
         entityId: e.entityId,
-        metadata: e.metadata,
+        // Amounts only for VIEW_MONEY (final inspection R2).
+        metadata: canViewMoney ? e.metadata : redactMoneyMetadata(e).metadata,
         createdAt: e.createdAt.toISOString(),
         actor: e.user ? { name: e.user.name, email: e.user.email } : null,
       })),

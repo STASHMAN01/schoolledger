@@ -5,14 +5,14 @@ import { childSchema, childProfileSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { cancelEntriesAfterExit } from "@/lib/billing/financialPlan";
-import { maskIdNumber } from "@/lib/idMask";
+import { serializeChild } from "@/lib/childView";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { role, assignedCategoryId } = await requireMembership(organizationId);
+    const { role, assignedCategoryId, permissions } = await requireMembership(organizationId);
 
     const child = await db.child.findFirst({
       where: { id: childId, organizationId },
@@ -32,15 +32,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    // ID numbers are masked by default everywhere -- see reveal-id/route.ts
-    // for the audit-logged endpoint that returns the real value.
+    // ID numbers are masked by default everywhere (see reveal-id/route.ts
+    // for the audit-logged endpoint that returns the real value), and money
+    // is blanked for anyone without VIEW_MONEY -- see src/lib/childView.ts.
     return NextResponse.json({
-      child: {
-        ...child,
-        childIdNumber: maskIdNumber(child.childIdNumber),
-        parentIdNumber: maskIdNumber(child.parentIdNumber),
-        guardians: child.guardians.map((g) => ({ ...g, idNumber: maskIdNumber(g.idNumber) })),
-      },
+      child: serializeChild(child, permissions.includes("VIEW_MONEY")),
     });
   } catch (err) {
     return handleApiError(err);
@@ -50,10 +46,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { userId, role, assignedCategoryId } = await requireMembership(
+    const { userId, role, assignedCategoryId, permissions } = await requireMembership(
       organizationId,
       "MANAGE_CHILDREN"
     );
+    const canViewMoney = permissions.includes("VIEW_MONEY");
 
     const existing = await db.child.findFirst({
       where: { id: childId, organizationId },
@@ -65,6 +62,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const rawBody = await req.json();
     const body = childSchema.partial().parse(rawBody);
     const profileBody = childProfileSchema.parse(rawBody);
+
+    // A fee override is money -- only VIEW_MONEY may change it.
+    if (body.feeOverrideCents !== undefined && !canViewMoney) {
+      return NextResponse.json(
+        { error: "You don't have permission to change a fee." },
+        { status: 403 }
+      );
+    }
 
     // A photo can only be set/changed alongside explicit consent -- either
     // this request is granting it (photoConsentGiven: true) or the child
@@ -94,7 +99,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       });
       if (!category) {
         return NextResponse.json(
-          { error: "Category not found." },
+          { error: "Class not found." },
           { status: 400 }
         );
       }
@@ -154,7 +159,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       entityId: child.id,
     });
 
-    return NextResponse.json({ child });
+    return NextResponse.json({ child: serializeChild(child, canViewMoney) });
   } catch (err) {
     return handleApiError(err);
   }
@@ -166,7 +171,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { userId, role, assignedCategoryId } = await requireMembership(
+    const { userId, role, assignedCategoryId, permissions } = await requireMembership(
       organizationId,
       "MANAGE_CHILDREN"
     );
@@ -191,7 +196,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       entityId: child.id,
     });
 
-    return NextResponse.json({ child });
+    return NextResponse.json({ child: serializeChild(child, permissions.includes("VIEW_MONEY")) });
   } catch (err) {
     return handleApiError(err);
   }

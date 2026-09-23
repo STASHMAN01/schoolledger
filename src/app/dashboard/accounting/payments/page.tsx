@@ -6,6 +6,7 @@ import { Button, Card, Input, Label, LinkButton, PageHeader, Select } from "@/co
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
+import { todayLocal } from "@/lib/date";
 
 type Category = { id: string; name: string };
 type Child = { id: string; firstName: string; lastName: string; categoryId: string };
@@ -22,16 +23,18 @@ type Payment = {
   deletionRequest: DeletionRequestInfo | null;
 };
 
-const emptyForm = {
+// A function, not a constant, so the default date is today *now* -- a
+// module-level constant froze it at page load (final inspection B3).
+const emptyForm = () => ({
   categoryId: "",
   childId: "",
   paymentTypeId: "",
   amount: "",
   method: "EFT",
-  date: new Date().toISOString().slice(0, 10),
+  date: todayLocal(),
   reference: "",
   notes: "",
-};
+});
 
 export default function PaymentsPage() {
   const { organizationId, permissions, currencyCode } = useOrg();
@@ -126,7 +129,7 @@ export default function PaymentsPage() {
           ? ` ${formatCents(data.remainingCents, currencyCode)} went to credit balance.`
           : "")
     );
-    setForm({ ...emptyForm, categoryId: form.categoryId });
+    setForm({ ...emptyForm(), categoryId: form.categoryId });
     await loadPayments();
   }
 

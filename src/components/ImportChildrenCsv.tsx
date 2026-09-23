@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { parseCsv, csvRowsToRecords, toCsv } from "@/lib/csv";
+import { todayLocal } from "@/lib/date";
 
 type Category = { id: string; name: string };
 
@@ -69,7 +70,7 @@ export function ImportChildrenCsv({
   const [fileName, setFileName] = useState("");
   const [defaultCategoryId, setDefaultCategoryId] = useState(categories[0]?.id ?? "");
   const [defaultEnrollmentDate, setDefaultEnrollmentDate] = useState(
-    new Date().toISOString().slice(0, 10)
+    todayLocal
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../../OrgContext";
 import { Badge, Button, Card, EmptyState, PageHeader } from "@/components/ui";
+import { todayLocal } from "@/lib/date";
 
 type AbsentRow = {
   id: string;
@@ -18,9 +19,6 @@ type AbsentRow = {
   notifiedAt: string | null;
 };
 
-function todayLocal(): string {
-  return new Date().toLocaleDateString("en-CA");
-}
 
 export default function AbsentTodayPage() {
   const { organizationId, role } = useOrg();

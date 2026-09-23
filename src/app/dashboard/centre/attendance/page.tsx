@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Badge, Button, Card, EmptyState, PageHeader, Select } from "@/components/ui";
+import { todayLocal } from "@/lib/date";
 
 type Category = { id: string; name: string; archived: boolean };
 type ChildRow = {
@@ -20,12 +21,6 @@ type ChildRow = {
 };
 type Status = "PRESENT" | "ABSENT";
 
-function todayLocal(): string {
-  // yyyy-mm-dd in the browser's own local time, not UTC -- see the
-  // comment on attendanceRegisterSchema in validation.ts for why the
-  // server never guesses "today" itself.
-  return new Date().toLocaleDateString("en-CA");
-}
 
 export default function AttendancePage() {
   const { organizationId, role } = useOrg();

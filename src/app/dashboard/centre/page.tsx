@@ -12,6 +12,7 @@ import { Badge, Card, LinkButton, PageHeader } from "@/components/ui";
 import { isoWeekday } from "@/lib/schedule";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
 import { describeAuditAction } from "@/lib/auditLabel";
+import { todayLocal } from "@/lib/date";
 
 type ChildStat = {
   category: { id: string };
@@ -36,9 +37,6 @@ function daysAgo(n: number): Date {
   return d;
 }
 
-function todayLocal(): string {
-  return new Date().toLocaleDateString("en-CA");
-}
 
 type UpcomingEvent = { id: string; name: string; eventDate: string; classes: string[] };
 type TodayItem = { id: string; dayOfWeek: number; startTime: string; endTime: string | null; activity: string };

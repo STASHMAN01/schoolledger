@@ -4,7 +4,7 @@ import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { buildFormFilename } from "@/lib/forms/formPdf";
-import { FORM_TYPE_LABELS } from "@/lib/forms/types";
+import { FORM_TYPE_LABELS, MONEY_FORM_TYPES } from "@/lib/forms/types";
 
 type Params = { params: Promise<{ organizationId: string; childId: string; formId: string }> };
 
@@ -15,7 +15,7 @@ type Params = { params: Promise<{ organizationId: string; childId: string; formI
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId, formId } = await params;
-    const { userId, role, assignedCategoryId } = await requireMembership(organizationId);
+    const { userId, role, assignedCategoryId, permissions } = await requireMembership(organizationId);
 
     const child = await db.child.findFirst({ where: { id: childId, organizationId } });
     if (!child || (role === "TEACHER" && child.categoryId !== assignedCategoryId)) {
@@ -26,6 +26,12 @@ export async function GET(req: NextRequest, { params }: Params) {
       where: { id: formId, childId, organizationId },
     });
     if (!document) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+    // Same money gate as generating one (forms/route.ts): a Fee Agreement
+    // carries the fee amount, so it needs VIEW_MONEY to download too.
+    if (MONEY_FORM_TYPES.includes(document.formType) && !permissions.includes("VIEW_MONEY")) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
 
     await logAudit({
       organizationId,

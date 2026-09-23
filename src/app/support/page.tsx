@@ -71,7 +71,7 @@ export default async function SupportPage() {
           >
             {SUPPORT_EMAIL}
           </a>
-          {WHATSAPP_NUMBER ? (
+          {WHATSAPP_NUMBER && (
             <a
               href={WHATSAPP_LINK}
               target="_blank"
@@ -80,10 +80,6 @@ export default async function SupportPage() {
             >
               Or WhatsApp us →
             </a>
-          ) : (
-            <p className="mt-2 text-xs italic text-muted">
-              WhatsApp coming soon — email works today.
-            </p>
           )}
         </Card>
 
