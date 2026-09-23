@@ -26,6 +26,8 @@ const FIELD_ALIASES: Record<string, string[]> = {
   enrollmentDate: ["enrollment date", "enrollmentdate", "start date"],
   childIdNumber: ["child id", "childid", "child id number", "child's id"],
   parentIdNumber: ["parent id", "parentid", "parent id number", "parent's id"],
+  dateOfBirth: ["date of birth", "dateofbirth", "dob", "birth date", "birthdate", "birthday"],
+  gender: ["gender", "sex"],
 };
 
 function pick(row: Record<string, string>, field: keyof typeof FIELD_ALIASES): string {
@@ -100,6 +102,8 @@ export async function POST(req: NextRequest, { params }: Params) {
           enrollmentDate: enrollmentDateRaw || undefined,
           childIdNumber: pick(raw, "childIdNumber"),
           parentIdNumber: pick(raw, "parentIdNumber"),
+          dateOfBirth: pick(raw, "dateOfBirth"),
+          gender: pick(raw, "gender"),
         });
 
         let category = defaultCategory;
@@ -130,6 +134,8 @@ export async function POST(req: NextRequest, { params }: Params) {
               enrollmentDate,
               childIdNumber: parsed.childIdNumber ?? null,
               parentIdNumber: parsed.parentIdNumber ?? null,
+              dateOfBirth: parsed.dateOfBirth ?? null,
+              gender: parsed.gender ?? null,
             },
           });
           await generateAnnualPlanForChild(

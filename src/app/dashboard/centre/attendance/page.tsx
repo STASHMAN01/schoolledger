@@ -57,15 +57,21 @@ export default function AttendancePage() {
       setSavedAt(null);
       const params = new URLSearchParams({ date });
       if (categoryId) params.set("categoryId", categoryId);
-      const res = await fetch(
-        `/api/organizations/${organizationId}/attendance/register?${params.toString()}`
-      );
-      const data = await res.json();
-      if (res.ok) {
+      let res: Response;
+      let data: { error?: string; category?: { id: string; name: string }; children?: ChildRow[] };
+      try {
+        res = await fetch(`/api/organizations/${organizationId}/attendance/register?${params.toString()}`);
+        data = await res.json().catch(() => ({}));
+      } catch {
+        setError("Couldn't load the register — check your connection and try again.");
+        setLoading(false);
+        return;
+      }
+      if (res.ok && data.category && data.children) {
         setLoadedCategory(data.category);
         setChildren(data.children);
         const initial: Record<string, Status> = {};
-        for (const c of data.children as ChildRow[]) initial[c.id] = c.status ?? "PRESENT";
+        for (const c of data.children) initial[c.id] = c.status ?? "PRESENT";
         setDraft(initial);
       } else {
         setLoadedCategory(null);
@@ -100,22 +106,28 @@ export default function AttendancePage() {
     if (!loadedCategory) return;
     setSaving(true);
     setError("");
-    const res = await fetch(`/api/organizations/${organizationId}/attendance/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        categoryId: loadedCategory.id,
-        date,
-        records: children.map((c) => ({ childId: c.id, status: draft[c.id] ?? "PRESENT" })),
-      }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setSavedAt(Date.now());
-    } else {
-      setError(data.error ?? "Could not save the register.");
+    // Never leave the button stuck on "Saving…" (final inspection B2).
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/attendance/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: loadedCategory.id,
+          date,
+          records: children.map((c) => ({ childId: c.id, status: draft[c.id] ?? "PRESENT" })),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setSavedAt(Date.now());
+      } else {
+        setError(data.error ?? "Could not save the register.");
+      }
+    } catch {
+      setError("The register wasn't saved — check your connection and tap Save again.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   const presentCount = children.filter((c) => draft[c.id] !== "ABSENT").length;
@@ -199,7 +211,7 @@ export default function AttendancePage() {
             </div>
           </Card>
 
-          <Card as="div" className="p-2">
+          <Card as="div" className="mb-24 p-2 md:mb-0">
             <div className="divide-y divide-border">
               {children.map((c) => {
                 const status = draft[c.id] ?? "PRESENT";
@@ -209,7 +221,7 @@ export default function AttendancePage() {
                     key={c.id}
                     type="button"
                     onClick={() => toggle(c.id)}
-                    className="transition-standard flex w-full items-center justify-between gap-3 rounded-lg px-3 py-3 text-left hover:bg-background"
+                    className="transition-standard flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-3 py-3 text-left hover:bg-background"
                   >
                     <span className="text-sm font-medium text-foreground">
                       {c.firstName} {c.lastName}
@@ -222,6 +234,15 @@ export default function AttendancePage() {
               })}
             </div>
           </Card>
+
+          {/* Phones: a full-width Save always in reach at the bottom, so a
+              teacher never scrolls back up a long class list (final
+              inspection B5, "under a minute on a phone"). */}
+          <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface p-3 shadow-lg md:hidden">
+            <Button onClick={save} disabled={saving} className="h-12 w-full text-base">
+              {saving ? "Saving…" : savedAt ? "Saved ✓ — save again" : `Save register (${absentCount} absent)`}
+            </Button>
+          </div>
         </>
       )}
     </div>

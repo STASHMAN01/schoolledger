@@ -40,8 +40,10 @@ async function purgeExpired(organizationId: string) {
     try {
       await db.child.delete({ where: { id } });
     } catch {
-      // Has payments/plan entries — deleting would either fail outright or
-      // destroy financial history, so it stays soft-deleted permanently.
+      // Has payments, charges or credit — the database refuses the delete
+      // (Restrict on FinancialPlanEntry/CreditBalance/Payment → Child, final
+      // inspection R7), so billing history is never lost; the child just
+      // stays soft-deleted (hidden) permanently.
     }
   }
 }

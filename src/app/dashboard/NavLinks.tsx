@@ -1,14 +1,22 @@
 "use client";
 
+// Dashboard navigation. Reworked 23 Sept (Dylan: "the tabs are crashing
+// into each other"):
+//   - Row 1 of the header: mode switch far left, school name, then a small
+//     utility cluster on the right (<UtilityLinks/>: Communication in
+//     Centre mode, Platform, Support) plus theme and Log out.
+//   - Row 2 (tablet/desktop only): the mode's main tabs (<NavBar/>), spread
+//     out with room to wrap instead of overlapping.
+//   - Phones: row 2 and the utility links live in the ☰ menu (<MobileMenu/>)
+//     with full-size tap targets.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useOrg } from "./OrgContext";
 
-// Accounting mode's nav -- everything that was on the single dashboard
-// nav before the Phase 1 mode-switch restructure, now scoped under
-// /dashboard/accounting.
-const ACCOUNTING_LINKS = [
+type NavLink = { href: string; label: string; exact?: boolean };
+
+const ACCOUNTING_LINKS: NavLink[] = [
   { href: "/dashboard/accounting", label: "Home", exact: true },
   { href: "/dashboard/accounting/children", label: "Children" },
   { href: "/dashboard/accounting/payments", label: "Payments" },
@@ -17,24 +25,23 @@ const ACCOUNTING_LINKS = [
   { href: "/dashboard/accounting/reminders", label: "Reminders" },
 ];
 
-// Centre Management's nav -- Phase 1 shipped with just the Home page, so
-// this stayed empty; Phase 2 Session 1 adds the Children list/profiles,
-// so it needs a real nav now. Grew with Admissions/Enrolled (Phase 2),
-// Attendance (Phase 3 Session 1), and Pending reviews (Phase 2 Session 4).
-const CENTRE_LINKS = [
+// Centre Management, in the order of Dylan's mock-up (23 Sept). Children
+// are reached through Enrolled/Admissions now (no separate tab), online
+// submissions live inside Admissions, and Reports stays hidden until it's
+// defined. Communication sits in the top-right utility cluster.
+const CENTRE_LINKS: NavLink[] = [
   { href: "/dashboard/centre", label: "Home", exact: true },
-  { href: "/dashboard/centre/children", label: "Children" },
-  { href: "/dashboard/centre/admissions", label: "Admissions" },
+  { href: "/dashboard/centre/forms", label: "Forms" },
   { href: "/dashboard/centre/enrolled", label: "Enrolled" },
+  { href: "/dashboard/centre/admissions", label: "Admissions" },
   { href: "/dashboard/centre/attendance", label: "Attendance" },
-  { href: "/dashboard/centre/pending-reviews", label: "Pending reviews" },
-  // Phase 5
+  { href: "/dashboard/centre/classes", label: "Classes" },
   { href: "/dashboard/centre/schedule", label: "Timetable" },
+  { href: "/dashboard/centre/events", label: "Events" },
   { href: "/dashboard/centre/staff", label: "Staff" },
-  { href: "/dashboard/centre/communication", label: "Communication" },
 ];
 
-const SETTINGS_LINKS = [
+const SETTINGS_LINKS: NavLink[] = [
   { href: "/dashboard/accounting/settings/general", label: "General" },
   { href: "/dashboard/accounting/settings/payment-types", label: "Payment types" },
   { href: "/dashboard/accounting/settings/team", label: "Team" },
@@ -52,9 +59,10 @@ const LINK_REQUIRES: Record<string, string[]> = {
   "/dashboard/accounting/payments": ["VIEW_MONEY"],
   "/dashboard/accounting/events": ["VIEW_MONEY"],
   "/dashboard/accounting/reminders": ["VIEW_MONEY"],
+  "/dashboard/centre/forms": ["MANAGE_CHILDREN"],
   "/dashboard/centre/attendance": ["MANAGE_ATTENDANCE"],
-  "/dashboard/centre/pending-reviews": ["MANAGE_CHILDREN"],
   "/dashboard/centre/staff": ["MANAGE_CLASSES", "MANAGE_TEAM"],
+  "/dashboard/centre/communication": ["MANAGE_CHILDREN"],
   "/dashboard/accounting/settings/payment-types": ["MANAGE_SETTINGS"],
   "/dashboard/accounting/settings/team": ["MANAGE_TEAM"],
   "/dashboard/accounting/settings/billing": ["MANAGE_TEAM"],
@@ -69,26 +77,38 @@ function canSeeLink(href: string, permissions: readonly string[]): boolean {
 }
 
 function isActive(pathname: string, href: string, exact?: boolean) {
-  return exact ? pathname === href : pathname.startsWith(href);
+  return exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
 }
 
-export function NavLinks() {
+function useNav() {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const settingsRef = useRef<HTMLDivElement>(null);
   const { permissions } = useOrg();
-  // The Settings dropdown (billing, team, payment types) is
-  // Accounting-only; Centre Management gets its own, shorter link set.
   const inAccounting = pathname.startsWith("/dashboard/accounting");
   const links = (inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS).filter((l) =>
     canSeeLink(l.href, permissions)
   );
+  const settings = inAccounting ? SETTINGS_LINKS.filter((l) => canSeeLink(l.href, permissions)) : [];
+  const communication: NavLink | null =
+    !inAccounting && canSeeLink("/dashboard/centre/communication", permissions)
+      ? { href: "/dashboard/centre/communication", label: "Communication" }
+      : null;
+  return { pathname, links, settings, communication };
+}
 
-  // Native <details> has no click-outside-to-close behavior, which Dylan
-  // flagged as a bug (clicking anywhere else left the Settings menu open).
-  // This listens for any pointerdown outside the menu and closes it, and
-  // also closes on route change / Escape for good measure.
+const tabClass = (active: boolean) =>
+  `transition-standard whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ${
+    active
+      ? "bg-brand-soft text-brand-soft-foreground"
+      : "text-muted-foreground hover:bg-background hover:text-foreground"
+  }`;
+
+/** Row 2 of the header on tablet/desktop: the mode's main tabs. */
+export function NavBar() {
+  const { pathname, links, settings } = useNav();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  // Close the Settings menu on an outside click or Escape.
   useEffect(() => {
     if (!settingsOpen) return;
     function handlePointerDown(e: PointerEvent) {
@@ -107,66 +127,40 @@ export function NavLinks() {
     };
   }, [settingsOpen]);
 
-  // Note: no separate "close on route change" effect — each link inside
-  // the menu already closes it directly via its own onClick (see below),
-  // and adding a pathname-watching effect just to call setState is an
-  // anti-pattern (cascading renders) for no extra benefit here.
-  const settingsVisible = SETTINGS_LINKS.filter((l) => canSeeLink(l.href, permissions));
-
   return (
-    <>
-      <nav className="hidden items-center gap-1 md:flex">
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className={`transition-standard rounded-lg px-3 py-2 text-sm font-medium ${
-              isActive(pathname, l.href, l.exact)
-                ? "bg-brand-soft text-brand-soft-foreground"
-                : "text-muted-foreground hover:bg-background hover:text-foreground"
-            }`}
-          >
-            {l.label}
-          </Link>
-        ))}
-        {inAccounting && (
+    <nav className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5" aria-label="Main">
+      {links.map((l) => (
+        <Link key={l.href} href={l.href} className={tabClass(isActive(pathname, l.href, l.exact))}>
+          {l.label}
+        </Link>
+      ))}
+      {settings.length > 0 && (
         <div ref={settingsRef} className="relative">
           <button
             type="button"
             onClick={() => setSettingsOpen((v) => !v)}
             aria-expanded={settingsOpen}
-            className={`transition-standard flex cursor-pointer list-none items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium ${
-              pathname.startsWith("/dashboard/accounting/settings")
-                ? "bg-brand-soft text-brand-soft-foreground"
-                : "text-muted-foreground hover:bg-background hover:text-foreground"
-            }`}
+            className={`${tabClass(pathname.startsWith("/dashboard/accounting/settings"))} flex items-center gap-1`}
           >
             Settings
             <svg
               className={`h-3.5 w-3.5 transition-transform ${settingsOpen ? "rotate-180" : ""}`}
               viewBox="0 0 12 12"
               fill="none"
+              aria-hidden="true"
             >
-              <path
-                d="M2.5 4.5L6 8l3.5-3.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {settingsOpen && (
-            <div className="animate-in absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg">
-              {settingsVisible.map((l) => (
+            <div className="animate-in absolute left-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border border-border bg-surface py-1 shadow-lg">
+              {settings.map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
                   onClick={() => setSettingsOpen(false)}
                   className={`block px-3 py-2 text-sm ${
-                    isActive(pathname, l.href)
-                      ? "bg-brand-soft text-brand-soft-foreground"
-                      : "text-foreground hover:bg-background"
+                    isActive(pathname, l.href) ? "bg-brand-soft text-brand-soft-foreground" : "text-foreground hover:bg-background"
                   }`}
                 >
                   {l.label}
@@ -175,44 +169,96 @@ export function NavLinks() {
             </div>
           )}
         </div>
-        )}
-      </nav>
+      )}
+    </nav>
+  );
+}
 
+/** Top-right utility links on tablet/desktop (Communication, Platform, Support). */
+export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
+  const { pathname, communication } = useNav();
+  const small = (active: boolean) =>
+    `transition-standard hidden whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium md:inline-flex ${
+      active ? "bg-brand-soft text-brand-soft-foreground" : "text-muted-foreground hover:bg-background hover:text-foreground"
+    }`;
+  return (
+    <>
+      {communication && (
+        <Link href={communication.href} className={small(isActive(pathname, communication.href))}>
+          Communication
+        </Link>
+      )}
+      {isPlatformAdmin && (
+        <Link href="/platform" className={small(false)}>
+          Platform
+        </Link>
+      )}
+      <Link href="/support" title="Support & how to use Crechely" className={small(false)}>
+        Support
+      </Link>
+    </>
+  );
+}
+
+/** Phones: ☰ button + full menu (main tabs, settings, utility links). */
+export function MobileMenu({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
+  const { pathname, links, settings, communication } = useNav();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close on an outside tap or Escape (final inspection B6).
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const all: NavLink[] = [
+    ...links,
+    ...(communication ? [communication] : []),
+    ...settings,
+    ...(isPlatformAdmin ? [{ href: "/platform", label: "Platform" }] : []),
+    { href: "/support", label: "Support" },
+  ];
+
+  return (
+    <div ref={menuRef} className="md:hidden">
       <button
         type="button"
-        aria-label="Toggle menu"
-        onClick={() => setMobileOpen((v) => !v)}
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-foreground hover:bg-background md:hidden"
+        aria-label={open ? "Close menu" : "Open menu"}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground hover:bg-background"
       >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          {mobileOpen ? (
-            <path
-              d="M5 5l10 10M15 5L5 15"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-            />
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          {open ? (
+            <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
           ) : (
-            <path
-              d="M3 5.5h14M3 10h14M3 14.5h14"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-            />
+            <path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
           )}
         </svg>
       </button>
 
-      {mobileOpen && (
-        <div className="animate-in absolute inset-x-0 top-full z-20 border-b border-border bg-surface px-4 py-3 shadow-lg md:hidden">
+      {open && (
+        <div className="animate-in absolute inset-x-0 top-full z-30 max-h-[75vh] overflow-y-auto border-b border-border bg-surface px-4 py-3 shadow-lg">
           <div className="flex flex-col gap-1">
-            {[...links, ...(inAccounting ? settingsVisible : [])].map((l) => (
+            {all.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                onClick={() => setMobileOpen(false)}
-                className={`rounded-lg px-3 py-2 text-sm font-medium ${
-                  isActive(pathname, l.href, "exact" in l ? Boolean(l.exact) : false)
+                onClick={() => setOpen(false)}
+                className={`flex min-h-11 items-center rounded-lg px-3 text-base font-medium ${
+                  isActive(pathname, l.href, l.exact)
                     ? "bg-brand-soft text-brand-soft-foreground"
                     : "text-muted-foreground hover:bg-background hover:text-foreground"
                 }`}
@@ -223,6 +269,6 @@ export function NavLinks() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

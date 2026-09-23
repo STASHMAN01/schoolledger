@@ -5,6 +5,21 @@ import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { parseCsv, csvRowsToRecords, toCsv } from "@/lib/csv";
 import { todayLocal } from "@/lib/date";
 
+// Excel support (Dylan 23 Sept). The reader is loaded only when someone
+// actually picks an .xlsx file. Cells become plain text in the same shape
+// the CSV parser produces; real Excel date cells become yyyy-mm-dd.
+async function readExcel(file: File): Promise<string[][]> {
+  const { readSheet } = await import("read-excel-file/browser");
+  const data = await readSheet(file);
+  return data.map((row) =>
+    row.map((cell) => {
+      if (cell === null || cell === undefined) return "";
+      if (cell instanceof Date) return cell.toISOString().slice(0, 10);
+      return String(cell);
+    })
+  );
+}
+
 type Category = { id: string; name: string };
 
 type ImportResult = { created: number; errors: { row: number; error: string }[] };
@@ -12,6 +27,8 @@ type ImportResult = { created: number; errors: { row: number; error: string }[] 
 const TEMPLATE_HEADERS = [
   "Child First Name",
   "Child Last Name",
+  "Date of Birth",
+  "Gender",
   "Parent First Name",
   "Parent Last Name",
   "Parent Phone",
@@ -25,13 +42,16 @@ const TEMPLATE_HEADERS = [
 function downloadTemplate() {
   const csv = toCsv([
     TEMPLATE_HEADERS,
+    // Obviously-fake example row (no real names in templates).
     [
-      "Thandiwe",
-      "Nkosi",
-      "Sipho",
-      "Nkosi",
-      "+27821234567",
-      "sipho@example.com",
+      "Example",
+      "Child",
+      "21/03/2022",
+      "Female",
+      "Example",
+      "Parent",
+      "082 000 0000",
+      "parent@example.com",
       "",
       "",
       "",
@@ -83,8 +103,15 @@ export function ImportChildrenCsv({
     setError(null);
     setResult(null);
     setFileName(file.name);
-    const text = await file.text();
-    const parsed = csvRowsToRecords(parseCsv(text));
+    let table: string[][];
+    try {
+      table = /\.xlsx$/i.test(file.name) ? await readExcel(file) : parseCsv(await file.text());
+    } catch {
+      setError("That file couldn't be read. Save it as .xlsx or .csv and try again.");
+      setRows(null);
+      return;
+    }
+    const parsed = csvRowsToRecords(table);
     if (parsed.length === 0) {
       setError("That file doesn't have any data rows — check it has a header row plus at least one child.");
       setRows(null);
@@ -131,7 +158,7 @@ export function ImportChildrenCsv({
   if (!open) {
     return (
       <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        Import CSV
+        Import from Excel / CSV
       </Button>
     );
   }
@@ -140,7 +167,7 @@ export function ImportChildrenCsv({
     <Card className="mb-6 p-4">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-display text-sm font-semibold text-foreground">
-          Import children from a CSV
+          Import children from Excel or CSV
         </h2>
         <button
           type="button"
@@ -155,10 +182,14 @@ export function ImportChildrenCsv({
       </div>
 
       <p className="mb-3 text-sm text-muted-foreground">
-        Columns: child first/last name and parent first/last name (or a single
-        parent name column) are required. Parent phone, parent email,
-        class, enrollment date, parent ID and child ID are all optional —
-        rows without a class or enrollment date use the defaults below.
+        Use an Excel (.xlsx) or CSV file with a header row. Required: child
+        first name and surname, and the parent&apos;s name (first and last, or
+        one &quot;Parent Name&quot; column). Also read if present: date of birth
+        (e.g. 21/03/2022), gender, parent phone and email, class, enrolment
+        date and ID numbers. Rows without a class or enrolment date use the
+        defaults below. Children missing a date of birth, gender or parent
+        phone are still imported and marked &quot;incomplete&quot; so you can fill
+        them in later.
       </p>
 
       <button
@@ -166,16 +197,16 @@ export function ImportChildrenCsv({
         onClick={downloadTemplate}
         className="mb-4 text-sm text-brand underline hover:brightness-90"
       >
-        Download a template CSV
+        Download the template (CSV — opens in Excel)
       </button>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Label className="flex flex-col gap-1">
-          CSV file
+          Excel or CSV file
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={handleFile}
             className="text-sm text-foreground file:mr-3 file:rounded-lg file:border file:border-border-strong file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
           />
@@ -197,7 +228,7 @@ export function ImportChildrenCsv({
           </Select>
         </Label>
         <Label className="flex flex-col gap-1">
-          Default enrollment date
+          Default enrolment date
           <Input
             type="date"
             value={defaultEnrollmentDate}

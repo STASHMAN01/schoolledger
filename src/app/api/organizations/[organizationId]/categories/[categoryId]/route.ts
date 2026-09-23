@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
-import { categorySchema } from "@/lib/validation";
+import { ageRangeProblem, categorySchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 
@@ -10,7 +10,7 @@ type Params = { params: Promise<{ organizationId: string; categoryId: string }> 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, categoryId } = await params;
-    const { userId } = await requireMembership(organizationId, "MANAGE_CLASSES");
+    const { userId, permissions } = await requireMembership(organizationId, "MANAGE_CLASSES");
 
     const existing = await db.category.findFirst({
       where: { id: categoryId, organizationId },
@@ -21,29 +21,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const body = categorySchema.partial().parse(await req.json());
 
-    if (body.parentId) {
-      if (body.parentId === categoryId) {
-        return NextResponse.json(
-          { error: "A category cannot be its own parent." },
-          { status: 400 }
-        );
-      }
-      const parent = await db.category.findFirst({
-        where: { id: body.parentId, organizationId, deletedAt: null },
-      });
-      if (!parent) {
-        return NextResponse.json(
-          { error: "Parent category not found." },
-          { status: 400 }
-        );
-      }
+    const ageProblem = ageRangeProblem(
+      body.ageMinMonths === undefined ? existing.ageMinMonths : body.ageMinMonths,
+      body.ageMaxMonths === undefined ? existing.ageMaxMonths : body.ageMaxMonths
+    );
+    if (ageProblem) return NextResponse.json({ error: ageProblem }, { status: 400 });
+
+    if (body.monthlyFeeCents !== undefined && !permissions.includes("VIEW_MONEY")) {
+      return NextResponse.json({ error: "You don't have permission to change a fee." }, { status: 403 });
     }
 
     const category = await db.category.update({
       where: { id: categoryId },
       data: {
         name: body.name ?? undefined,
-        parentId: body.parentId === undefined ? undefined : body.parentId,
+        ageMinMonths: body.ageMinMonths === undefined ? undefined : body.ageMinMonths,
+        ageMaxMonths: body.ageMaxMonths === undefined ? undefined : body.ageMaxMonths,
         monthlyFeeCents:
           body.monthlyFeeCents === undefined ? undefined : body.monthlyFeeCents,
       },

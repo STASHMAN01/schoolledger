@@ -56,9 +56,7 @@ export default function CategoriesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         // Flat list by decision (Phase 1 centre-management restructure) —
-        // classes are never nested from this form. The API/schema still
-        // accept parentId (unchanged, lower-risk than a migration), this
-        // UI just never sends one.
+        // classes are never nested. The API no longer accepts parentId.
         name,
         monthlyFeeCents: inputToCents(fee),
       }),

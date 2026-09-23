@@ -5,6 +5,15 @@ import { handleApiError } from "@/lib/apiError";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
+function newApplicantName(data: string): { id: null; firstName: string; lastName: string } {
+  try {
+    const parsed = JSON.parse(data) as { child?: { firstName?: string; lastName?: string } };
+    return { id: null, firstName: parsed.child?.firstName ?? "New", lastName: parsed.child?.lastName ?? "applicant" };
+  } catch {
+    return { id: null, firstName: "New", lastName: "applicant" };
+  }
+}
+
 // Pending-review list -- the Centre Management "Pending reviews" tile
 // links here. A TEACHER only sees submissions for children in their own
 // assigned class, same scoping as every other children/* endpoint; a
@@ -39,7 +48,9 @@ export async function GET(req: NextRequest, { params }: Params) {
         id: s.id,
         status: s.status,
         submittedAt: s.submittedAt,
-        child: s.link.child,
+        isNewApplicant: s.isNewApplicant,
+        // A new family has no child record yet -- show the name they typed.
+        child: s.link?.child ?? newApplicantName(s.data),
       })),
     });
   } catch (err) {

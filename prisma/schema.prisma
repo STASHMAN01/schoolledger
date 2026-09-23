@@ -163,6 +163,12 @@ model Organization {
   // (see src/app/api/webhooks/paystack/route.ts) rather than the app
   // adopting Paystack's vocabulary directly.
   subscriptionStatus String  @default("trialing")
+  // Permanent public "apply to this school" link for NEW families (fix
+  // session B, Dylan 23 Sept). Lookup is by hash; the token itself is kept
+  // encrypted (src/lib/fieldCrypto.ts) so staff can copy the link again
+  // from the Forms page. Regenerating replaces both and kills the old link.
+  applyToken         String?
+  applyTokenHash     String?  @unique
   currentPeriodEnd  DateTime?
   trialEndsAt       DateTime?
   createdAt         DateTime @default(now())
@@ -298,7 +304,11 @@ model Category {
   organizationId String
   parentId       String?
   name           String
-  monthlyFeeCents Int?      // null = inherits nothing; leaf categories should set this
+  monthlyFeeCents Int?      // this class's monthly fee; null = no recurring fee set
+  // Age group, in months (e.g. 24-36 = "2-3 years"). Both optional; shown
+  // on the Classes page and used to flag children outside the range.
+  ageMinMonths   Int?
+  ageMaxMonths   Int?
   archived       Boolean   @default(false)
   // Set once a deletion request against this category has 2 admin
   // approvals (see DeletionRequest). A deleted category is hidden from
@@ -384,6 +394,8 @@ model Child {
   @@index([organizationId])
   @@index([categoryId])
   @@index([organizationId, lastName])
+  // Class registers / enrolled lists filter on all of these together.
+  @@index([organizationId, categoryId, archived, deletedAt])
   @@map("children")
 }
 
@@ -500,7 +512,12 @@ model ParentFormLink {
 
 model ParentSubmission {
   id               String           @id @default(cuid())
-  linkId           String           @unique
+  // Set for a per-child "update your details" link; null for a NEW family
+  // applying through the school's permanent apply link (isNewApplicant).
+  linkId           String?          @unique
+  isNewApplicant   Boolean          @default(false)
+  // Set when a new applicant is approved and becomes a real Child.
+  createdChildId   String?
   // Denormalized from the link at submission time so this row can be
   // queried/scoped directly (the "Pending reviews" list) without joining
   // through ParentFormLink for every row.
@@ -517,7 +534,7 @@ model ParentSubmission {
   reviewedAt       DateTime?
   reviewNotes      String?
 
-  link         ParentFormLink               @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  link         ParentFormLink?              @relation(fields: [linkId], references: [id], onDelete: Cascade)
   organization Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   reviewedBy   User?                        @relation("ParentSubmissionReviewedBy", fields: [reviewedByUserId], references: [id])
   attachments  ParentSubmissionAttachment[]
@@ -723,12 +740,16 @@ model FinancialPlanEntry {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  child        Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  // Restrict, not Cascade: deleting a child (trash purge) or a school must
+  // never silently erase charges (final inspection R7/R13).
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  child        Child             @relation(fields: [childId], references: [id], onDelete: Restrict)
   paymentType  PaymentType       @relation(fields: [paymentTypeId], references: [id])
   allocations  PaymentAllocation[]
 
   @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, year])
   @@index([childId, year, month])
   @@map("financial_plan_entries")
 }
@@ -745,13 +766,15 @@ model Payment {
   recordedByUserId String
   createdAt       DateTime      @default(now())
 
-  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Restrict: a school's payment history is never deleted by cascade (R13).
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   child        Child               @relation(fields: [childId], references: [id])
   recordedBy   User                @relation("RecordedBy", fields: [recordedByUserId], references: [id])
   allocations  PaymentAllocation[]
   receipt      Receipt?
 
   @@index([organizationId])
+  @@index([organizationId, date])
   @@index([childId])
   @@map("payments")
 }
@@ -789,7 +812,8 @@ model CreditBalance {
   updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  child        Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  // Restrict: credit is money owed back to a parent (R7).
+  child        Child        @relation(fields: [childId], references: [id], onDelete: Restrict)
 
   @@index([organizationId])
   @@map("credit_balances")
@@ -848,6 +872,8 @@ model AuditLog {
   user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
+  // Timetable "changed" to-do lookups (src/lib/scheduleNotice.ts).
+  @@index([organizationId, entityType, entityId, createdAt])
   @@map("audit_logs")
 }
 

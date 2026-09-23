@@ -5,6 +5,7 @@ import { handleApiError } from "@/lib/apiError";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
 import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
 import { hasUnseenScheduleChange } from "@/lib/scheduleNotice";
+import { isProfileIncomplete } from "@/lib/childProfile";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -38,13 +39,21 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { userId, role, permissions, assignedCategoryId } = await requireMembership(organizationId);
 
     const todos: TodoItem[] = [];
+    // Each dashboard shows only its own mode's to-dos (Dylan 23 Sept):
+    // "centre" or "accounting"; omitted = everything.
+    const mode = req.nextUrl.searchParams.get("mode");
+    const inCentre = mode !== "accounting";
+    const inAccounting = mode !== "centre";
     const dateParam = req.nextUrl.searchParams.get("date");
     const date = dateParam ? new Date(dateParam) : null;
     const hasValidDate = date !== null && !Number.isNaN(date.getTime());
 
-    const canAttendance = permissions.includes("VIEW_CENTRE") && permissions.includes("MANAGE_ATTENDANCE");
-    const canReviews = permissions.includes("VIEW_CENTRE") && permissions.includes("MANAGE_CHILDREN");
+    const canAttendance =
+      inCentre && permissions.includes("VIEW_CENTRE") && permissions.includes("MANAGE_ATTENDANCE");
+    const canReviews =
+      inCentre && permissions.includes("VIEW_CENTRE") && permissions.includes("MANAGE_CHILDREN");
     const canReminders =
+      inAccounting &&
       permissions.includes("VIEW_ACCOUNTING") &&
       permissions.includes("SEND_REMINDERS") &&
       permissions.includes("VIEW_MONEY");
@@ -162,9 +171,9 @@ export async function GET(req: NextRequest, { params }: Params) {
       if (pendingCount > 0) {
         todos.push({
           id: "reviews.pending",
-          label: "Review pending enrolment forms",
+          label: "Review online submissions",
           count: pendingCount,
-          href: "/dashboard/centre/pending-reviews",
+          href: "/dashboard/centre/admissions#submissions",
         });
       }
     }
@@ -181,9 +190,55 @@ export async function GET(req: NextRequest, { params }: Params) {
       }
     }
 
+    // Centre: children whose parent isn't ticked off as added to their
+    // class WhatsApp group yet, and children missing core details. Both are
+    // for whoever manages children (TEACHER: own class only).
+    if (canReviews && !(role === "TEACHER" && !assignedCategoryId)) {
+      const scope = resolveAttendanceScope(role, assignedCategoryId, null);
+      const active = await db.child.findMany({
+        where: {
+          organizationId,
+          archived: false,
+          deletedAt: null,
+          exitDate: null,
+          ...(scope.mode === "single" ? { categoryId: scope.categoryId } : {}),
+        },
+        select: {
+          categoryId: true,
+          dateOfBirth: true,
+          gender: true,
+          parentPhone: true,
+          guardians: { select: { phone: true } },
+          whatsappGroupChecks: { select: { categoryId: true } },
+        },
+      });
+      // A tick only counts for the class the child is in now.
+      const notInGroup = active.filter(
+        (c) => !c.whatsappGroupChecks.some((w) => w.categoryId === c.categoryId)
+      ).length;
+      if (notInGroup > 0) {
+        todos.push({
+          id: "whatsapp.add",
+          label: "Add new children's parents to the class WhatsApp group",
+          count: notInGroup,
+          href: "/dashboard/centre/communication",
+        });
+      }
+      const incomplete = active.filter((c) => isProfileIncomplete(c)).length;
+      if (incomplete > 0) {
+        todos.push({
+          id: "children.incomplete",
+          label: "Complete children's profiles",
+          count: incomplete,
+          href: "/dashboard/centre/enrolled?incomplete=1",
+        });
+      }
+    }
+
     // Phase 5: a teacher is told when someone else changed their class's
     // timetable; opening the Timetable page clears it (schedule/acknowledge).
     if (
+      inCentre &&
       role === "TEACHER" &&
       assignedCategoryId &&
       permissions.includes("VIEW_CENTRE") &&

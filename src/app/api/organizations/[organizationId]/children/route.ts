@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
-import { childSchema } from "@/lib/validation";
+import { childCreateSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
@@ -37,7 +37,8 @@ export async function GET(req: NextRequest, { params }: Params) {
         archived: includeArchived ? true : false,
         deletedAt: null,
       },
-      include: { category: true },
+      // Guardian phones feed the "incomplete profile" badge (lib/childProfile.ts).
+      include: { category: true, guardians: { select: { phone: true } } },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
 
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     );
     const canViewMoney = permissions.includes("VIEW_MONEY");
 
-    const body = childSchema.parse(await req.json());
+    const body = childCreateSchema.parse(await req.json());
 
     // A fee override is money -- only VIEW_MONEY may set one.
     if (body.feeOverrideCents != null && !canViewMoney) {
@@ -155,8 +156,29 @@ export async function POST(req: NextRequest, { params }: Params) {
           enrollmentDate: body.enrollmentDate,
           exitDate: body.exitDate ?? null,
           feeOverrideCents: body.feeOverrideCents ?? null,
+          dateOfBirth: body.dateOfBirth ?? null,
+          gender: body.gender ?? null,
+          childIdNumber: body.childIdNumber ?? null,
+          parentIdNumber: body.parentIdNumber ?? null,
         },
       });
+
+      // Centre "Add child" sends the first parent/guardian with the child.
+      if (body.guardian) {
+        await tx.guardian.create({
+          data: {
+            organizationId,
+            childId: created.id,
+            relationship: body.guardian.relationship,
+            firstName: body.guardian.firstName,
+            lastName: body.guardian.lastName,
+            idNumber: body.guardian.idNumber ?? null,
+            occupation: body.guardian.occupation ?? null,
+            phone: body.guardian.phone ?? null,
+            email: body.guardian.email ?? null,
+          },
+        });
+      }
 
       await generateAnnualPlanForChild(
         tx,

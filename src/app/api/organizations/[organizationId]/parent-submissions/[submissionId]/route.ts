@@ -53,8 +53,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const child = submission.link.child;
-    if (role === "TEACHER" && child.categoryId !== assignedCategoryId) {
+    // New family: no existing child to compare against, and outside any
+    // class, so a TEACHER can't open it.
+    const child = submission.link?.child ?? null;
+    if (role === "TEACHER" && (!child || child.categoryId !== assignedCategoryId)) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
@@ -66,7 +68,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         action: "parentSubmission.viewed",
         entityType: "ParentSubmission",
         entityId: submission.id,
-        metadata: { childId: child.id },
+        metadata: { childId: child?.id ?? null },
       });
     }
 
@@ -74,6 +76,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       submission: {
         id: submission.id,
         status: submission.status,
+        isNewApplicant: submission.isNewApplicant,
+        createdChildId: submission.createdChildId,
         submittedAt: submission.submittedAt,
         reviewedAt: submission.reviewedAt,
         reviewNotes: submission.reviewNotes,
@@ -85,7 +89,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           image: a.image,
         })),
       },
-      current: {
+      current: child && {
         child: {
           id: child.id,
           firstName: child.firstName,

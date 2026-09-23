@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { normalizeGender, normalizePhone } from "@/lib/phone";
+import { parseFlexibleDate } from "@/lib/date";
 
 // Server-side validation schemas. These run on every mutating API route —
 // never trust client-side form validation alone, since the API is what an
@@ -43,11 +45,21 @@ export const moneyCentsSchema = z
   .int("Amounts must not have sub-cent precision")
   .min(0, "Amount cannot be negative");
 
+// A class. Classes are a flat list (plan decision #11) -- the old
+// parentId/sub-category field is no longer accepted (final inspection U3;
+// the column stays in the schema, unused). Age group is stored in months.
+const ageMonthsSchema = z.number().int().min(0).max(240).optional().nullable();
 export const categorySchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
-  parentId: z.string().cuid().optional().nullable(),
   monthlyFeeCents: moneyCentsSchema.optional().nullable(),
+  ageMinMonths: ageMonthsSchema,
+  ageMaxMonths: ageMonthsSchema,
 });
+
+export function ageRangeProblem(min?: number | null, max?: number | null): string | null {
+  if (min != null && max != null && min > max) return "The youngest age can't be older than the oldest age.";
+  return null;
+}
 
 // Treats "" the same as not provided, so an empty form field doesn't fail
 // the stricter format checks below.
@@ -58,7 +70,8 @@ export const childSchema = z.object({
   firstName: z.string().trim().min(1).max(100),
   lastName: z.string().trim().min(1).max(100),
   parentName: z.string().trim().min(1).max(200),
-  parentPhone: z.preprocess(emptyToUndefined, phoneE164Schema.optional()),
+  // 082 123 4567 / 27821234567 are accepted and stored as +27821234567.
+  parentPhone: z.preprocess(normalizePhone, phoneE164Schema.optional()),
   parentEmail: z.preprocess(emptyToUndefined, emailSchema.optional()),
   enrollmentDate: z.coerce.date(),
   exitDate: z.preprocess(emptyToUndefined, z.coerce.date().optional().nullable()),
@@ -77,10 +90,18 @@ export const childImportRowSchema = z.object({
   firstName: z.string().trim().min(1, "Missing child first name"),
   lastName: z.string().trim().min(1, "Missing child last name"),
   parentName: z.string().trim().min(1, "Missing parent name"),
-  parentPhone: z.preprocess(emptyToUndefined, phoneE164Schema.optional()),
+  parentPhone: z.preprocess(normalizePhone, phoneE164Schema.optional()),
   parentEmail: z.preprocess(emptyToUndefined, emailSchema.optional()),
   categoryName: z.preprocess(emptyToUndefined, z.string().trim().max(120).optional()),
-  enrollmentDate: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
+  // Accepts 2021-03-21 and day-first 21/03/2021 (lib/date.ts).
+  enrollmentDate: z.preprocess(parseFlexibleDate, z.coerce.date({ message: "Unreadable enrolment date" }).optional()),
+  // Core details (Dylan 23 Sept) -- optional in a file so a spreadsheet
+  // with gaps still imports; the child is then flagged "incomplete".
+  dateOfBirth: z.preprocess(parseFlexibleDate, z.coerce.date({ message: "Unreadable date of birth" }).optional()),
+  gender: z.preprocess(
+    normalizeGender,
+    z.enum(["MALE", "FEMALE", "OTHER"], { message: "Gender should be Male, Female or Other" }).optional()
+  ),
   childIdNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
   parentIdNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
 });
@@ -243,6 +264,35 @@ export const parentSubmissionSchema = z.object({
   attachments: z.array(parentSubmissionAttachmentSchema).max(12).optional(),
 });
 
+// Fix session B (Dylan 23 Sept): a NEW family applying through the
+// school's permanent link. Same shape as parentSubmissionSchema plus the
+// child's name and a preferred start date, and the agreed "core" fields are
+// required: name, date of birth, gender, and a phone number for the first
+// parent/guardian. Everything else can be filled in after approval.
+export const newApplicantChildSchema = parentSubmissionChildSchema.extend({
+  firstName: z.string().trim().min(1, "Child's first name is required").max(100),
+  lastName: z.string().trim().min(1, "Child's surname is required").max(100),
+  dateOfBirth: z.coerce.date({ message: "Date of birth is required" }),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"], { message: "Gender is required" }),
+  preferredStartDate: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
+});
+
+export const newApplicantSchema = z.object({
+  child: newApplicantChildSchema,
+  guardians: z
+    .array(guardianSchema)
+    .min(1, "Add at least one parent/guardian.")
+    .max(6)
+    .refine((gs) => !!gs[0]?.phone, "The first parent/guardian needs a phone number."),
+  attachments: z.array(parentSubmissionAttachmentSchema).max(12).optional(),
+});
+
+// Staff approving a new applicant choose where the child goes.
+export const approveNewApplicantSchema = z.object({
+  categoryId: z.string().cuid(),
+  enrollmentDate: z.coerce.date(),
+});
+
 // Phase 3 Session 1 -- daily attendance register. One row per child in the
 // class being marked; `date` is a plain yyyy-mm-dd string from the client
 // (never a full timestamp -- the route turns it into the same
@@ -335,4 +385,15 @@ export const testimonialSubmissionSchema = z.object({
     .min(20, "A few sentences helps — at least 20 characters")
     .max(1000, "Keep it under 1000 characters"),
   website: z.string().max(0, "").optional().or(z.literal("")),
+});
+
+// Adding a child from Centre Management (Enrolled > Add child, Dylan 23
+// Sept): the same fields as childSchema plus the child's date of birth and
+// gender and their first parent/guardian, saved together. The "core"
+// details are enforced by the form; the API also accepts the older
+// name-only shape (Accounting) -- such a child is flagged incomplete.
+export const childCreateSchema = childSchema.extend({
+  dateOfBirth: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
+  gender: z.preprocess(emptyToUndefined, z.enum(["MALE", "FEMALE", "OTHER"]).optional()),
+  guardian: guardianSchema.optional(),
 });

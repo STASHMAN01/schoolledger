@@ -68,6 +68,14 @@ export function describeAuditAction(row: AuditRow): string {
       return `reviewed a parent's submitted enrolment form`;
     case "parentSubmission.approved":
       return `approved a parent's submitted enrolment form`;
+    case "parentSubmission.newApplicant":
+      return `a new family applied online`;
+    case "parentSubmission.newApplicantApproved":
+      return `approved a new family's application and enrolled ${m.name ?? "their child"}${m.className ? ` in ${m.className}` : ""}`;
+    case "applyLink.created":
+      return "created the school's online application link";
+    case "applyLink.regenerated":
+      return "replaced the school's online application link (the old one no longer works)";
     case "parentSubmission.rejected":
       return `rejected a parent's submitted enrolment form`;
     case "attendance.marked": {

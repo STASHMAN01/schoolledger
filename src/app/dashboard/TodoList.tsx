@@ -1,13 +1,12 @@
 "use client";
 
 // Shared "to-do" widget (Phase 3 Session 2, see docs/PLAN.md's to-do
-// engine v1) rendered at the top of both dashboard home pages
-// (Centre Management and Accounting) -- the list itself is mode-agnostic
-// ("every user gets a role-based to-do list"), it just draws items from
-// whichever side is relevant to that person's permissions. Renders
-// nothing at all once every item has cleared, rather than an empty-state
-// card -- an empty to-do list isn't something worth taking up space to
-// announce.
+// engine v1). Every item is computed live on the server and clears itself
+// once its condition is resolved -- no manual ticking.
+//
+// Dylan's revision (23 Sept): each dashboard shows only its own mode's
+// to-dos (`mode`), and Centre Management shows them as a tall panel on the
+// right with a red total badge (`variant="panel"`), per his mock-up.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "./OrgContext";
@@ -21,45 +20,92 @@ type TodoItem = {
   href: string;
 };
 
-
-export function TodoList() {
+export function TodoList({
+  mode,
+  variant = "card",
+}: {
+  mode: "centre" | "accounting";
+  variant?: "card" | "panel";
+}) {
   const { organizationId } = useOrg();
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
-    const res = await fetch(
-      `/api/organizations/${organizationId}/todos?date=${todayLocal()}`
-    );
-    const data = await res.json();
-    if (res.ok) setTodos(data.todos);
-    setLoaded(true);
-  }, [organizationId]);
+    try {
+      const res = await fetch(
+        `/api/organizations/${organizationId}/todos?mode=${mode}&date=${todayLocal()}`
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setTodos(data.todos ?? []);
+      else setFailed(true);
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoaded(true);
+    }
+  }, [organizationId, mode]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
   }, [load]);
 
-  if (!loaded || todos.length === 0) return null;
+  const total = todos.reduce((sum, t) => sum + t.count, 0);
 
+  if (variant === "card") {
+    if (!loaded || todos.length === 0) return null;
+    return (
+      <Card as="div" className="mb-8 p-4">
+        <h2 className="font-display mb-3 text-sm font-semibold text-foreground">Your to-dos</h2>
+        <TodoRows todos={todos} />
+      </Card>
+    );
+  }
+
+  // Panel: always shown, so "nothing to do" is visible too.
   return (
-    <Card as="div" className="mb-8 p-4">
-      <h2 className="font-display mb-3 text-sm font-semibold text-foreground">
-        Your to-dos
-      </h2>
-      <div className="divide-y divide-border">
-        {todos.map((t) => (
-          <Link
-            key={t.id}
-            href={t.href}
-            className="transition-standard flex items-center justify-between gap-3 py-2.5 hover:bg-background"
+    <Card as="div" className="flex h-full flex-col overflow-hidden">
+      <div className="flex items-center justify-between gap-3 bg-brand px-4 py-3 text-brand-foreground">
+        <h2 className="font-display text-base font-semibold">Your to-do list</h2>
+        {total > 0 && (
+          <span
+            className="min-w-9 rounded-full bg-danger px-2.5 py-0.5 text-center text-sm font-bold text-danger-foreground"
+            aria-label={`${total} to-dos`}
           >
-            <span className="text-sm font-medium text-foreground">{t.label}</span>
-            <Badge variant="accent">{t.count}</Badge>
-          </Link>
-        ))}
+            {total}
+          </span>
+        )}
+      </div>
+      <div className="flex-1 p-4">
+        {!loaded ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : failed ? (
+          <p className="text-sm text-danger">Couldn&apos;t load your to-dos. Refresh the page to try again.</p>
+        ) : todos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">All done — nothing needs your attention right now.</p>
+        ) : (
+          <TodoRows todos={todos} />
+        )}
       </div>
     </Card>
+  );
+}
+
+function TodoRows({ todos }: { todos: TodoItem[] }) {
+  return (
+    <div className="divide-y divide-border">
+      {todos.map((t) => (
+        <Link
+          key={t.id}
+          href={t.href}
+          className="transition-standard flex min-h-11 items-center justify-between gap-3 py-2.5 hover:bg-background"
+        >
+          <span className="text-sm font-medium text-foreground">{t.label}</span>
+          <Badge variant="accent">{t.count}</Badge>
+        </Link>
+      ))}
+    </div>
   );
 }

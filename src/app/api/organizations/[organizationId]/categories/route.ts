@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
-import { categorySchema } from "@/lib/validation";
+import { ageRangeProblem, categorySchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 
@@ -10,14 +10,26 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId); // any member may view
+    const { userId, permissions } = await requireMembership(organizationId); // any member may view
+    const canViewMoney = permissions.includes("VIEW_MONEY");
 
     // deletedAt is a stronger, separate state than `archived` — a category
     // pending/awaiting trash purge never shows up here, "show archived" or
     // not; it only appears in Settings → Trash.
     const categories = await db.category.findMany({
       where: { organizationId, deletedAt: null },
-      orderBy: [{ parentId: "asc" }, { name: "asc" }],
+      orderBy: { name: "asc" },
+      include: {
+        // For the Centre Classes page: who teaches it and how many children
+        // are currently in it (Dylan 23 Sept).
+        teacherAssignments: {
+          where: { role: "TEACHER" },
+          select: { id: true, user: { select: { name: true } } },
+        },
+        _count: {
+          select: { learners: { where: { archived: false, deletedAt: null, exitDate: null } } },
+        },
+      },
     });
 
     const pendingRequests = await db.deletionRequest.findMany({
@@ -34,8 +46,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json({
       categories: categories.map((c) => {
         const request = requestByCategoryId.get(c.id);
+        const { teacherAssignments, _count, ...rest } = c;
         return {
-          ...c,
+          ...rest,
+          teachers: teacherAssignments.map((t) => ({ id: t.id, name: t.user.name })),
+          childCount: _count.learners,
+          // Class fees are money (final inspection R12).
+          monthlyFeeCents: canViewMoney ? c.monthlyFeeCents : null,
           deletionRequest: request
             ? {
                 id: request.id,
@@ -56,31 +73,26 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, "MANAGE_CLASSES");
+    const { userId, permissions } = await requireMembership(organizationId, "MANAGE_CLASSES");
 
     const body = categorySchema.parse(await req.json());
 
-    if (body.parentId) {
-      // The parent MUST belong to the same organization — otherwise a
-      // crafted parentId could be used to probe/link into another
-      // school's category tree.
-      const parent = await db.category.findFirst({
-        where: { id: body.parentId, organizationId, deletedAt: null },
-      });
-      if (!parent) {
-        return NextResponse.json(
-          { error: "Parent category not found." },
-          { status: 400 }
-        );
-      }
+    const ageProblem = ageRangeProblem(body.ageMinMonths, body.ageMaxMonths);
+    if (ageProblem) return NextResponse.json({ error: ageProblem }, { status: 400 });
+
+    // Setting a fee is a money action (e.g. a MANAGER can add classes but
+    // not price them).
+    if (body.monthlyFeeCents != null && !permissions.includes("VIEW_MONEY")) {
+      return NextResponse.json({ error: "You don't have permission to set a fee." }, { status: 403 });
     }
 
     const category = await db.category.create({
       data: {
         organizationId,
         name: body.name,
-        parentId: body.parentId ?? null,
         monthlyFeeCents: body.monthlyFeeCents ?? null,
+        ageMinMonths: body.ageMinMonths ?? null,
+        ageMaxMonths: body.ageMaxMonths ?? null,
       },
     });
 

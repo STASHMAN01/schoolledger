@@ -137,7 +137,7 @@ export default function DashboardPage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="flex flex-col gap-6">
-          <TodoList />
+          <TodoList mode="accounting" />
 
           {!data.canViewMoney && (
             <p className="text-sm text-muted-foreground">

@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getPrimaryMembership } from "@/lib/org";
 import { getEffectivePermissions } from "@/lib/permissions";
 import { OrgProvider } from "./OrgContext";
 import { SignOutButton } from "./SignOutButton";
 import { TrialBanner } from "./TrialBanner";
-import { NavLinks } from "./NavLinks";
+import { MobileMenu, NavBar, UtilityLinks } from "./NavLinks";
 import { ModeSwitch } from "./ModeSwitch";
 import { hasActiveAccess } from "@/lib/billing/access";
 import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
@@ -46,8 +45,11 @@ export default async function DashboardLayout({
     >
       <div className="min-h-screen bg-background">
         <TrialBanner />
+        {/* Two rows (Dylan 23 Sept, "tabs crashing into each other"): mode
+            switch far left + school + utilities on row 1; main tabs on row
+            2 (tablet/desktop) or in the ☰ menu (phones). */}
         <header className="relative border-b border-border bg-surface">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <ModeSwitch />
               {org.logoImage ? (
@@ -66,25 +68,16 @@ export default async function DashboardLayout({
                 {membership.organization.name}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <NavLinks />
-              {isPlatformAdmin && (
-                <Link
-                  href="/platform"
-                  className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
-                >
-                  Platform
-                </Link>
-              )}
-              <Link
-                href="/support"
-                title="Support & how to use Crechely"
-                className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
-              >
-                Support
-              </Link>
+            <div className="flex shrink-0 items-center gap-1">
+              <UtilityLinks isPlatformAdmin={isPlatformAdmin} />
               <ThemeToggle />
               <SignOutButton />
+              <MobileMenu isPlatformAdmin={isPlatformAdmin} />
+            </div>
+          </div>
+          <div className="hidden border-t border-border md:block">
+            <div className="mx-auto max-w-6xl px-4 sm:px-6">
+              <NavBar />
             </div>
           </div>
         </header>

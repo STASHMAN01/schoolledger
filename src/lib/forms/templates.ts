@@ -17,7 +17,7 @@ type TemplateChild = {
   lastName: string;
   dateOfBirth: Date | null;
   gender: "MALE" | "FEMALE" | "OTHER" | null;
-  enrollmentDate: Date;
+  enrollmentDate: Date | null; // null = blank template (Forms page)
   parentName: string;
   parentPhone: string | null;
   parentEmail: string | null;
@@ -83,10 +83,10 @@ export function buildFormSpec(formType: FormType, input: TemplateInput): FormSpe
   const childSection = {
     heading: "Child",
     fields: [
-      { label: "Full name", value: `${child.firstName} ${child.lastName}` },
+      { label: "Full name", value: `${child.firstName} ${child.lastName}`.trim() || null },
       { label: "Date of birth", value: fmtDate(child.dateOfBirth) },
       { label: "Gender", value: child.gender ? GENDER_LABEL[child.gender] : null },
-      { label: "Class", value: child.category.name },
+      { label: "Class", value: child.category.name || null },
       { label: "Enrolment date", value: fmtDate(child.enrollmentDate) },
       { label: "Child ID number", value: child.childIdNumber },
     ],
@@ -135,7 +135,7 @@ export function buildFormSpec(formType: FormType, input: TemplateInput): FormSpe
           {
             heading: "Parent / guardian",
             fields: [
-              { label: "Full name", value: guardians[0] ? `${guardians[0].firstName} ${guardians[0].lastName}` : child.parentName },
+              { label: "Full name", value: guardians[0] ? `${guardians[0].firstName} ${guardians[0].lastName}` : child.parentName || null },
               { label: "ID number", value: guardians[0]?.idNumber ?? child.parentIdNumber },
             ],
           },

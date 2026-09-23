@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateInviteToken as generateFormToken } from "@/lib/inviteToken";
 import { sendMail } from "@/lib/mail";
+import { publicBaseUrl } from "@/lib/applyLink";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
 
@@ -106,7 +107,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       },
     });
 
-    const url = `${req.nextUrl.origin}/apply/${token}`;
+    // Public site address, not the request's Host header (final inspection R11).
+    const url = `${publicBaseUrl(req.nextUrl.origin)}/apply/${token}`;
 
     let emailSent = false;
     if (sendEmail && child.parentEmail) {

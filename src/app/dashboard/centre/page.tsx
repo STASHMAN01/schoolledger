@@ -1,26 +1,21 @@
 "use client";
 
-// Centre Management home. Grew from an almost-empty Phase 1 page into a
-// real dashboard as Phase 2/3 features shipped: Admissions/Enrolled/
-// Pending reviews tiles (Phase 2), Attendance tile (Phase 3 Session 1).
-// Staff/events tiles are still Phase 5.
+// Centre Management home. Layout follows Dylan's mock-up (23 Sept):
+// number tiles on the left (each number is also a link), recent CENTRE
+// activity underneath, and the to-do list as a tall panel on the right.
+// Each tile's data is fetched on its own so one failing request never
+// blanks the whole page -- a tile that can't load says so.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../OrgContext";
 import { TodoList } from "../TodoList";
-import { Badge, Card, LinkButton, PageHeader } from "@/components/ui";
-import { isoWeekday } from "@/lib/schedule";
+import { Badge, Card, PageHeader } from "@/components/ui";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
 import { describeAuditAction } from "@/lib/auditLabel";
+import { isoWeekday } from "@/lib/schedule";
 import { todayLocal } from "@/lib/date";
 
-type ChildStat = {
-  category: { id: string };
-  enrollmentDate: string;
-  exitDate: string | null;
-  archived: boolean;
-};
-
+type ChildStat = { enrollmentDate: string; exitDate: string | null; archived: boolean };
 type AttendanceSummary = {
   scope: "none" | "single" | "all";
   className: string | null;
@@ -29,18 +24,8 @@ type AttendanceSummary = {
   absent: number;
   notTaken: number;
 };
-
-function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - n);
-  return d;
-}
-
-
-type UpcomingEvent = { id: string; name: string; eventDate: string; classes: string[] };
+type UpcomingEvent = { id: string; name: string; eventDate: string };
 type TodayItem = { id: string; dayOfWeek: number; startTime: string; endTime: string | null; activity: string };
-
 type AuditEntry = {
   id: string;
   action: string;
@@ -52,10 +37,19 @@ type AuditEntry = {
 
 const ENTITY_LABEL: Record<string, string> = {
   Category: "Class",
+  ParentSubmission: "Online form",
+  ParentFormLink: "Online form",
 };
 
+function daysAgo(n: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - n);
+  return d;
+}
+
 function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString("en-ZA", {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -63,260 +57,245 @@ function formatWhen(iso: string): string {
   });
 }
 
+/** Fetches JSON, returning null (never throwing) on any failure. */
+async function getJson<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function CentreManagementHomePage() {
   const { organizationId, permissions, role } = useOrg();
-  const canSeeAttendance = permissions.includes("MANAGE_ATTENDANCE");
   const isTeacher = role === "TEACHER";
+  const canSeeAttendance = permissions.includes("MANAGE_ATTENDANCE");
+  const canSeeSubmissions = permissions.includes("MANAGE_CHILDREN");
   const canSeeStaff = permissions.includes("MANAGE_CLASSES") || permissions.includes("MANAGE_TEAM");
-  const canOpenEvents = permissions.includes("VIEW_MONEY") && permissions.includes("VIEW_ACCOUNTING");
+  const canSeeActivity = permissions.includes("VIEW_ACTIVITY_LOG");
+
+  const [loading, setLoading] = useState(true);
+  const [children, setChildren] = useState<ChildStat[] | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [staffCount, setStaffCount] = useState<number | null>(null);
   const [unassignedTeachers, setUnassignedTeachers] = useState(0);
-  const [upcoming, setUpcoming] = useState<{ total: number; events: UpcomingEvent[] }>({ total: 0, events: [] });
+  const [upcoming, setUpcoming] = useState<{ total: number; events: UpcomingEvent[] } | null>(null);
+  const [classCount, setClassCount] = useState<number | null>(null);
   const [todayItems, setTodayItems] = useState<TodayItem[] | null>(null);
-  const [entries, setEntries] = useState<AuditEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [children, setChildren] = useState<ChildStat[]>([]);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
+  const [entries, setEntries] = useState<AuditEntry[] | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({
-      entityTypes: CENTRE_ENTITY_TYPES.join(","),
-    });
-    const requests = [
-      fetch(`/api/organizations/${organizationId}/audit?${params.toString()}`),
-      fetch(`/api/organizations/${organizationId}/children`),
-      fetch(`/api/organizations/${organizationId}/parent-submissions`),
-    ];
-    if (canSeeAttendance) {
-      requests.push(
-        fetch(`/api/organizations/${organizationId}/attendance/summary?date=${todayLocal()}`)
-      );
-    }
-    const [activityRes, childrenRes, reviewsRes, attendanceRes] = await Promise.all(requests);
-    const activityData = await activityRes.json();
-    if (activityRes.ok) setEntries((activityData.entries ?? []).slice(0, 8));
-    const childrenData = await childrenRes.json();
-    if (childrenRes.ok) setChildren(childrenData.children);
-    const reviewsData = await reviewsRes.json();
-    if (reviewsRes.ok) setPendingCount(reviewsData.submissions.length);
-    if (attendanceRes) {
-      const attendanceData = await attendanceRes.json();
-      if (attendanceRes.ok) setAttendance(attendanceData);
-    }
-    // Phase 5 tiles. Each is optional and must never break the page.
-    const [staffRes, upcomingRes, scheduleRes] = await Promise.all([
-      canSeeStaff ? fetch(`/api/organizations/${organizationId}/staff`).catch(() => null) : null,
-      fetch(`/api/organizations/${organizationId}/events/upcoming?from=${todayLocal()}`).catch(() => null),
-      isTeacher ? fetch(`/api/organizations/${organizationId}/schedule`).catch(() => null) : null,
+    const base = `/api/organizations/${organizationId}`;
+    const activityQs = new URLSearchParams({ entityTypes: CENTRE_ENTITY_TYPES.join(",") }).toString();
+    const [kids, att, subs, staff, events, classes, sched, activity] = await Promise.all([
+      getJson<{ children: ChildStat[] }>(`${base}/children`),
+      canSeeAttendance ? getJson<AttendanceSummary>(`${base}/attendance/summary?date=${todayLocal()}`) : null,
+      canSeeSubmissions ? getJson<{ submissions: unknown[] }>(`${base}/parent-submissions`) : null,
+      canSeeStaff
+        ? getJson<{ staff: { role: string; assignedClass: unknown }[] }>(`${base}/staff`)
+        : null,
+      getJson<{ total: number; events: UpcomingEvent[] }>(`${base}/events/upcoming?from=${todayLocal()}`),
+      getJson<{ categories: { archived: boolean }[] }>(`${base}/categories`),
+      isTeacher ? getJson<{ items: TodayItem[] }>(`${base}/schedule`) : null,
+      canSeeActivity ? getJson<{ entries: AuditEntry[] }>(`${base}/audit?${activityQs}`) : null,
     ]);
-    if (staffRes?.ok) {
-      const s = await staffRes.json();
-      setStaffCount(s.staff.length);
-      setUnassignedTeachers(
-        s.staff.filter((m: { role: string; assignedClass: unknown }) => m.role === "TEACHER" && !m.assignedClass).length
-      );
+    setChildren(kids?.children ?? null);
+    setAttendance(att);
+    setPendingCount(subs ? subs.submissions.length : null);
+    if (staff) {
+      setStaffCount(staff.staff.length);
+      setUnassignedTeachers(staff.staff.filter((m) => m.role === "TEACHER" && !m.assignedClass).length);
     }
-    if (upcomingRes?.ok) setUpcoming(await upcomingRes.json());
-    if (scheduleRes?.ok) {
-      const sched = await scheduleRes.json();
+    setUpcoming(events);
+    setClassCount(classes ? classes.categories.filter((c) => !c.archived).length : null);
+    if (sched) {
       const today = isoWeekday(new Date());
-      setTodayItems((sched.items as TodayItem[]).filter((i) => i.dayOfWeek === today));
+      setTodayItems(sched.items.filter((i) => i.dayOfWeek === today));
     }
+    setEntries(activity ? activity.entries.slice(0, 10) : null);
     setLoading(false);
-  }, [organizationId, canSeeAttendance, canSeeStaff, isTeacher]);
+  }, [organizationId, canSeeAttendance, canSeeSubmissions, canSeeStaff, isTeacher, canSeeActivity]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount, standard pattern
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
   }, [load]);
 
-  const active = children.filter((c) => !c.archived);
+  const active = (children ?? []).filter((c) => !c.archived);
   const enrolledCount = active.filter((c) => !c.exitDate).length;
-  const newThisWeekCount = active.filter(
-    (c) => new Date(c.enrollmentDate) >= daysAgo(7)
-  ).length;
+  const newThisWeekCount = active.filter((c) => new Date(c.enrollmentDate) >= daysAgo(7)).length;
+  const num = (v: number | null) => (loading ? "…" : v === null ? "—" : v);
 
   return (
     <div className="animate-in">
-      <PageHeader
-        title="Centre Management"
-        description="Enrolment, attendance and the rest of centre management. Billing lives under Accounting, top-left."
-        actions={<LinkButton href="/dashboard/centre/children" size="sm">Children</LinkButton>}
-      />
+      <PageHeader title="Centre Management" description="Enrolment, attendance and the day-to-day running of your centre." />
 
-      <TodoList />
+      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+        {/* Left: tiles, then activity */}
+        <div className="min-w-0">
+          <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            <Tile title="Admissions" href="/dashboard/centre/admissions" value={num(children ? newThisWeekCount : null)} hint="New this week" />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Link
-          href="/dashboard/centre/admissions"
-          className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
-        >
-          <p className="text-xs text-muted-foreground">New this week</p>
-          <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-            {loading ? "…" : newThisWeekCount}
-          </p>
-          <p className="mt-1 text-xs text-muted">Admissions, sortable by day/week/month</p>
-        </Link>
-        <Link
-          href="/dashboard/centre/enrolled"
-          className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
-        >
-          <p className="text-xs text-muted-foreground">Enrolled</p>
-          <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-            {loading ? "…" : enrolledCount}
-          </p>
-          <p className="mt-1 text-xs text-muted">Gender, age and class breakdown</p>
-        </Link>
-
-        {canSeeAttendance && (
-          <div className="rounded-xl border border-border bg-surface p-4">
-            <p className="text-xs text-muted-foreground">
-              Attendance{attendance?.className ? ` · ${attendance.className}` : ""}
-            </p>
-            {loading || !attendance ? (
-              <p className="font-display mt-1 text-2xl font-semibold text-foreground">…</p>
-            ) : attendance.total === 0 ? (
-              <p className="mt-1 text-sm text-muted-foreground">No children yet</p>
-            ) : attendance.notTaken === attendance.total ? (
-              <Link
-                href="/dashboard/centre/attendance"
-                className="mt-1 block text-sm font-medium text-brand hover:underline"
-              >
-                Not taken yet — take register →
-              </Link>
-            ) : (
-              <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-                {attendance.present}
-                <span className="ml-1 text-xs font-normal text-muted-foreground">present</span>
-              </p>
-            )}
-            {attendance && attendance.total > 0 && (
-              <Link
-                href="/dashboard/centre/attendance/absent"
-                className="mt-1 block text-xs font-medium text-danger hover:underline"
-              >
-                {attendance.absent} absent — notify parents
-              </Link>
-            )}
-          </div>
-        )}
-
-        <Link
-          href="/dashboard/centre/pending-reviews"
-          className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
-        >
-          <p className="text-xs text-muted-foreground">Pending reviews</p>
-          <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-            {loading ? "…" : pendingCount}
-          </p>
-          <p className="mt-1 text-xs text-muted">Parent-submitted enrolment forms awaiting approval</p>
-        </Link>
-
-        {canSeeStaff && (
-          <Link
-            href="/dashboard/centre/staff"
-            className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
-          >
-            <p className="text-xs text-muted-foreground">Staff</p>
-            <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-              {loading || staffCount === null ? "…" : staffCount}
-            </p>
-            <p className={`mt-1 text-xs ${unassignedTeachers > 0 ? "text-danger" : "text-muted"}`}>
-              {unassignedTeachers > 0
-                ? `${unassignedTeachers} teacher${unassignedTeachers === 1 ? "" : "s"} without a class`
-                : "Team members, roles and classes"}
-            </p>
-          </Link>
-        )}
-
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-xs text-muted-foreground">Upcoming events</p>
-          <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-            {loading ? "…" : upcoming.total}
-          </p>
-          {!loading && upcoming.events.length === 0 && (
-            <p className="mt-1 text-xs text-muted">Nothing coming up</p>
-          )}
-          <ul className="mt-1 space-y-0.5 text-xs">
-            {upcoming.events.slice(0, 3).map((e) => (
-              <li key={e.id} className="truncate">
-                {canOpenEvents ? (
-                  <Link href={`/dashboard/accounting/events/${e.id}`} className="font-medium text-brand hover:underline">
-                    {e.name}
+            {canSeeAttendance && (
+              <div className="overflow-hidden rounded-xl border border-border bg-surface">
+                <TileHeader title={`Attendance${attendance?.className ? ` · ${attendance.className}` : ""}`} />
+                {loading ? (
+                  <p className="font-display p-3 text-2xl font-semibold text-foreground">…</p>
+                ) : !attendance ? (
+                  <p className="p-3 text-xs text-danger">Couldn&apos;t load attendance.</p>
+                ) : attendance.total === 0 ? (
+                  <p className="p-3 text-sm text-muted-foreground">No children yet</p>
+                ) : attendance.notTaken === attendance.total ? (
+                  <Link href="/dashboard/centre/attendance" className="block p-3 text-sm font-medium text-brand hover:underline">
+                    Not taken yet — take register →
                   </Link>
                 ) : (
-                  <span className="font-medium text-foreground">{e.name}</span>
+                  <div className="grid grid-cols-2 divide-x divide-border text-center">
+                    <Link href="/dashboard/centre/attendance" className="block p-3 hover:bg-background">
+                      <span className="block text-xs text-muted-foreground">Present</span>
+                      <span className="font-display text-2xl font-semibold text-success">{attendance.present}</span>
+                    </Link>
+                    <Link href="/dashboard/centre/attendance/absent" className="block p-3 hover:bg-background">
+                      <span className="block text-xs text-muted-foreground">Absent</span>
+                      <span className="font-display text-2xl font-semibold text-danger">{attendance.absent}</span>
+                    </Link>
+                  </div>
                 )}
-                <span className="text-muted-foreground">
-                  {" · "}
-                  {new Date(e.eventDate).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {isTeacher && todayItems !== null && (
-        <Card as="div" className="mb-8 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-sm font-semibold text-foreground">Today&apos;s timetable</h2>
-            <Link href="/dashboard/centre/schedule" className="text-xs font-medium text-brand hover:underline">
-              Full week →
-            </Link>
-          </div>
-          {todayItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing scheduled for today.</p>
-          ) : (
-            <div className="divide-y divide-border">
-              {todayItems.map((i) => (
-                <div key={i.id} className="flex gap-4 py-2 text-sm">
-                  <span className="w-28 shrink-0 tabular-nums text-muted-foreground">
-                    {i.startTime}
-                    {i.endTime ? `–${i.endTime}` : ""}
-                  </span>
-                  <span className="text-foreground">{i.activity}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      <Card as="div" className="mb-8 p-4">
-        <h2 className="font-display mb-3 text-sm font-semibold text-foreground">
-          Recent centre activity
-        </h2>
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : entries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nothing yet — adding or editing a child or class will show up here.
-          </p>
-        ) : (
-          <div className="divide-y divide-border">
-            {entries.map((entry) => (
-              <div key={entry.id} className="flex items-center gap-3 py-2.5">
-                <Badge variant="brand">
-                  {ENTITY_LABEL[entry.entityType] ?? entry.entityType}
-                </Badge>
-                <p className="min-w-0 flex-1 truncate text-sm text-foreground">
-                  <span className="font-medium">
-                    {entry.actor ? entry.actor.name : "System"}
-                  </span>{" "}
-                  {describeAuditAction(entry)}
-                </p>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {formatWhen(entry.createdAt)}
-                </span>
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
+            )}
 
+            {canSeeSubmissions && (
+              <Tile
+                title="Online submissions"
+                href="/dashboard/centre/admissions#submissions"
+                value={num(pendingCount)}
+                hint="Waiting for your review"
+              />
+            )}
+            <Tile title="Enrolled" href="/dashboard/centre/enrolled" value={num(children ? enrolledCount : null)} hint="By class, gender and age" />
+            {canSeeStaff && (
+              <Tile
+                title="Staff"
+                href="/dashboard/centre/staff"
+                value={num(staffCount)}
+                hint={
+                  unassignedTeachers > 0
+                    ? `${unassignedTeachers} teacher${unassignedTeachers === 1 ? "" : "s"} without a class`
+                    : "Team, roles and classes"
+                }
+                warn={unassignedTeachers > 0}
+              />
+            )}
+            <Tile
+              title="Upcoming events"
+              href="/dashboard/centre/events"
+              value={num(upcoming ? upcoming.total : null)}
+              hint={
+                upcoming?.events[0]
+                  ? `Next: ${upcoming.events[0].name} · ${new Date(upcoming.events[0].eventDate).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}`
+                  : "Nothing coming up"
+              }
+            />
+            <Tile title="Classes" href="/dashboard/centre/classes" value={num(classCount)} hint="Teachers and age groups" />
+          </div>
+
+          {isTeacher && todayItems !== null && (
+            <Card as="div" className="mb-8 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-display text-sm font-semibold text-foreground">Today&apos;s timetable</h2>
+                <Link href="/dashboard/centre/schedule" className="text-xs font-medium text-brand hover:underline">
+                  Full week →
+                </Link>
+              </div>
+              {todayItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing scheduled for today.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {todayItems.map((i) => (
+                    <div key={i.id} className="flex gap-4 py-2 text-sm">
+                      <span className="w-28 shrink-0 tabular-nums text-muted-foreground">
+                        {i.startTime}
+                        {i.endTime ? `–${i.endTime}` : ""}
+                      </span>
+                      <span className="text-foreground">{i.activity}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {canSeeActivity && (
+            <Card as="div" className="p-4">
+              <h2 className="font-display mb-3 text-sm font-semibold text-foreground">Recent centre activity</h2>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : entries === null ? (
+                <p className="text-sm text-danger">Couldn&apos;t load recent activity.</p>
+              ) : entries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nothing yet — adding children, taking attendance and similar will show up here.
+                </p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {entries.map((entry) => (
+                    <div key={entry.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+                      <Badge variant="brand">{ENTITY_LABEL[entry.entityType] ?? entry.entityType}</Badge>
+                      <p className="min-w-0 flex-1 text-sm text-foreground">
+                        <span className="font-medium">{entry.actor ? entry.actor.name : "System"}</span>{" "}
+                        {describeAuditAction(entry)}
+                      </p>
+                      <span className="shrink-0 text-xs text-muted-foreground">{formatWhen(entry.createdAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+        </div>
+
+        {/* Right: to-do panel (stacks under the tiles on phones) */}
+        <aside className="order-first lg:order-none">
+          <div className="lg:sticky lg:top-4 lg:min-h-[28rem]">
+            <TodoList mode="centre" variant="panel" />
+          </div>
+        </aside>
+      </div>
     </div>
+  );
+}
+
+function TileHeader({ title }: { title: string }) {
+  return <p className="bg-brand px-3 py-1.5 text-sm font-semibold text-brand-foreground">{title}</p>;
+}
+
+function Tile({
+  title,
+  href,
+  value,
+  hint,
+  warn,
+}: {
+  title: string;
+  href: string;
+  value: number | string;
+  hint: string;
+  warn?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className="transition-standard block overflow-hidden rounded-xl border border-border bg-surface hover:border-border-strong"
+    >
+      <TileHeader title={title} />
+      <div className="p-3">
+        <p className="font-display text-2xl font-semibold text-foreground">{value}</p>
+        <p className={`mt-1 text-xs ${warn ? "text-danger" : "text-muted"}`}>{hint}</p>
+      </div>
+    </Link>
   );
 }

@@ -35,8 +35,10 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "This submission was already reviewed." }, { status: 400 });
     }
 
-    const child = submission.link.child;
-    if (role === "TEACHER" && child.categoryId !== assignedCategoryId) {
+    // A new family (no link/child yet) is outside any class, so a TEACHER
+    // never reviews those.
+    const child = submission.link?.child ?? null;
+    if (role === "TEACHER" && (!child || child.categoryId !== assignedCategoryId)) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       action: "parentSubmission.rejected",
       entityType: "ParentSubmission",
       entityId: submission.id,
-      metadata: { childId: child.id, reviewNotes: body.reviewNotes ?? null },
+      metadata: { childId: child?.id ?? null, reviewNotes: body.reviewNotes ?? null },
     });
 
     return NextResponse.json({ ok: true });

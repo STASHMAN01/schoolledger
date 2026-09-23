@@ -1,5 +1,9 @@
 "use client";
 
+// Revised 23 Sept (Dylan): CLASSES FIRST, then the charts; adding children
+// (by hand or from Excel/CSV) now lives here, replacing the old Children tab;
+// children missing core details are badged and can be filtered.
+//
 // Enrolled -- total currently-enrolled learners, then gender and age
 // breakdown charts, then classes with counts drilling into the children
 // in that class (Phase 2 Session 2 per docs/PLAN.md: "Enrolled: total
@@ -12,8 +16,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
-import { Card, EmptyState, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, PageHeader } from "@/components/ui";
 import { HorizontalBars, type BarRow } from "@/components/HorizontalBars";
+import { AddChildForm } from "@/components/AddChildForm";
+import { ImportChildrenCsv } from "@/components/ImportChildrenCsv";
+import { isProfileIncomplete, missingCoreDetails } from "@/lib/childProfile";
 
 type ChildRow = {
   id: string;
@@ -22,9 +29,13 @@ type ChildRow = {
   category: { id: string; name: string };
   dateOfBirth: string | null;
   gender: "MALE" | "FEMALE" | "OTHER" | null;
+  parentPhone: string | null;
+  guardians?: { phone: string | null }[];
   exitDate: string | null;
   archived: boolean;
 };
+
+type ClassRow = { id: string; name: string; archived: boolean };
 
 const NOT_SPECIFIED = "var(--muted)";
 
@@ -59,21 +70,43 @@ function ageColor(index: number): string {
 }
 
 export default function EnrolledPage() {
-  const { organizationId } = useOrg();
+  const { organizationId, permissions } = useOrg();
+  const canManage = permissions.includes("MANAGE_CHILDREN");
   const [children, setChildren] = useState<ChildRow[]>([]);
+  const [classList, setClassList] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/organizations/${organizationId}/children`);
-    const data = await res.json();
-    if (res.ok) setChildren(data.children);
-    setLoading(false);
+    setError(null);
+    try {
+      const [cRes, kRes] = await Promise.all([
+        fetch(`/api/organizations/${organizationId}/children`),
+        fetch(`/api/organizations/${organizationId}/categories`),
+      ]);
+      const cData = await cRes.json().catch(() => ({}));
+      const kData = await kRes.json().catch(() => ({}));
+      if (cRes.ok) setChildren(cData.children ?? []);
+      else setError(cData.error ?? "Couldn't load children.");
+      if (kRes.ok) setClassList((kData.categories ?? []).filter((k: ClassRow) => !k.archived));
+    } catch {
+      setError("Couldn't load children — check your connection and refresh.");
+    } finally {
+      setLoading(false);
+    }
   }, [organizationId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount, standard pattern
+    // The to-do "Complete children's profiles" links here with ?incomplete=1.
+    if (new URLSearchParams(window.location.search).get("incomplete") === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the URL on mount
+      setOnlyIncomplete(true);
+    }
     load();
   }, [load]);
 
@@ -81,6 +114,7 @@ export default function EnrolledPage() {
     () => children.filter((c) => !c.archived && !c.exitDate),
     [children]
   );
+  const incompleteCount = useMemo(() => enrolled.filter((c) => isProfileIncomplete(c)).length, [enrolled]);
 
   const genderRows: BarRow[] = useMemo(() => {
     const counts = { MALE: 0, FEMALE: 0, OTHER: 0, none: 0 };
@@ -121,31 +155,154 @@ export default function EnrolledPage() {
     return rows;
   }, [enrolled]);
 
+  // Every class is listed (even empty ones), largest first.
   const classes = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const shown = enrolled.filter(
+      (c) =>
+        (!onlyIncomplete || isProfileIncomplete(c)) &&
+        (!q || `${c.firstName} ${c.lastName}`.toLowerCase().includes(q))
+    );
     const byCategory = new Map<string, { name: string; children: ChildRow[] }>();
-    for (const c of enrolled) {
+    for (const k of classList) byCategory.set(k.id, { name: k.name, children: [] });
+    for (const c of shown) {
       const entry = byCategory.get(c.category.id) ?? { name: c.category.name, children: [] };
       entry.children.push(c);
       byCategory.set(c.category.id, entry);
     }
     return [...byCategory.entries()]
       .map(([id, v]) => ({ id, ...v }))
-      .sort((a, b) => b.children.length - a.children.length);
-  }, [enrolled]);
+      .filter((k) => !(onlyIncomplete || q) || k.children.length > 0)
+      .sort((a, b) => b.children.length - a.children.length || a.name.localeCompare(b.name));
+  }, [enrolled, classList, onlyIncomplete, search]);
+
+  const filtering = onlyIncomplete || search.trim().length > 0;
 
   return (
     <div className="animate-in">
-      <PageHeader title="Enrolled" description="Currently-enrolled learners, by gender, age and class." />
+      <PageHeader
+        title="Enrolled"
+        description="Every class and the children in it, then gender and age. Add children here."
+        actions={
+          canManage && !showAdd ? (
+            <Button size="sm" onClick={() => setShowAdd(true)}>
+              Add child
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {canManage && showAdd && (
+        <AddChildForm
+          organizationId={organizationId}
+          classes={classList}
+          onCancel={() => setShowAdd(false)}
+          onAdded={() => {
+            setShowAdd(false);
+            load();
+          }}
+        />
+      )}
+
+      {canManage && classList.length > 0 && (
+        <div className="mb-6">
+          <ImportChildrenCsv organizationId={organizationId} categories={classList} onImported={load} />
+        </div>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="flex flex-col gap-6">
           <Card as="div" className="p-5">
-            <p className="text-xs text-muted-foreground">Total enrolled</p>
-            <p className="font-display mt-1 text-4xl font-semibold text-foreground">
-              {enrolled.length}
-            </p>
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Total enrolled</p>
+                <p className="font-display mt-1 text-4xl font-semibold text-foreground">{enrolled.length}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="search"
+                  placeholder="Find a child…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-44"
+                  aria-label="Find a child"
+                />
+                {incompleteCount > 0 && (
+                  <Button
+                    size="sm"
+                    variant={onlyIncomplete ? "primary" : "secondary"}
+                    onClick={() => setOnlyIncomplete((v) => !v)}
+                  >
+                    {onlyIncomplete ? "Show everyone" : `Incomplete profiles (${incompleteCount})`}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <h2 className="font-display mb-2 text-sm font-semibold text-foreground">Classes</h2>
+            {classes.length === 0 ? (
+              filtering ? (
+                <p className="text-sm text-muted-foreground">No children match.</p>
+              ) : (
+                <EmptyState
+                  title="No classes yet"
+                  description="Add your classes under Classes, then add children here."
+                />
+              )
+            ) : (
+              <div className="divide-y divide-border">
+                {classes.map((cat) => {
+                  const open = filtering || openCategory === cat.id;
+                  return (
+                    <div key={cat.id}>
+                      <button
+                        onClick={() => setOpenCategory((v) => (v === cat.id ? null : cat.id))}
+                        aria-expanded={open}
+                        className="transition-standard flex min-h-11 w-full items-center justify-between text-left text-sm text-foreground hover:text-brand"
+                      >
+                        <span className="font-medium">{cat.name}</span>
+                        <span className="text-muted-foreground">{cat.children.length}</span>
+                      </button>
+                      {open && (
+                        <div className="ml-2 border-l border-border pb-2 pl-4">
+                          {cat.children.length === 0 && (
+                            <p className="py-1.5 text-sm text-muted-foreground">No children in this class yet.</p>
+                          )}
+                          {cat.children
+                            .slice()
+                            .sort((a, b) => a.lastName.localeCompare(b.lastName))
+                            .map((c) => {
+                              const missing = missingCoreDetails(c);
+                              return (
+                                <Link
+                                  key={c.id}
+                                  href={`/dashboard/centre/children/${c.id}`}
+                                  className="transition-standard flex min-h-10 flex-wrap items-center gap-2 py-1 text-sm text-foreground hover:text-brand"
+                                >
+                                  <span className="underline">
+                                    {c.firstName} {c.lastName}
+                                  </span>
+                                  {missing.length > 0 && (
+                                    <span title={`Missing: ${missing.join(", ")}`}>
+                                      <Badge variant="danger">Incomplete profile</Badge>
+                                    </span>
+                                  )}
+                                </Link>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -167,46 +324,6 @@ export default function EnrolledPage() {
               )}
             </Card>
           </div>
-
-          <Card as="div" className="p-5">
-            <h2 className="font-display mb-3 text-sm font-semibold text-foreground">Classes</h2>
-            {classes.length === 0 ? (
-              <EmptyState
-                title="No classes yet"
-                description="Add a class under Accounting to start enrolling children into it."
-              />
-            ) : (
-              <div className="divide-y divide-border">
-                {classes.map((cat) => (
-                  <div key={cat.id}>
-                    <button
-                      onClick={() => setOpenCategory((v) => (v === cat.id ? null : cat.id))}
-                      className="transition-standard flex w-full items-center justify-between py-2.5 text-left text-sm text-foreground hover:text-brand"
-                    >
-                      <span className="font-medium">{cat.name}</span>
-                      <span className="text-muted-foreground">{cat.children.length}</span>
-                    </button>
-                    {openCategory === cat.id && (
-                      <div className="ml-4 border-l border-border pl-4 pb-2">
-                        {cat.children
-                          .slice()
-                          .sort((a, b) => a.lastName.localeCompare(b.lastName))
-                          .map((c) => (
-                            <Link
-                              key={c.id}
-                              href={`/dashboard/centre/children/${c.id}`}
-                              className="transition-standard block py-1.5 text-sm text-muted-foreground underline hover:text-foreground"
-                            >
-                              {c.firstName} {c.lastName}
-                            </Link>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
         </div>
       )}
     </div>

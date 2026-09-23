@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
+import { OnlineSubmissions } from "./OnlineSubmissions";
 
 type ChildRow = {
   id: string;
@@ -46,7 +47,7 @@ function daysAgo(n: number): Date {
 }
 
 export default function AdmissionsPage() {
-  const { organizationId } = useOrg();
+  const { organizationId, permissions } = useOrg();
   const [children, setChildren] = useState<ChildRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("week");
@@ -106,8 +107,10 @@ export default function AdmissionsPage() {
     <div className="animate-in">
       <PageHeader
         title="Admissions"
-        description="New children by when they were enrolled. Exits are below."
+        description="Online submissions waiting for review, new children by when they were enrolled, and exits."
       />
+
+      {permissions.includes("MANAGE_CHILDREN") && <OnlineSubmissions />}
 
       <Card as="div" className="mb-8 p-4">
         <div className="mb-4 flex flex-wrap gap-2">

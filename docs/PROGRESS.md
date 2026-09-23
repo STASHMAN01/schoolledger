@@ -689,3 +689,38 @@ and dashboard mock-up): claude/fix-plan.md. Session A shipped (no schema change)
 - Nav/settings links hidden when the page would only show "no permission".
 - Default dates use the local date (lib/date.ts) -- no more "yesterday" before 02:00.
 - Removed the Stripe editor's note from the privacy policy and the public "WhatsApp coming soon" lines.
+
+## Fix sessions B + C -- billing safety, new-family applications, Centre rework (2026-09-23)
+
+Decisions (Dylan, 23 Sept): both parent-link types; class age group as min-max months; Reports hidden until
+defined; adding a child requires the core details (name, DOB, gender, class, a parent/guardian phone), and the
+rest is flagged "incomplete".
+
+Schema (diff shown and approved before db push):
+- Restrict instead of Cascade on FinancialPlanEntry->Child, CreditBalance->Child, FinancialPlanEntry->Organization
+  and Payment->Organization, so the trash purge / an org delete can never erase charges or credit (R7/R13).
+- Indexes: AuditLog(org, entityType, entityId, createdAt); FinancialPlanEntry(org, status) and (org, year);
+  Payment(org, date); Child(org, categoryId, archived, deletedAt).
+- Category.ageMinMonths/ageMaxMonths. Organization.applyToken (encrypted) + applyTokenHash (unique).
+- ParentSubmission.linkId is now optional, plus isNewApplicant and createdChildId.
+
+Built:
+- Permanent school application link (/apply/school/[token]) for new families: rate-limited, and nothing is created
+  until staff approve it. Approval picks the class and start date, then creates the child (+ first year's fees)
+  and guardians. Per-child one-time links unchanged. Emailed links use AUTH_URL, not the Host header.
+- Classes API: parentId no longer accepted (flat list), fees hidden without VIEW_MONEY and only settable with it,
+  age groups, and teachers + child count per class.
+- Centre UI (Dylan's notes + mock-up):
+  - Two-row header (mode switch far left; tabs on their own row; Communication/Support/theme/log out top-right;
+    phones get a ☰ menu with 44px targets that closes on an outside tap).
+  - Centre nav: Home, Forms, Enrolled, Admissions, Attendance, Classes, Timetable, Events, Staff.
+  - Dashboard: tiles left (Admissions, Attendance present/absent, Online submissions, Enrolled, Staff, Upcoming
+    events, Classes), centre-only activity below, and a portrait to-do panel on the right with a red total.
+  - To-dos split by mode. New centre to-dos: add parents to the WhatsApp group; complete children's profiles.
+  - New pages: Forms (school link, per-child link, blank printable forms), Classes (teacher, age group, count,
+    add/edit), Events (read-only).
+  - Pending reviews became "Online submissions" inside Admissions (old URL redirects). The Children tab was
+    removed: Enrolled shows classes first, has "Add child" (core details required) and Excel/CSV import (.xlsx
+    via read-excel-file), an incomplete-profile badge and filter, and search.
+  - Import reads date of birth and gender, accepts SA phone formats (082...) and day-first dates.
+  - Attendance register: a sticky full-width Save on phones, and no endless Loading/Saving on network errors.

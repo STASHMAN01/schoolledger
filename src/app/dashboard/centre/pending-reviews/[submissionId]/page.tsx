@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useOrg } from "../../../OrgContext";
-import { Badge, Button, Card, PageHeader, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Input, Label, PageHeader, Select, Textarea } from "@/components/ui";
+import { todayLocal } from "@/lib/date";
 
 type SubmittedGuardian = {
   relationship: string;
@@ -20,11 +21,16 @@ type SubmittedGuardian = {
 type SubmissionDetail = {
   id: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  isNewApplicant: boolean;
+  createdChildId: string | null;
   submittedAt: string;
   reviewedAt: string | null;
   reviewNotes: string | null;
   data: {
     child: {
+      firstName?: string;
+      lastName?: string;
+      preferredStartDate?: string;
       dateOfBirth?: string;
       gender?: "MALE" | "FEMALE" | "OTHER";
       childIdNumber?: string;
@@ -61,6 +67,10 @@ export default function ReviewSubmissionPage() {
   const [error, setError] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [reviewNotes, setReviewNotes] = useState("");
+  // New family only: which class and from when (fees start from this date).
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [classId, setClassId] = useState("");
+  const [startDate, setStartDate] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,6 +79,18 @@ export default function ReviewSubmissionPage() {
     if (res.ok) {
       setSubmission(data.submission);
       setCurrent(data.current);
+      if (data.submission.isNewApplicant) {
+        setStartDate(data.submission.data.child.preferredStartDate?.slice(0, 10) || todayLocal());
+        const cRes = await fetch(`/api/organizations/${organizationId}/categories`);
+        const cData = await cRes.json().catch(() => ({}));
+        if (cRes.ok) {
+          const active = (cData.categories as { id: string; name: string; archived: boolean }[]).filter(
+            (k) => !k.archived
+          );
+          setClasses(active);
+          setClassId(active[0]?.id ?? "");
+        }
+      }
     } else {
       setError(data.error ?? "Not found.");
     }
@@ -88,7 +110,13 @@ export default function ReviewSubmissionPage() {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(action === "reject" ? { reviewNotes } : undefined),
+        body: JSON.stringify(
+          action === "reject"
+            ? { reviewNotes }
+            : submission?.isNewApplicant
+              ? { categoryId: classId, enrollmentDate: startDate }
+              : undefined
+        ),
       }
     );
     const data = await res.json();
@@ -97,28 +125,38 @@ export default function ReviewSubmissionPage() {
       setError(data.error ?? "Could not save that decision.");
       return;
     }
-    router.push("/dashboard/centre/pending-reviews");
+    router.push("/dashboard/centre/admissions#submissions");
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (error && !submission) return <p className="text-sm text-danger">{error}</p>;
-  if (!submission || !current) return null;
+  if (!submission) return null;
 
   const c = submission.data.child;
+  const isNew = submission.isNewApplicant;
+  const onFile = current?.child ?? null;
 
   return (
     <div className="animate-in">
       <PageHeader
-        title={`Review: ${current.child.firstName} ${current.child.lastName}`}
-        description="What the parent submitted, next to what's currently on file. Nothing here is saved until you approve it."
+        title={
+          isNew
+            ? `New family: ${c.firstName ?? ""} ${c.lastName ?? ""}`
+            : `Review: ${onFile?.firstName ?? ""} ${onFile?.lastName ?? ""}`
+        }
+        description={
+          isNew
+            ? "A new family applied with the school's online link. Nothing is saved until you approve it — approving enrols the child in the class you choose and starts their fees from the start date."
+            : "What the parent submitted, next to what's currently on file. Nothing here is saved until you approve it."
+        }
       />
 
       <div className="mb-6 flex items-center gap-2">
         <Badge variant={submission.status === "PENDING" ? "accent" : submission.status === "APPROVED" ? "success" : "danger"}>
           {submission.status}
         </Badge>
-        <Link href="/dashboard/centre/pending-reviews" className="text-sm text-brand underline">
-          Back to pending reviews
+        <Link href="/dashboard/centre/admissions#submissions" className="text-sm text-brand underline">
+          Back to online submissions
         </Link>
       </div>
 
@@ -133,19 +171,35 @@ export default function ReviewSubmissionPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
+            {isNew && (
+              <>
+                <tr>
+                  <td className="py-2 text-muted-foreground">Name</td>
+                  <td className="py-2">—</td>
+                  <td className="py-2 font-medium text-foreground">
+                    {c.firstName} {c.lastName}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2 text-muted-foreground">Preferred start</td>
+                  <td className="py-2">—</td>
+                  <td className="py-2 font-medium text-foreground">{fmt(c.preferredStartDate?.slice(0, 10))}</td>
+                </tr>
+              </>
+            )}
             <tr>
               <td className="py-2 text-muted-foreground">Date of birth</td>
-              <td className="py-2">{fmt(current.child.dateOfBirth?.slice(0, 10))}</td>
+              <td className="py-2">{fmt(onFile?.dateOfBirth?.slice(0, 10))}</td>
               <td className="py-2 font-medium text-foreground">{fmt(c.dateOfBirth)}</td>
             </tr>
             <tr>
               <td className="py-2 text-muted-foreground">Gender</td>
-              <td className="py-2">{fmt(current.child.gender)}</td>
+              <td className="py-2">{fmt(onFile?.gender)}</td>
               <td className="py-2 font-medium text-foreground">{fmt(c.gender)}</td>
             </tr>
             <tr>
               <td className="py-2 text-muted-foreground">Child ID number</td>
-              <td className="py-2">{fmt(current.child.childIdNumber)}</td>
+              <td className="py-2">{fmt(onFile?.childIdNumber)}</td>
               <td className="py-2 font-medium text-foreground">{fmt(c.childIdNumber)}</td>
             </tr>
             <tr>
@@ -167,7 +221,7 @@ export default function ReviewSubmissionPage() {
         <h2 className="font-display mb-3 text-sm font-semibold text-foreground">
           Guardians submitted ({submission.data.guardians.length})
         </h2>
-        {current.guardians.length > 0 && (
+        {current && current.guardians.length > 0 && (
           <p className="mb-3 text-xs text-muted-foreground">
             Already on file: {current.guardians.map((g) => `${g.firstName} ${g.lastName} (${g.relationship})`).join(", ")}.
             Approving adds the submitted guardians below as new entries alongside these.
@@ -220,10 +274,32 @@ export default function ReviewSubmissionPage() {
               rows={2}
             />
           </div>
+          {isNew && (
+            <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="approveClass">Enrol in class</Label>
+                <Select id="approveClass" value={classId} onChange={(e) => setClassId(e.target.value)}>
+                  {classes.length === 0 && <option value="">No classes yet</option>}
+                  {classes.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="approveStart">Start date (fees start from here)</Label>
+                <Input id="approveStart" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+            </div>
+          )}
           {error && <p className="mb-3 text-sm text-danger">{error}</p>}
-          <div className="flex gap-2">
-            <Button disabled={deciding} onClick={() => decide("approve")}>
-              {deciding ? "Saving…" : "Approve — save to child & guardians"}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={deciding || (isNew && (!classId || !startDate))}
+              onClick={() => decide("approve")}
+            >
+              {deciding ? "Saving…" : isNew ? "Approve — enrol this child" : "Approve — save to child & guardians"}
             </Button>
             <Button variant="secondary" disabled={deciding} onClick={() => decide("reject")}>
               Reject
