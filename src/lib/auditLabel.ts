@@ -65,6 +65,8 @@ export function describeAuditAction(row: AuditRow): string {
       const count = typeof m.notifiedCount === "number" ? m.notifiedCount : 0;
       return `emailed ${count} absent ${count === 1 ? "parent" : "parents"} for today`;
     }
+    case "export.downloaded":
+      return `downloaded a full data backup`;
     case "children.imported": {
       const count = typeof m.created === "number" ? m.created : 0;
       const failed = typeof m.failed === "number" && m.failed > 0 ? ` (${m.failed} row${m.failed === 1 ? "" : "s"} skipped)` : "";

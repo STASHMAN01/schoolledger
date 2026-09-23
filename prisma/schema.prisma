@@ -53,6 +53,7 @@ enum Permission {
   MANAGE_SETTINGS // can edit org profile/letterhead and payment types
   VIEW_ACTIVITY_LOG // can view the audit/activity feed
   MANAGE_ATTENDANCE // can take/edit attendance and notify absent parents (TEACHER: own assigned class only)
+  EXPORT_DATA // can download a full password-protected backup of the organization's data
 }
 
 // A child's gender, for the Enrolled tile's gender breakdown chart

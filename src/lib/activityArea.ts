@@ -17,4 +17,5 @@ export const ACCOUNTING_ENTITY_TYPES = [
   "Invite",
   "Membership",
   "Organization",
+  "Export",
 ] as const;

@@ -37,6 +37,7 @@ const SETTINGS_LINKS = [
   { href: "/dashboard/accounting/settings/activity", label: "Activity log" },
   { href: "/dashboard/accounting/settings/trash", label: "Trash" },
   { href: "/dashboard/accounting/settings/billing", label: "Billing" },
+  { href: "/dashboard/accounting/settings/backup", label: "Backup & export" },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean) {
@@ -87,6 +88,9 @@ export function NavLinks() {
   ];
   const settingsVisible = SETTINGS_LINKS.filter(
     (l) => permissions.includes("MANAGE_TEAM") || !adminOnlySettings.includes(l.href)
+  ).filter(
+    // Its own permission (Phase 4), not lumped in with MANAGE_TEAM.
+    (l) => l.href !== "/dashboard/accounting/settings/backup" || permissions.includes("EXPORT_DATA")
   );
 
   return (

@@ -18,6 +18,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "MANAGE_SETTINGS",
   "VIEW_ACTIVITY_LOG",
   "MANAGE_ATTENDANCE",
+  "EXPORT_DATA",
 ];
 
 // A short label + a longer hover-tooltip description for every
@@ -91,6 +92,11 @@ export const PERMISSION_INFO: Record<Permission, { label: string; description: s
     label: "Manage attendance",
     description:
       "Can take/edit daily attendance and email absent children's parents. A Teacher with this is limited to their own assigned class.",
+  },
+  EXPORT_DATA: {
+    label: "Backup & export",
+    description:
+      "Can download a full password-protected backup of the organization's data (records, forms, statements, payments).",
   },
 };
 

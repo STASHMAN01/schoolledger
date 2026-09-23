@@ -4,6 +4,7 @@ import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { logAudit } from "@/lib/audit";
 import { buildStatementFilename, generateStatementPdf } from "@/lib/billing/statementPdf";
+import { statementChildInclude, toStatementChild } from "@/lib/billing/statementData";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
 
@@ -33,25 +34,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     const childIds = [childId, ...siblingIds];
     const children = await db.child.findMany({
       where: { id: { in: childIds }, organizationId },
-      include: {
-        category: true,
-        creditBalance: true,
-        planEntries: {
-          where: { year, status: { not: "CANCELLED" } },
-          orderBy: [{ year: "asc" }, { month: "asc" }],
-          include: {
-            paymentType: { select: { name: true } },
-            // Actual payment date(s) applied against this charge — Dylan
-            // asked for specific payment dates on the statement, not just
-            // the charge period. A partially-paid entry can have more
-            // than one allocation (several smaller payments over time).
-            allocations: {
-              select: { amountCents: true, payment: { select: { date: true } } },
-              orderBy: { payment: { date: "asc" } },
-            },
-          },
-        },
-      },
+      include: statementChildInclude(year),
     });
 
     if (children.length === 0 || !children.some((c) => c.id === childId)) {
@@ -60,23 +43,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     const pdfBytes = await generateStatementPdf(
       organization,
-      children.map((c) => ({
-        firstName: c.firstName,
-        lastName: c.lastName,
-        parentName: c.parentName,
-        category: c.category,
-        creditBalanceCents: c.creditBalance?.amountCents ?? 0,
-        entries: c.planEntries.map((e) => ({
-          year: e.year,
-          month: e.month,
-          description: e.description,
-          paymentTypeName: e.paymentType.name,
-          amountDueCents: e.amountDueCents,
-          amountPaidCents: e.amountPaidCents,
-          status: e.status,
-          paidDates: e.allocations.map((a) => a.payment.date),
-        })),
-      })),
+      children.map(toStatementChild),
       year
     );
 
