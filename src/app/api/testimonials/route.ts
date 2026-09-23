@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { rateLimit } from "@/lib/rateLimit";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { testimonialSubmissionSchema } from "@/lib/validation";
 import { handleApiError } from "@/lib/apiError";
 
@@ -10,7 +10,7 @@ import { handleApiError } from "@/lib/apiError";
 // CRECHELY_AUDIT.md's rule against ever inventing or auto-publishing proof.
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+    const ip = clientIp(req.headers);
     const { allowed } = rateLimit(`testimonial-submit-ip:${ip}`, {
       limit: 5,
       windowMs: 60 * 60 * 1000,

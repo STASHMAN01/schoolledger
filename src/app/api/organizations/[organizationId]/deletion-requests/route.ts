@@ -111,7 +111,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         where: { id: body.targetId, organizationId, deletedAt: null },
       });
       if (!category) {
-        return NextResponse.json({ error: "Category not found." }, { status: 404 });
+        return NextResponse.json({ error: "Class not found." }, { status: 404 });
       }
       const childCount = await db.child.count({
         where: { categoryId: category.id, deletedAt: null },

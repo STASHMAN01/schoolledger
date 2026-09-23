@@ -88,10 +88,3 @@ export async function requireMembership(
   };
 }
 
-export async function requireSession() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new TenantAccessError("Not signed in.", 401);
-  }
-  return session.user.id;
-}

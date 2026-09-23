@@ -6,6 +6,7 @@ import { hashPassword, isPasswordStrongEnough } from "@/lib/password";
 import { hashInviteToken } from "@/lib/inviteToken";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 // Public route (no session required to call it) but every path through it
 // ends up requiring proof of the invited email: either a session already
@@ -14,6 +15,11 @@ import { handleApiError } from "@/lib/apiError";
 // don't control.
 export async function POST(req: NextRequest) {
   try {
+    // Public token endpoints are rate-limited per IP (final inspection R9).
+    const { allowed } = rateLimit(`invite-accept:${clientIp(req.headers)}`, { limit: 20, windowMs: 60 * 60 * 1000 });
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+    }
     const body = acceptInviteSchema.parse(await req.json());
     const tokenHash = hashInviteToken(body.token);
 

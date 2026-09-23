@@ -3,12 +3,12 @@ import { db } from "@/lib/db";
 import { resetPasswordSchema } from "@/lib/validation";
 import { hashPassword } from "@/lib/password";
 import { hashInviteToken } from "@/lib/inviteToken";
-import { rateLimit } from "@/lib/rateLimit";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { handleApiError } from "@/lib/apiError";
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+    const ip = clientIp(req.headers);
     const { allowed } = rateLimit(`reset-password:${ip}`, {
       limit: 10,
       windowMs: 60 * 60 * 1000,

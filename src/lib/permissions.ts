@@ -179,11 +179,3 @@ export function getEffectivePermissions(
   return Array.from(effective);
 }
 
-export function hasPermission(
-  role: Role,
-  overrides: PermissionOverride[],
-  permission: Permission
-): boolean {
-  if (role === "ADMIN") return true;
-  return getEffectivePermissions(role, overrides).includes(permission);
-}

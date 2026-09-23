@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { logAudit } from "@/lib/audit";
+import { sweepCreditIntoOutstanding } from "@/lib/billing/financialPlan";
 
 type Tx = Prisma.TransactionClient;
 
@@ -84,6 +85,9 @@ export async function createEventWithCharges(
         amountDueCents: input.amountCents,
       },
     });
+    // A child holding credit gets it applied to the new charge straight
+    // away, same rule as the annual plan (final inspection B4).
+    await sweepCreditIntoOutstanding(tx, organizationId, child.id, userId);
   }
 
   await logAudit({

@@ -12,12 +12,32 @@
 type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
+let callsSincePrune = 0;
+
+// The caller's IP for rate-limit keys (final inspection R9). On Vercel,
+// x-real-ip / x-vercel-forwarded-for are set by the platform itself; the
+// first x-forwarded-for entry is the fallback elsewhere.
+export function clientIp(headers: Headers | { get(name: string): string | null } | undefined | null): string {
+  if (!headers) return "unknown";
+  return (
+    headers.get("x-real-ip")?.trim() ||
+    headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown"
+  );
+}
 
 export function rateLimit(
   key: string,
   { limit, windowMs }: { limit: number; windowMs: number }
 ): { allowed: boolean; remaining: number } {
   const now = Date.now();
+  // Drop expired buckets now and then so the map can't grow forever
+  // (final inspection R9 -- the prune helper was never being called).
+  if (++callsSincePrune >= 500) {
+    callsSincePrune = 0;
+    pruneRateLimitBuckets();
+  }
   const existing = buckets.get(key);
 
   if (!existing || existing.resetAt < now) {

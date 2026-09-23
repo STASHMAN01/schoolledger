@@ -138,7 +138,7 @@ export const eventSchema = z.object({
   amountCents: moneyCentsSchema.refine((v) => v > 0, "Amount must be greater than zero"),
   categoryIds: z
     .array(z.string().cuid())
-    .min(1, "Select at least one category/class"),
+    .min(1, "Select at least one class"),
 });
 
 export const checkoutSchema = z.object({

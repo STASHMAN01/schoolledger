@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { handleApiError } from "@/lib/apiError";
 import { hashInviteToken as hashFormToken } from "@/lib/inviteToken";
-import { rateLimit } from "@/lib/rateLimit";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { parentSubmissionSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 
@@ -16,7 +16,7 @@ type Params = { params: Promise<{ token: string }> };
 // data, since this link may be sitting unopened in an email inbox.
 export async function GET(req: NextRequest, { params }: Params) {
   try {
-    const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+    const ip = clientIp(req.headers);
     const { allowed } = rateLimit(`apply-check:${ip}`, { limit: 30, windowMs: 60 * 60 * 1000 });
     if (!allowed) {
       return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 // the ParentSubmission model comment for why.
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+    const ip = clientIp(req.headers);
     const { allowed: ipAllowed } = rateLimit(`apply-submit-ip:${ip}`, {
       limit: 20,
       windowMs: 60 * 60 * 1000,

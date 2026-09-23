@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { forgotPasswordSchema } from "@/lib/validation";
-import { rateLimit } from "@/lib/rateLimit";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { generateInviteToken } from "@/lib/inviteToken";
 import { sendMail } from "@/lib/mail";
 import { handleApiError } from "@/lib/apiError";
+import { publicBaseUrl } from "@/lib/applyLink";
 
 const RESET_EXPIRY_MINUTES = 60;
 
@@ -14,7 +15,7 @@ const RESET_EXPIRY_MINUTES = 60;
 // this kind of endpoint is normally used for).
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+    const ip = clientIp(req.headers);
     // Two layers: per-IP (stop one client hammering arbitrary emails) and
     // per-email below (stop repeated resets/emails to one target).
     const { allowed } = rateLimit(`forgot-password-ip:${ip}`, {
@@ -63,7 +64,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const resetUrl = `${req.nextUrl.origin}/reset-password/${token}`;
+    // Public site address, never the request's Host header (final inspection R11).
+    const resetUrl = `${publicBaseUrl(req.nextUrl.origin)}/reset-password/${token}`;
     await sendMail({
       to: user.email,
       subject: "Reset your Crechely password",

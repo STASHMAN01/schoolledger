@@ -724,3 +724,20 @@ Built:
     via read-excel-file), an incomplete-profile badge and filter, and search.
   - Import reads date of birth and gender, accepts SA phone formats (082...) and day-first dates.
   - Attendance register: a sticky full-width Save on phones, and no endless Loading/Saving on network errors.
+
+## Fix session D -- robustness + clean-up (2026-09-23)
+
+- Rate limiting: IP from the platform headers (clientIp), buckets pruned automatically, and the invite and
+  platform-join token routes are now limited too (R9).
+- No reset/invite links in production logs when SMTP isn't set up (R10). Password-reset emails use AUTH_URL (R11).
+- Event charges immediately use a child's existing credit (B4).
+- One hardened CSV escaper (quotes CR/LF, defuses =,+,-,@ formulas) used by the payments export too (D3).
+- "category" -> "class" in the remaining on-screen text and errors (N1).
+- Error messages instead of endless Loading on Admissions and Absent.
+- Removed unused @auth/prisma-adapter, @tanstack/react-query, @types/bcryptjs and dead helpers (U1/U2).
+- Stale root docs moved to docs/archive/ (U8).
+
+Still open / Dylan's call: VIEWER role (U6), platform + testimonials area (U7), which parent contact wins
+(D9), dropping the dead columns/enum values (U4/U5), the /categories URL rename, one money formatter everywhere
+(D1), backup password in the body instead of a header (N5), and the POPIA items (encrypted file storage,
+profile-view logging, wording audit, lawyer-reviewed operator agreement).

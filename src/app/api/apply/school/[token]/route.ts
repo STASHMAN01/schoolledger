@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { handleApiError } from "@/lib/apiError";
 import { hashInviteToken } from "@/lib/inviteToken";
-import { rateLimit } from "@/lib/rateLimit";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { newApplicantSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 
@@ -14,10 +14,6 @@ type Params = { params: Promise<{ token: string }> };
 // rate limits per IP and per school. A wrong or replaced token gets the
 // same generic 404.
 
-function clientIp(req: NextRequest): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-}
-
 async function findOrg(token: string) {
   return db.organization.findUnique({
     where: { applyTokenHash: hashInviteToken(token) },
@@ -27,7 +23,7 @@ async function findOrg(token: string) {
 
 export async function GET(req: NextRequest, { params }: Params) {
   try {
-    const { allowed } = rateLimit(`apply-school-check:${clientIp(req)}`, {
+    const { allowed } = rateLimit(`apply-school-check:${clientIp(req.headers)}`, {
       limit: 60,
       windowMs: 60 * 60 * 1000,
     });
@@ -47,7 +43,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    const { allowed: ipAllowed } = rateLimit(`apply-school-submit-ip:${clientIp(req)}`, {
+    const { allowed: ipAllowed } = rateLimit(`apply-school-submit-ip:${clientIp(req.headers)}`, {
       limit: 5,
       windowMs: 60 * 60 * 1000,
     });

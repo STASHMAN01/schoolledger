@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
     if (categories.length !== body.categoryIds.length) {
       return NextResponse.json(
-        { error: "One or more selected categories were not found." },
+        { error: "One or more selected classes were not found." },
         { status: 400 }
       );
     }

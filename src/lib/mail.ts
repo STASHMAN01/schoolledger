@@ -36,10 +36,15 @@ export async function sendMail(opts: { to: string; subject: string; html: string
   if (!transport || !from) {
     // Not configured yet (e.g. local dev, or before Dylan adds the SMTP_*
     // env vars in Vercel). Never throw — a missing mail setup shouldn't
-    // break the request. Log the content so it's still usable in dev.
-    console.warn(
-      `[mail] SMTP not configured — would have sent "${opts.subject}" to ${opts.to}:\n${opts.text}`
-    );
+    // break the request. The full body (which can contain reset/invite
+    // links) is only logged outside production (final inspection R10).
+    if (process.env.NODE_ENV === "production") {
+      console.warn(`[mail] SMTP not configured — "${opts.subject}" was NOT sent.`);
+    } else {
+      console.warn(
+        `[mail] SMTP not configured — would have sent "${opts.subject}" to ${opts.to}:\n${opts.text}`
+      );
+    }
     return { sent: false as const };
   }
 

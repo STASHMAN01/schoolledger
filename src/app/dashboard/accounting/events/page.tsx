@@ -145,7 +145,7 @@ export default function EventsPage() {
                   </label>
                 ))}
                 {categories.length === 0 && (
-                  <span className="text-muted-foreground">No categories yet.</span>
+                  <span className="text-muted-foreground">No classes yet.</span>
                 )}
               </div>
             </fieldset>

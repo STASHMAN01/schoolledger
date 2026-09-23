@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { emailSchema } from "@/lib/validation";
-import { rateLimit } from "@/lib/rateLimit";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
@@ -34,7 +34,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // stuffing against one account from a shared/rotating IP is
         // still capped; and per IP, so spraying one password across many
         // emails from one source doesn't fly under the per-email limit.
-        const ip = request?.headers?.get("x-forwarded-for") ?? "unknown";
+        const ip = clientIp(request?.headers);
         const byEmail = rateLimit(`login:email:${email}`, {
           limit: 10,
           windowMs: 15 * 60 * 1000,

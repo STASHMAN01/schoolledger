@@ -208,7 +208,7 @@ export default function DashboardPage() {
           {showOutstanding && data.outstandingTree && (
             <Card className="animate-in p-4">
               <h2 className="mb-2 text-sm font-medium text-foreground">
-                Outstanding by category
+                Outstanding by class
               </h2>
               <DrilldownTree tree={data.outstandingTree} currencyCode={currencyCode} />
             </Card>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
           {showPaid && data.paidThisMonthTree && (
             <Card className="animate-in p-4">
               <h2 className="mb-2 text-sm font-medium text-foreground">
-                Paid this month by category
+                Paid this month by class
               </h2>
               <DrilldownTree tree={data.paidThisMonthTree} currencyCode={currencyCode} />
             </Card>

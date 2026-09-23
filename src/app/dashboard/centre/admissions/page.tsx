@@ -51,13 +51,20 @@ export default function AdmissionsPage() {
   const [children, setChildren] = useState<ChildRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("week");
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/organizations/${organizationId}/children`);
-    const data = await res.json();
-    if (res.ok) setChildren(data.children);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/children`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setChildren(data.children ?? []);
+      else setError(data.error ?? "Couldn't load admissions.");
+    } catch {
+      setError("Couldn't load admissions — check your connection and refresh.");
+    } finally {
+      setLoading(false);
+    }
   }, [organizationId]);
 
   useEffect(() => {
@@ -111,6 +118,10 @@ export default function AdmissionsPage() {
       />
 
       {permissions.includes("MANAGE_CHILDREN") && <OnlineSubmissions />}
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>
+      )}
 
       <Card as="div" className="mb-8 p-4">
         <div className="mb-4 flex flex-wrap gap-2">

@@ -32,12 +32,16 @@ export default function AbsentTodayPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(
-      `/api/organizations/${organizationId}/attendance/absent?date=${date}`
-    );
-    const data = await res.json();
-    if (res.ok) setRows(data.records);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/attendance/absent?date=${date}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setRows(data.records ?? []);
+      else setError(data.error ?? "Couldn't load today's absences.");
+    } catch {
+      setError("Couldn't load today's absences — check your connection and refresh.");
+    } finally {
+      setLoading(false);
+    }
   }, [organizationId, date]);
 
   useEffect(() => {

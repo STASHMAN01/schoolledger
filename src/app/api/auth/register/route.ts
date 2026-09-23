@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword, isPasswordStrongEnough } from "@/lib/password";
 import { registerSchema } from "@/lib/validation";
-import { rateLimit } from "@/lib/rateLimit";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
 import { TRIAL_DAYS } from "@/lib/trial";
 
@@ -13,7 +13,7 @@ import { TRIAL_DAYS } from "@/lib/trial";
 // not yet built) so no one can silently attach themselves to someone
 // else's school.
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = clientIp(req.headers);
   const { allowed } = rateLimit(`register:${ip}`, {
     limit: 5,
     windowMs: 60 * 60 * 1000,

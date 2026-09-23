@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeGender, normalizePhone } from "./phone";
 import { parseFlexibleDate } from "./date";
+import { escapeCsvField } from "./csv";
 
 describe("normalizePhone", () => {
   it("converts SA local formats to +27", () => {
@@ -26,5 +27,16 @@ describe("parseFlexibleDate", () => {
     expect((parseFlexibleDate("21/03/2021") as Date).toISOString()).toBe("2021-03-21T00:00:00.000Z");
     expect(parseFlexibleDate("31/02/2021")).toBe("31/02/2021");
     expect(parseFlexibleDate("")).toBeUndefined();
+  });
+});
+
+describe("escapeCsvField", () => {
+  it("quotes and defuses formulas", () => {
+    expect(escapeCsvField("a,b")).toBe('"a,b"');
+    expect(escapeCsvField("=SUM(A1)")).toBe("'=SUM(A1)");
+    expect(escapeCsvField('say "hi"')).toBe('"say ""hi"""');
+    expect(escapeCsvField("plain")).toBe("plain");
+    expect(escapeCsvField("+27821234567")).toBe("+27821234567");
+    expect(escapeCsvField("-150.00")).toBe("-150.00");
   });
 });

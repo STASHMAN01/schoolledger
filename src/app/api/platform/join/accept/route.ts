@@ -5,6 +5,7 @@ import { acceptPlatformInviteSchema } from "@/lib/validation";
 import { hashPassword, isPasswordStrongEnough } from "@/lib/password";
 import { hashInviteToken } from "@/lib/inviteToken";
 import { handleApiError } from "@/lib/apiError";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 // Public route, same shape as /api/invites/accept: either a session already
 // signed in as the invited email, or a brand-new password set right here.
@@ -12,6 +13,11 @@ import { handleApiError } from "@/lib/apiError";
 // doesn't control.
 export async function POST(req: NextRequest) {
   try {
+    // Public token endpoints are rate-limited per IP (final inspection R9).
+    const { allowed } = rateLimit(`platform-join-accept:${clientIp(req.headers)}`, { limit: 20, windowMs: 60 * 60 * 1000 });
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+    }
     const body = acceptPlatformInviteSchema.parse(await req.json());
     const tokenHash = hashInviteToken(body.token);
 

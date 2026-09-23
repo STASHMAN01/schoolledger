@@ -124,7 +124,7 @@ export default function TrashPage() {
     <div className="animate-in max-w-3xl">
       <PageHeader
         title="Trash"
-        description={`Deleted categories and children are kept here for 30 days before they're gone for good. Deleting any record — including a payment — always needs ${REQUIRED_DELETION_APPROVALS} admins to approve first, with a reason on record.`}
+        description={`Deleted classes and children are kept here for 30 days before they're gone for good. Deleting any record — including a payment — always needs ${REQUIRED_DELETION_APPROVALS} admins to approve first, with a reason on record.`}
       />
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
@@ -184,7 +184,7 @@ export default function TrashPage() {
           {items.length === 0 ? (
             <EmptyState
               title="Trash is empty"
-              description="Deleted categories and children (once approved) show up here for 30 days."
+              description="Deleted classes and children (once approved) show up here for 30 days."
             />
           ) : (
             <Card className="divide-y divide-border">

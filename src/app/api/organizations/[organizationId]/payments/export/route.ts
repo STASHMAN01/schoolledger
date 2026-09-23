@@ -2,19 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
+import { escapeCsvField } from "@/lib/csv";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
-// Escapes a value for a single CSV field per RFC 4180: wrap in quotes and
-// double up any embedded quotes whenever the value contains a comma,
-// quote, or newline. Parent/child names and notes are free text an admin
-// typed in, so this can't just assume commas never show up.
-function csvField(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
 
 // Same view permission as GET /payments — this is just a different
 // rendering of data they can already see on the Payments page, not a new
@@ -68,7 +59,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     ]);
 
     const csv =
-      [header, ...rows].map((row) => row.map(csvField).join(",")).join("\r\n") +
+      [header, ...rows].map((row) => row.map(escapeCsvField).join(",")).join("\r\n") +
       "\r\n";
 
     const filename = `payments-${new Date().toISOString().slice(0, 10)}.csv`;

@@ -49,7 +49,7 @@ const OBJECTIONS = [
 const FAQ = [
   {
     q: "How long does setup take?",
-    a: "Most schools are entering real children and fees within 15–20 minutes: add your categories (classes), add children, and the monthly fee schedule generates itself.",
+    a: "Most schools are entering real children and fees within 15–20 minutes: add your classes, add children, and the monthly fee schedule generates itself.",
   },
   {
     q: "I track fees in a spreadsheet or paper book right now — can I bring that in?",

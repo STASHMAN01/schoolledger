@@ -53,11 +53,19 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
 }
 
+// One CSV escaper for the whole app (final inspection D3). Quotes a field
+// when it contains a comma, quote or line break (RFC 4180), and defuses
+// spreadsheet formulas: a cell starting with = + - @ (or a tab/CR) is
+// prefixed with ' so Excel shows it as text instead of running it --
+// names and notes are free text typed by people.
 export function escapeCsvField(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  let v = value;
+  // Plain numbers and phone numbers (+27 82 ..., -150.00) are left alone.
+  if (/^[=+\-@\t\r]/.test(v) && !/^[+-]?[\d\s().]+$/.test(v)) v = `'${v}`;
+  if (/[",\r\n]/.test(v)) {
+    return `"${v.replace(/"/g, '""')}"`;
   }
-  return value;
+  return v;
 }
 
 export function toCsv(rows: string[][]): string {
