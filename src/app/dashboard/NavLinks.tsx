@@ -28,6 +28,10 @@ const CENTRE_LINKS = [
   { href: "/dashboard/centre/enrolled", label: "Enrolled" },
   { href: "/dashboard/centre/attendance", label: "Attendance" },
   { href: "/dashboard/centre/pending-reviews", label: "Pending reviews" },
+  // Phase 5
+  { href: "/dashboard/centre/schedule", label: "Timetable" },
+  { href: "/dashboard/centre/staff", label: "Staff" },
+  { href: "/dashboard/centre/communication", label: "Communication" },
 ];
 
 const SETTINGS_LINKS = [
@@ -53,7 +57,13 @@ export function NavLinks() {
   // The Settings dropdown (billing, team, payment types) is
   // Accounting-only; Centre Management gets its own, shorter link set.
   const inAccounting = pathname.startsWith("/dashboard/accounting");
-  const links = inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS;
+  const links = (inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS).filter(
+    // Staff list is for whoever runs the centre or the team (Phase 5).
+    (l) =>
+      l.href !== "/dashboard/centre/staff" ||
+      permissions.includes("MANAGE_CLASSES") ||
+      permissions.includes("MANAGE_TEAM")
+  );
 
   // Native <details> has no click-outside-to-close behavior, which Dylan
   // flagged as a bug (clicking anywhere else left the Settings menu open).

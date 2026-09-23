@@ -100,6 +100,8 @@ export async function buildOrgBackupZip(
     memberships,
     auditLogs,
     formDocs,
+    scheduleItems,
+    whatsappChecks,
   ] = await Promise.all([
     db.category.findMany({ where, orderBy: { name: "asc" } }),
     db.child.findMany({ where, omit: { photoImage: true }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }] }),
@@ -133,6 +135,8 @@ export async function buildOrgBackupZip(
     }),
     db.auditLog.findMany({ where, orderBy: { createdAt: "asc" } }),
     db.formDocument.findMany({ where, orderBy: { generatedAt: "asc" } }),
+    db.classScheduleItem.findMany({ where, orderBy: [{ categoryId: "asc" }, { dayOfWeek: "asc" }, { startTime: "asc" }] }),
+    db.whatsAppGroupCheck.findMany({ where }),
   ]);
 
   json("classes.json", classes);
@@ -170,6 +174,8 @@ export async function buildOrgBackupZip(
     }))
   );
   json("activity-log.json", auditLogs);
+  json("timetables.json", scheduleItems);
+  json("whatsapp-group-checks.json", whatsappChecks);
 
   counts.classes = classes.length;
   counts.children = children.length;
@@ -301,6 +307,8 @@ function readme(schoolName: string, at: Date, counts: Record<string, number>): s
     `data/parent-submissions.json  Online parent forms (review queue)`,
     `data/team.json              Team members, roles and permission overrides`,
     `data/activity-log.json      Full activity log`,
+    `data/timetables.json        Weekly class timetables`,
+    `data/whatsapp-group-checks.json  Parents ticked as added to class WhatsApp groups`,
     `children/<name>/            Photos, signed forms and yearly statements`,
     `submissions/<id>/           Documents parents uploaded with online forms`,
     `school/                     Logo and letterhead`,

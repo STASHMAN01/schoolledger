@@ -65,6 +65,14 @@ export function describeAuditAction(row: AuditRow): string {
       const count = typeof m.notifiedCount === "number" ? m.notifiedCount : 0;
       return `emailed ${count} absent ${count === 1 ? "parent" : "parents"} for today`;
     }
+    case "schedule.updated": {
+      const className = typeof m.className === "string" ? m.className : "a class";
+      return `updated the ${className} timetable`;
+    }
+    case "schedule.acknowledged": {
+      const className = typeof m.className === "string" ? m.className : "their class";
+      return `saw the updated ${className} timetable`;
+    }
     case "export.downloaded":
       return `downloaded a full data backup`;
     case "children.imported": {

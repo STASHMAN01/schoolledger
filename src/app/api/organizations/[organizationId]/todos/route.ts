@@ -4,6 +4,7 @@ import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
 import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
+import { hasUnseenScheduleChange } from "@/lib/scheduleNotice";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -34,7 +35,7 @@ type TodoItem = {
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { role, permissions, assignedCategoryId } = await requireMembership(organizationId);
+    const { userId, role, permissions, assignedCategoryId } = await requireMembership(organizationId);
 
     const todos: TodoItem[] = [];
     const dateParam = req.nextUrl.searchParams.get("date");
@@ -178,6 +179,22 @@ export async function GET(req: NextRequest, { params }: Params) {
           href: "/dashboard/accounting/reminders",
         });
       }
+    }
+
+    // Phase 5: a teacher is told when someone else changed their class's
+    // timetable; opening the Timetable page clears it (schedule/acknowledge).
+    if (
+      role === "TEACHER" &&
+      assignedCategoryId &&
+      permissions.includes("VIEW_CENTRE") &&
+      (await hasUnseenScheduleChange(organizationId, userId, assignedCategoryId))
+    ) {
+      todos.push({
+        id: "schedule.changed",
+        label: "Your class timetable changed — have a look",
+        count: 1,
+        href: "/dashboard/centre/schedule",
+      });
     }
 
     return NextResponse.json({ todos });

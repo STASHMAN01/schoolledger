@@ -185,6 +185,8 @@ model Organization {
   parentFormLinks ParentFormLink[]
   parentSubmissions ParentSubmission[]
   attendanceRecords AttendanceRecord[]
+  scheduleItems ClassScheduleItem[]
+  whatsappGroupChecks WhatsAppGroupCheck[]
 
   @@map("organizations")
 }
@@ -312,6 +314,8 @@ model Category {
   learners     Child[]
   eventCategories EventCategory[]
   teacherAssignments Membership[]
+  scheduleItems ClassScheduleItem[]
+  whatsappGroupChecks WhatsAppGroupCheck[]
 
   @@index([organizationId])
   @@index([parentId])
@@ -375,6 +379,7 @@ model Child {
   formDocuments FormDocument[]
   parentFormLinks ParentFormLink[]
   attendanceRecords AttendanceRecord[]
+  whatsappGroupChecks WhatsAppGroupCheck[]
 
   @@index([organizationId])
   @@index([categoryId])
@@ -583,6 +588,54 @@ model AttendanceRecord {
   @@unique([childId, date])
   @@index([organizationId, date])
   @@map("attendance_records")
+}
+
+// Phase 5: a class's fixed weekly timetable (Mon-Fri). The whole week for
+// one class is replaced in a single save. Times are "HH:MM" strings in the
+// school's local time -- no timezone maths needed for a repeating week.
+// Teachers read their own class's timetable; MANAGE_CLASSES edits it.
+// "Timetable changed" teacher to-dos come from AuditLog
+// (schedule.updated vs schedule.acknowledged), so no extra column here.
+model ClassScheduleItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  categoryId     String
+  dayOfWeek      Int // 1 = Monday ... 5 = Friday (ISO weekday)
+  startTime      String // "HH:MM", 24h
+  endTime        String? // "HH:MM", 24h
+  activity       String
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([categoryId, dayOfWeek])
+  @@map("class_schedule_items")
+}
+
+// Phase 5 Communication tab: a manual tick that a child's parent has been
+// added to their class's WhatsApp group. No WhatsApp integration. Keyed per
+// child per class, so a child who moves class shows unticked for the new
+// class's group. addedByUserId is a plain column (no relation) on purpose.
+model WhatsAppGroupCheck {
+  id             String   @id @default(cuid())
+  organizationId String
+  childId        String
+  categoryId     String
+  addedAt        DateTime @default(now())
+  addedByUserId  String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, categoryId])
+  @@index([organizationId])
+  @@index([categoryId])
+  @@map("whatsapp_group_checks")
 }
 
 model PaymentType {

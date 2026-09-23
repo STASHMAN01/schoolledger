@@ -644,3 +644,31 @@ with hundreds of photos/form PDFs may need streaming or a background job later. 
 
 NOT YET DONE: live click-through -- download a backup as an admin, open it with 7-Zip using the shown
 password, confirm the activity log shows "downloaded a full data backup".
+
+## Phase 5 -- Run the centre (2026-09-23)
+
+Decisions (one batched round with Dylan): staff = app users (Memberships) only; weekly Mon-Fri timetable per
+class with teacher notification as a dashboard to-do (no email); Communication = per-class "parent added to
+WhatsApp group" tick-list (no integration); complaints/reports parked until Dylan sends the rest of his notes.
+Also decided: upgrade the Render Postgres to a paid plan before the ~2026-10-12 free-tier expiry (Dylan's action).
+
+Schema (shown and approved): new `ClassScheduleItem` (class_schedule_items) and `WhatsAppGroupCheck`
+(whatsapp_group_checks, unique per child per class) + back-relations on Organization/Category/Child.
+No new permissions: MANAGE_CLASSES edits timetables; MANAGE_CHILDREN ticks the checklist (TEACHER: own class via
+`resolveAttendanceScope`); Staff page/tile needs MANAGE_CLASSES or MANAGE_TEAM.
+
+- Timetable page (`/dashboard/centre/schedule`): per-class week view, today highlighted; edit mode with add/remove
+  rows and "copy Monday to every day"; whole week saved in one PUT (`/schedule`), audit `schedule.updated`.
+- Teacher notification: `/todos` shows "Your class timetable changed" when someone else's latest
+  `schedule.updated` for their class is newer than their latest `schedule.acknowledged`; opening the Timetable
+  page POSTs `/schedule/acknowledge` (only writes a row when there is an unseen change). No extra column.
+- Staff page (`/dashboard/centre/staff`) + home tile: members, role, class, flags teachers without a class;
+  editing stays in Settings > Team.
+- Upcoming Events tile: read-only from the existing Event model (`/events/upcoming`); amounts only returned with
+  VIEW_MONEY; names link to the Accounting event page only with VIEW_MONEY + VIEW_ACCOUNTING; TEACHER sees only
+  events for their class.
+- Communication page (`/dashboard/centre/communication`): tick-list per class with "x of y added".
+- Teacher dashboard shows today's timetable.
+- Phase 4 backup now also includes timetables.json and whatsapp-group-checks.json.
+
+NOT YET DONE: live click-through (see project-plan.md next steps).
