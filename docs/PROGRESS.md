@@ -616,3 +616,31 @@ NOT YET DONE: live click-through of the to-do widget itself (same
 login limitation as above) -- take an action that should clear a
 to-do item (e.g. finish today's register) and confirm the widget
 updates/disappears.
+
+## Phase 4 -- Backup & export (2026-09-23)
+
+Built and deployed (commit `ebcc544`, Vercel READY), pending live click-through.
+
+- New `EXPORT_DATA` permission (ADMIN only by default; not in any other role's defaults).
+- Settings > Backup & export (`/dashboard/accounting/settings/backup`): "Download full backup" POSTs to
+  `/api/organizations/[organizationId]/export`, which returns an AES-256 encrypted ZIP. The password is
+  generated per download (16 chars, no ambiguous glyphs), returned once in `X-Export-Password`, shown once
+  in the UI, never stored. The page lists recent exports from the activity log (`entityTypes=Export`).
+- ZIP contents: README.txt, `data/*.json` (org profile with decrypted bank account, classes, children,
+  guardians, payment types, events + class ids, financial plan, payments + allocations + receipt numbers,
+  credit balances, attendance, parent submissions, team, full activity log), per-child photos, form PDFs and
+  one statement PDF per year with charges, parent-submission attachments, school logo/letterhead. Trashed
+  rows are included. Never included: password hashes, token hashes, Paystack tokens.
+- Logged as `export.downloaded` (entityType `Export`, counts in metadata), only after a successful build.
+- Refactor: statement input building extracted to `src/lib/billing/statementData.ts`, shared by the child
+  statement route and the backup.
+- `@types/archiver` pinned to ^6.0.3 (v8 types describe archiver 8 and break the build with archiver 7).
+- Build caught one lint error (`react-hooks/set-state-in-effect`), fixed with the same disable comment
+  the Trash/Activity pages use.
+- Import from backup: parked.
+
+KNOWN RISK: the whole ZIP is built in memory with a 60 s function limit. Fine for a small preschool; a school
+with hundreds of photos/form PDFs may need streaming or a background job later. Flagged, not built.
+
+NOT YET DONE: live click-through -- download a backup as an admin, open it with 7-Zip using the shown
+password, confirm the activity log shows "downloaded a full data backup".
