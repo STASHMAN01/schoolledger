@@ -26,3 +26,15 @@ function utcDate(y: number, month: number, d: number): Date | null {
   // Rejects impossible dates like 31/02 instead of silently rolling over.
   return date.getUTCMonth() === month - 1 && date.getUTCDate() === d ? date : null;
 }
+
+// Display format for dates across the dashboard: "24 Sept 2026" (South
+// African English, day first). Replaces bare toLocaleDateString(), which
+// showed 9/24/2026 on phones set to US English.
+export function formatDateZA(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return "—";
+  // en-GB rather than en-ZA: same day-first order, without en-ZA's
+  // leading zero ("4 Sept 2026", not "04 Sept 2026").
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}

@@ -766,3 +766,11 @@ profile-view logging, wording audit, lawyer-reviewed operator agreement).
 - Fixed a wrong landing-page claim: profiles don't store medical details (there's a printable medical & allergy form). Add child form wording fixed to match.
 - Decided: keep /platform + testimonials frozen (no new features); leave the unused DB fields (logoUrl, letterheadUrl, InviteStatus.EXPIRED) until the next schema change. PlanEntryStatus.UPCOMING is actually queried, so it stays.
 - Next: Dylan upgrades Render before ~12 Oct; then Batch 2 (files to private storage + drop the 2 unused fields, schema diff first); operator agreement draft for lawyer review.
+
+## Mobile pass + Accounting home -- 24 Sept 2026
+- Checked every everyday screen at phone width (390px) in a local preview with sample data before changing anything.
+- Header on phones: school name now visible; logo, theme and Log out moved into the menu (menu now grouped: main pages / Settings / More, with Light-dark and Log out at the bottom).
+- Accounting home now matches Centre: to-do panel (top on phones, right on desktop), number tiles (Outstanding, Paid this month, Accounts due, Reminders, Children), breakdown opens below the tiles, recent accounting activity with badges and a link to the full log. Dropped the "Reminders sent" tile and the month/lifetime toggles (Settings > Activity log covers those). Shared DashboardTile component used by both homes.
+- Phones: children list, payment history and a child's charges show as cards instead of tables that ran off the screen; a child's three totals sit side by side; bigger tap targets for Archive/Delete/Approve/Cancel, joint-statement and "show archived" checkboxes, and breakdown rows.
+- Dates everywhere in the dashboard now read "24 Sept 2026" (new formatDateZA in lib/date.ts) instead of 9/24/2026.
+- Dashboard API activity items now include entityType (for the badge). No schema change.

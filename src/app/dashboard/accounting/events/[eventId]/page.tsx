@@ -7,6 +7,7 @@ import { useOrg } from "../../../OrgContext";
 import { Card } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
+import { formatDateZA } from "@/lib/date";
 
 type Entry = {
   id: string;
@@ -89,7 +90,7 @@ export default function EventDetailPage() {
       </Link>
       <h1 className="font-display mb-1 text-2xl font-semibold text-foreground">{event.name}</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        {new Date(event.eventDate).toLocaleDateString()} ·{" "}
+        {formatDateZA(event.eventDate)} ·{" "}
         {formatCents(event.amountCents, currencyCode)} per child ·{" "}
         {event.categories.map((c) => c.name).join(", ")}
       </p>

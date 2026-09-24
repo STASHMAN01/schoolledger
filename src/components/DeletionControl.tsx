@@ -121,7 +121,7 @@ export function DeletionControl({
         <button
           onClick={() => setPromptOpen(true)}
           disabled={busy}
-          className="text-xs text-danger underline transition-standard hover:brightness-90 disabled:opacity-50"
+          className="text-xs text-danger underline transition-standard hover:brightness-90 disabled:opacity-50 inline-flex min-h-11 items-center px-1 sm:min-h-0 sm:px-0"
         >
           Delete…
         </button>
@@ -187,7 +187,7 @@ export function DeletionControl({
           <button
             onClick={approve}
             disabled={busy}
-            className="text-brand underline transition-standard hover:brightness-90 disabled:opacity-50"
+            className="text-brand underline transition-standard hover:brightness-90 disabled:opacity-50 inline-flex min-h-11 items-center px-1 sm:min-h-0 sm:px-0"
           >
             Approve
           </button>
@@ -196,7 +196,7 @@ export function DeletionControl({
           <button
             onClick={cancel}
             disabled={busy}
-            className="text-muted-foreground underline transition-standard hover:text-foreground disabled:opacity-50"
+            className="text-muted-foreground underline transition-standard hover:text-foreground disabled:opacity-50 inline-flex min-h-11 items-center px-1 sm:min-h-0 sm:px-0"
           >
             Cancel
           </button>

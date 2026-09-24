@@ -14,6 +14,7 @@ import {
   renderReminderTemplate,
 } from "@/lib/billing/reminderTemplates";
 import { formatMoneyCents } from "@/lib/money";
+import { formatDateZA } from "@/lib/date";
 
 type Reminder = {
   childId: string;
@@ -502,7 +503,7 @@ function RemindersPageInner() {
               />
               {r.lastReminderSentAt && (
                 <p className="mb-2 text-xs text-muted-foreground">
-                  Last reminded {new Date(r.lastReminderSentAt).toLocaleDateString()}
+                  Last reminded {formatDateZA(r.lastReminderSentAt)}
                 </p>
               )}
               {canSend && (

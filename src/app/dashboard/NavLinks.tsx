@@ -12,7 +12,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { signOut } from "next-auth/react";
 import { useOrg } from "./OrgContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type NavLink = { href: string; label: string; exact?: boolean };
 
@@ -223,12 +225,17 @@ export function MobileMenu({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
     };
   }, [open]);
 
-  const all: NavLink[] = [
-    ...links,
-    ...(communication ? [communication] : []),
-    ...settings,
-    ...(isPlatformAdmin ? [{ href: "/platform", label: "Platform" }] : []),
-    { href: "/support", label: "Support" },
+  // Grouped so Settings items don't read as main pages (mobile pass).
+  const groups: { label: string | null; items: NavLink[] }[] = [
+    { label: null, items: [...links, ...(communication ? [communication] : [])] },
+    ...(settings.length > 0 ? [{ label: "Settings", items: settings }] : []),
+    {
+      label: "More",
+      items: [
+        ...(isPlatformAdmin ? [{ href: "/platform", label: "Platform" }] : []),
+        { href: "/support", label: "Support" },
+      ],
+    },
   ];
 
   return (
@@ -251,21 +258,43 @@ export function MobileMenu({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
 
       {open && (
         <div className="animate-in absolute inset-x-0 top-full z-30 max-h-[75vh] overflow-y-auto border-b border-border bg-surface px-4 py-3 shadow-lg">
-          <div className="flex flex-col gap-1">
-            {all.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className={`flex min-h-11 items-center rounded-lg px-3 text-base font-medium ${
-                  isActive(pathname, l.href, l.exact)
-                    ? "bg-brand-soft text-brand-soft-foreground"
-                    : "text-muted-foreground hover:bg-background hover:text-foreground"
-                }`}
-              >
-                {l.label}
-              </Link>
-            ))}
+          {groups.map((g) => (
+            <div key={g.label ?? "main"} className={g.label ? "mt-2 border-t border-border pt-2" : ""}>
+              {g.label && (
+                <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted">{g.label}</p>
+              )}
+              <div className="flex flex-col gap-1">
+                {g.items.map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    onClick={() => setOpen(false)}
+                    className={`flex min-h-11 items-center rounded-lg px-3 text-base font-medium ${
+                      isActive(pathname, l.href, l.exact)
+                        ? "bg-brand-soft text-brand-soft-foreground"
+                        : "text-muted-foreground hover:bg-background hover:text-foreground"
+                    }`}
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+          {/* Theme and Log out live here on phones (hidden from the
+              header row there so the school name fits). */}
+          <div className="mt-2 flex items-center justify-between gap-3 border-t border-border pt-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <ThemeToggle />
+              <span>Light / dark</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="flex min-h-11 items-center rounded-lg px-3 text-base font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+            >
+              Log out
+            </button>
           </div>
         </div>
       )}

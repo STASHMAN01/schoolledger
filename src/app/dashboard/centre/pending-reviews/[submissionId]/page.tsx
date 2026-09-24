@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useOrg } from "../../../OrgContext";
 import { Badge, Button, Card, Input, Label, PageHeader, Select, Textarea } from "@/components/ui";
-import { todayLocal } from "@/lib/date";
+import { todayLocal, formatDateZA } from "@/lib/date";
 
 type SubmittedGuardian = {
   relationship: string;
@@ -330,7 +330,7 @@ export default function ReviewSubmissionPage() {
         <Card as="div" className="p-5">
           <p className="text-sm text-muted-foreground">
             Already {submission.status.toLowerCase()}
-            {submission.reviewedAt ? ` on ${new Date(submission.reviewedAt).toLocaleDateString()}` : ""}.
+            {submission.reviewedAt ? ` on ${formatDateZA(submission.reviewedAt)}` : ""}.
             {submission.reviewNotes ? ` Note: ${submission.reviewNotes}` : ""}
           </p>
         </Card>

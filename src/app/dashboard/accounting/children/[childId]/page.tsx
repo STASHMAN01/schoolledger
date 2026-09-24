@@ -172,25 +172,20 @@ export default function ChildDetailPage() {
         {child.category.name} · Parent/guardian: {child.parentName}
       </p>
 
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Total outstanding</p>
-          <p className="font-display mt-1 text-xl font-semibold text-foreground">
-            R{(outstanding / 100).toFixed(2)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Total paid</p>
-          <p className="font-display mt-1 text-xl font-semibold text-foreground">
-            R{(totalPaid / 100).toFixed(2)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Credit balance</p>
-          <p className="font-display mt-1 text-xl font-semibold text-foreground">
-            R{((child.creditBalance?.amountCents ?? 0) / 100).toFixed(2)}
-          </p>
-        </Card>
+      {/* Three small totals side by side, also on phones (mobile pass). */}
+      <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
+        {[
+          { label: "Outstanding", cents: outstanding, cls: outstanding > 0 ? "text-danger" : "text-foreground" },
+          { label: "Paid", cents: totalPaid, cls: "text-foreground" },
+          { label: "Credit", cents: child.creditBalance?.amountCents ?? 0, cls: "text-foreground" },
+        ].map((t) => (
+          <Card key={t.label} className="p-3 sm:p-4">
+            <p className="text-xs text-muted-foreground">{t.label}</p>
+            <p className={`font-display mt-1 break-words text-sm font-semibold sm:text-xl ${t.cls}`}>
+              {formatCents(t.cents, currencyCode)}
+            </p>
+          </Card>
+        ))}
       </div>
 
       <Card className="mb-6 flex flex-wrap items-end gap-4 p-4">
@@ -209,9 +204,10 @@ export default function ChildDetailPage() {
               Same surname found — include in a joint statement?
             </p>
             {siblings.map((s) => (
-              <label key={s.id} className="mr-4 inline-flex items-center gap-1 text-foreground">
+              <label key={s.id} className="mr-4 inline-flex min-h-11 items-center gap-2 text-foreground sm:min-h-0">
                 <input
                   type="checkbox"
+                  className="h-5 w-5 sm:h-4 sm:w-4"
                   checked={selectedSiblingIds.includes(s.id)}
                   onChange={() => toggleSibling(s.id)}
                 />
@@ -252,7 +248,29 @@ export default function ChildDetailPage() {
         {shareError && <p className="w-full text-xs text-danger">{shareError}</p>}
       </Card>
 
-      <Card className="overflow-x-auto">
+      {/* Phones: one row per charge instead of a 5-column table. */}
+      <Card className="divide-y divide-border sm:hidden">
+        {child.planEntries.length === 0 && (
+          <p className="p-3 text-sm text-muted-foreground">No charges yet.</p>
+        )}
+        {child.planEntries.map((e) => (
+          <div key={e.id} className="p-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-medium text-foreground">
+                {e.month ? `${e.year}-${String(e.month).padStart(2, "0")}` : e.year} · {e.description}
+              </span>
+              <span className={`shrink-0 text-xs font-medium ${statusColor[e.status] ?? ""}`}>
+                {e.status.replace("_", " ")}
+              </span>
+            </div>
+            <p className="mt-0.5 text-sm tabular-nums text-muted-foreground">
+              Due {formatCents(e.amountDueCents, currencyCode)} · Paid {formatCents(e.amountPaidCents, currencyCode)}
+            </p>
+          </div>
+        ))}
+      </Card>
+
+      <Card className="hidden overflow-x-auto sm:block">
         <table className="w-full text-sm">
           <thead className="bg-background text-left">
             <tr>

@@ -5,6 +5,7 @@ import { useOrg } from "../../../OrgContext";
 import { Button, Card, Disclosure, Input, Label, PageHeader, Select } from "@/components/ui";
 import { ALL_PERMISSIONS, PERMISSION_INFO, ROLE_DEFAULT_PERMISSIONS, roleLabel } from "@/lib/permissions";
 import type { Permission, Role } from "@prisma/client";
+import { formatDateZA } from "@/lib/date";
 
 type Member = {
   membershipId: string;
@@ -319,7 +320,7 @@ export default function TeamPage() {
                         {roleLabel(i.role)}
                       </td>
                       <td className="px-3 py-2 text-foreground">
-                        {new Date(i.expiresAt).toLocaleDateString()}
+                        {formatDateZA(i.expiresAt)}
                       </td>
                       <td className="px-3 py-2 text-right">
                         <Button variant="ghost" size="sm" onClick={() => revoke(i.id)}>

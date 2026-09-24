@@ -58,10 +58,10 @@ export default async function DashboardLayout({
                 <img
                   src={org.logoImage}
                   alt={`${org.name} logo`}
-                  className="h-8 w-8 shrink-0 rounded-lg object-cover"
+                  className="hidden h-8 w-8 shrink-0 rounded-lg object-cover sm:block"
                 />
               ) : (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-foreground">
+                <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-foreground sm:flex">
                   {membership.organization.name.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -71,8 +71,12 @@ export default async function DashboardLayout({
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <UtilityLinks isPlatformAdmin={isPlatformAdmin} />
-              <ThemeToggle />
-              <SignOutButton />
+              {/* Phones: theme and Log out move into the menu so the
+                  school name has room (mobile pass, 24 Sept). */}
+              <div className="hidden md:flex md:items-center md:gap-1">
+                <ThemeToggle />
+                <SignOutButton />
+              </div>
               <MobileMenu isPlatformAdmin={isPlatformAdmin} />
             </div>
           </div>

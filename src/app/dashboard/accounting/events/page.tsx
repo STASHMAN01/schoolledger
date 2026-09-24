@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, Input, Label, PageHeader } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
-import { todayLocal } from "@/lib/date";
+import { todayLocal, formatDateZA } from "@/lib/date";
 
 type Category = { id: string; name: string; archived: boolean };
 type EventRow = {
@@ -185,7 +185,7 @@ export default function EventsPage() {
                 <tr key={e.id} className="border-t border-border">
                   <td className="px-3 py-2 text-foreground">{e.name}</td>
                   <td className="px-3 py-2 text-foreground">
-                    {new Date(e.eventDate).toLocaleDateString()}
+                    {formatDateZA(e.eventDate)}
                   </td>
                   <td className="px-3 py-2 text-foreground">
                     {e.categories.map((c) => c.name).join(", ")}

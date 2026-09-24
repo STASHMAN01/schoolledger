@@ -8,6 +8,7 @@ import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
 import { ImportChildrenCsv } from "@/components/ImportChildrenCsv";
 import { AddChildForm } from "@/components/AddChildForm";
+import { formatDateZA } from "@/lib/date";
 
 type Category = { id: string; name: string; archived: boolean };
 type Child = {
@@ -211,7 +212,50 @@ export default function ChildrenPage() {
           {search ? "No children match your search." : "No children found."}
         </p>
       ) : (
-        <Card className="overflow-x-auto">
+        <>
+        {/* Phones: one card per child instead of a table that runs off
+            the screen (mobile pass, 24 Sept). */}
+        <div className="flex flex-col gap-2 sm:hidden">
+          {visibleChildren.map((c) => (
+            <Card key={c.id} as="div" className="p-3">
+              <Link
+                href={`/dashboard/accounting/children/${c.id}`}
+                className="flex min-h-11 items-center justify-between gap-3 text-base font-medium text-foreground"
+              >
+                <span className="underline underline-offset-2">
+                  {c.firstName} {c.lastName}
+                </span>
+                <span aria-hidden="true" className="text-muted">›</span>
+              </Link>
+              <p className="text-sm text-muted-foreground">
+                {c.category.name} · since {formatDateZA(c.enrollmentDate)}
+              </p>
+              <p className="text-sm text-muted-foreground">{c.parentName}</p>
+              {canManage && (
+                <div className="mt-1 flex flex-wrap items-center justify-end gap-3">
+                  <button
+                    onClick={() => toggleArchive(c)}
+                    className="inline-flex min-h-11 items-center px-1 text-sm text-muted-foreground underline transition-standard hover:text-foreground"
+                  >
+                    {c.archived ? "Restore" : "Archive"}
+                  </button>
+                  <DeletionControl
+                    organizationId={organizationId}
+                    targetType="CHILD"
+                    targetId={c.id}
+                    targetLabel={`${c.firstName} ${c.lastName}`}
+                    deletionRequest={c.deletionRequest}
+                    canRequest={permissions.includes("APPROVE_DELETION")}
+                    isAdmin={permissions.includes("APPROVE_DELETION")}
+                    onChanged={loadChildren}
+                    confirm={confirm}
+                  />
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+        <Card className="hidden overflow-x-auto sm:block">
           <table className="w-full text-sm">
             <thead className="bg-background text-left">
               <tr>
@@ -236,7 +280,7 @@ export default function ChildrenPage() {
                   <td className="px-3 py-2">{c.category.name}</td>
                   <td className="px-3 py-2">{c.parentName}</td>
                   <td className="px-3 py-2">
-                    {new Date(c.enrollmentDate).toLocaleDateString()}
+                    {formatDateZA(c.enrollmentDate)}
                   </td>
                   {canManage && (
                     <td className="px-3 py-2 text-right">
@@ -266,6 +310,7 @@ export default function ChildrenPage() {
             </tbody>
           </table>
         </Card>
+        </>
       )}
     </div>
   );

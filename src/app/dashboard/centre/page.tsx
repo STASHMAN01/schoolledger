@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../OrgContext";
 import { TodoList } from "../TodoList";
+import { Tile, TileHeader } from "../DashboardTile";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
 import { describeAuditAction } from "@/lib/auditLabel";
@@ -266,36 +267,5 @@ export default function CentreManagementHomePage() {
         </aside>
       </div>
     </div>
-  );
-}
-
-function TileHeader({ title }: { title: string }) {
-  return <p className="bg-brand px-3 py-1.5 text-sm font-semibold text-brand-foreground">{title}</p>;
-}
-
-function Tile({
-  title,
-  href,
-  value,
-  hint,
-  warn,
-}: {
-  title: string;
-  href: string;
-  value: number | string;
-  hint: string;
-  warn?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className="transition-standard block overflow-hidden rounded-xl border border-border bg-surface hover:border-border-strong"
-    >
-      <TileHeader title={title} />
-      <div className="p-3">
-        <p className="font-display text-2xl font-semibold text-foreground">{value}</p>
-        <p className={`mt-1 text-xs ${warn ? "text-danger" : "text-muted"}`}>{hint}</p>
-      </div>
-    </Link>
   );
 }

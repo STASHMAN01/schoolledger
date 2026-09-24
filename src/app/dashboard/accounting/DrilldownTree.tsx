@@ -38,7 +38,7 @@ export function DrilldownTree({
         <div key={category.categoryId}>
           <button
             onClick={() => toggle(openCategories, setOpenCategories, category.categoryId)}
-            className="flex w-full items-center justify-between py-2 text-left text-sm text-foreground"
+            className="flex min-h-11 w-full items-center justify-between py-2 text-left text-sm text-foreground"
           >
             <span>{category.name}</span>
             <span className="font-medium">{formatCents(category.amountCents, currencyCode)}</span>
@@ -49,7 +49,7 @@ export function DrilldownTree({
                 <div key={pt.paymentTypeId}>
                   <button
                     onClick={() => toggle(openTypes, setOpenTypes, pt.paymentTypeId)}
-                    className="flex w-full items-center justify-between py-2 text-left text-sm text-muted-foreground"
+                    className="flex min-h-11 w-full items-center justify-between py-2 text-left text-sm text-muted-foreground"
                   >
                     <span>{pt.name}</span>
                     <span>{formatCents(pt.amountCents, currencyCode)}</span>
@@ -60,7 +60,7 @@ export function DrilldownTree({
                         <Link
                           key={c.childId}
                           href={`/dashboard/accounting/children/${c.childId}`}
-                          className="transition-standard flex items-center justify-between py-1.5 text-sm text-muted-foreground hover:text-foreground"
+                          className="transition-standard flex min-h-11 items-center justify-between py-1.5 text-sm text-muted-foreground hover:text-foreground"
                         >
                           <span className="underline">{c.name}</span>
                           <span>{formatCents(c.amountCents, currencyCode)}</span>

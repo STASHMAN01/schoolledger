@@ -35,6 +35,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const activity = recentAudit.map((a) => ({
       id: a.id,
       userName: a.user?.name ?? "Someone",
+      // For the badge on the dashboard feed (matches Centre's feed).
+      entityType: a.entityType,
       // Amounts only for VIEW_MONEY (final inspection R2).
       label: describeAuditAction(canViewMoney ? a : redactMoneyMetadata(a)),
       createdAt: a.createdAt,

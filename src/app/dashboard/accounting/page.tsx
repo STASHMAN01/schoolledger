@@ -1,17 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+// Accounting home, matched to the Centre Management home (Dylan, 24 Sept:
+// "match the dashboard of accounting to centre management but only
+// necessary fields"): number tiles on the left, recent ACCOUNTING activity
+// underneath, and the to-do list as a panel on the right (on top on
+// phones). Money tiles open their breakdown below the tiles.
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useOrg } from "../OrgContext";
 import { TodoList } from "../TodoList";
+import { Tile } from "../DashboardTile";
 import { DrilldownTree } from "./DrilldownTree";
 import { formatCents } from "@/lib/formatMoney";
 import type { CategoryNode } from "@/lib/billing/dashboard";
-import { Card } from "@/components/ui";
-import { describeAuditAction } from "@/lib/auditLabel";
+import { Badge, Card, PageHeader } from "@/components/ui";
 
-type ActivityItem = { id: string; userName: string; label: string; createdAt: string };
+type ActivityItem = { id: string; userName: string; label: string; createdAt: string; entityType?: string };
 
 type DashboardData = {
   childrenCount: number;
@@ -22,43 +27,45 @@ type DashboardData = {
   paidThisMonthTotalCents?: number;
   paidThisMonthTree?: CategoryNode[];
   accountsDue?: { childId: string; name: string; amountCents: number }[];
-  remindersSentCount?: number;
   remindersUnsentCount?: number;
 };
 
-type AuditApiEntry = {
-  id: string;
-  action: string;
-  metadata: unknown;
-  createdAt: string;
-  actor: { name: string } | null;
+type Panel = "outstanding" | "paid" | "due";
+
+const ENTITY_LABEL: Record<string, string> = {
+  Category: "Class",
+  PaymentType: "Payment type",
+  Organization: "School",
+  Membership: "Team",
+  Invite: "Team",
 };
 
-// The 5-item view uses whatever the dashboard endpoint already fetched
-// (cheap, no extra request). "This month" and "Lifetime" can both be
-// larger than that endpoint's own 20-row cap, so those call the same
-// paginated /audit endpoint the Settings → Activity log page uses.
-type ActivityView = "recent" | "month" | "lifetime";
+function formatWhen(iso: string): string {
+  return new Date(iso).toLocaleString("en-ZA", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
-export default function DashboardPage() {
-  const { organizationId, organizationName, hasActiveAccess, currencyCode } = useOrg();
+export default function AccountingHomePage() {
+  const { organizationId, organizationName, hasActiveAccess, currencyCode, permissions } = useOrg();
+  const canSeeActivityLog = permissions.includes("VIEW_ACTIVITY_LOG");
   const { data: session } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showOutstanding, setShowOutstanding] = useState(false);
-  const [showPaid, setShowPaid] = useState(false);
-  const [showAccountsDue, setShowAccountsDue] = useState(false);
-  const [activityView, setActivityView] = useState<ActivityView>("recent");
-  const [expandedActivity, setExpandedActivity] = useState<ActivityItem[] | null>(null);
-  const [activityLoading, setActivityLoading] = useState(false);
+  const [panel, setPanel] = useState<Panel | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/organizations/${organizationId}/dashboard`);
-    const json = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setData(json);
-    } else {
-      setError(json.error ?? "Could not load the dashboard.");
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/dashboard`);
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) setData(json);
+      else setError(json.error ?? "Could not load the dashboard.");
+    } catch {
+      setError("Could not load the dashboard. Check your connection and refresh.");
     }
   }, [organizationId]);
 
@@ -68,244 +75,182 @@ export default function DashboardPage() {
     load();
   }, [load, hasActiveAccess]);
 
-  async function loadExpandedActivity(view: "month" | "lifetime") {
-    setActivityLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (view === "month") {
-        const now = new Date();
-        const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-        params.set("since", startOfMonth.toISOString());
-      }
-      const res = await fetch(
-        `/api/organizations/${organizationId}/audit?${params.toString()}`
-      );
-      const json = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setExpandedActivity(
-          (json.entries as AuditApiEntry[]).map((e) => ({
-            id: e.id,
-            userName: e.actor?.name ?? "Someone",
-            label: describeAuditAction(e),
-            createdAt: e.createdAt,
-          }))
-        );
-      }
-    } finally {
-      setActivityLoading(false);
-    }
-  }
+  // On a phone the breakdown opens below all the tiles, so bring it into
+  // view when a tile is tapped.
+  useEffect(() => {
+    if (panel) panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [panel]);
 
-  // Chevron button: recent (5 items) <-> this month.
-  function toggleActivityDropdown() {
-    setActivityView((v) => {
-      const next = v === "recent" ? "month" : "recent";
-      if (next === "month") loadExpandedActivity("month");
-      return next;
-    });
-  }
-
-  // Clicking the "Recent activity" label itself: this month/recent <-> lifetime.
-  function toggleActivityLifetime() {
-    setActivityView((v) => {
-      const next = v === "lifetime" ? "recent" : "lifetime";
-      if (next === "lifetime") loadExpandedActivity("lifetime");
-      return next;
-    });
-  }
-
-  const visibleActivity =
-    activityView === "recent" ? (data?.activity.slice(0, 5) ?? []) : (expandedActivity ?? []);
+  const toggle = (p: Panel) => setPanel((cur) => (cur === p ? null : p));
+  const money = (cents: number | undefined) => formatCents(cents ?? 0, currencyCode);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const firstName = session?.user?.name?.split(" ")[0];
+
+  const accountsDue = data?.accountsDue ?? [];
+  const unsent = data?.remindersUnsentCount ?? 0;
 
   return (
     <div className="animate-in">
-      <h1 className="font-display mb-1 text-2xl font-semibold text-foreground">
-        {greeting}, {session?.user?.name ?? ""}
-      </h1>
-      <p className="mb-8 text-sm text-muted-foreground">{organizationName}</p>
+      <PageHeader
+        title="Accounting"
+        description={`${greeting}${firstName ? `, ${firstName}` : ""}. Fees, payments and reminders for ${organizationName}.`}
+      />
 
       {!hasActiveAccess ? (
-        <p className="text-sm text-muted-foreground">
-          Subscribe above to see your dashboard again.
-        </p>
-      ) : error ? (
-        <p className="text-sm text-danger">{error}</p>
-      ) : !data ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">Subscribe above to see your dashboard again.</p>
       ) : (
-        <div className="flex flex-col gap-6">
-          <TodoList mode="accounting" />
-
-          {!data.canViewMoney && (
-            <p className="text-sm text-muted-foreground">
-              Financial figures are hidden for your role. Ask an admin if you need to see them.
-            </p>
-          )}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {data.canViewMoney && (
+        <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+          {/* Left: tiles, breakdown, then activity */}
+          <div className="min-w-0">
+            {error ? (
+              <p className="mb-8 text-sm text-danger">{error}</p>
+            ) : !data ? (
+              <p className="mb-8 text-sm text-muted-foreground">Loading…</p>
+            ) : (
               <>
-                <Card
-                  as="button"
-                  onClick={() => setShowOutstanding((v) => !v)}
-                  className="transition-standard p-4 text-left hover:border-border-strong"
-                >
-                  <p className="text-xs text-muted-foreground">Outstanding</p>
-                  <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-                    {formatCents(data.outstandingTotalCents ?? 0, currencyCode)}
+                <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {data.canViewMoney && (
+                    <>
+                      <Tile
+                        title="Outstanding"
+                        value={money(data.outstandingTotalCents)}
+                        hint={panel === "outstanding" ? "Showing by class ↓" : "Tap to see by class"}
+                        compact
+                        onClick={() => toggle("outstanding")}
+                        expanded={panel === "outstanding"}
+                      />
+                      <Tile
+                        title="Paid this month"
+                        value={money(data.paidThisMonthTotalCents)}
+                        hint={panel === "paid" ? "Showing by class ↓" : "Tap to see by class"}
+                        compact
+                        onClick={() => toggle("paid")}
+                        expanded={panel === "paid"}
+                      />
+                      <Tile
+                        title="Accounts due"
+                        value={accountsDue.length}
+                        hint={accountsDue.length === 0 ? "Nobody owes right now" : "Tap to see who owes"}
+                        onClick={() => toggle("due")}
+                        expanded={panel === "due"}
+                      />
+                      <Tile
+                        title="Reminders"
+                        href="/dashboard/accounting/reminders?filter=unsent"
+                        value={unsent}
+                        hint={unsent > 0 ? "Owing, never reminded" : "Everyone owing was reminded"}
+                        warn={unsent > 0}
+                      />
+                    </>
+                  )}
+                  <Tile
+                    title="Children"
+                    href="/dashboard/accounting/children"
+                    value={data.childrenCount}
+                    hint="Active children"
+                  />
+                </div>
+
+                {!data.canViewMoney && (
+                  <p className="mb-6 text-sm text-muted-foreground">
+                    Money figures are hidden for your role. Ask an admin if you need to see them.
                   </p>
-                  <p className="mt-1 text-xs text-muted">Click to break down</p>
-                </Card>
-                <Card
-                  as="button"
-                  onClick={() => setShowPaid((v) => !v)}
-                  className="transition-standard p-4 text-left hover:border-border-strong"
-                >
-                  <p className="text-xs text-muted-foreground">Paid this month</p>
-                  <p className="font-display mt-1 text-2xl font-semibold text-success">
-                    {formatCents(data.paidThisMonthTotalCents ?? 0, currencyCode)}
-                  </p>
-                  <p className="mt-1 text-xs text-muted">Click to break down</p>
-                </Card>
+                )}
+
+                {panel && data.canViewMoney && (
+                  <div ref={panelRef} className="mb-8 scroll-mt-4">
+                    <Card as="div" className="animate-in p-4">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <h2 className="font-display text-sm font-semibold text-foreground">
+                          {panel === "outstanding"
+                            ? "Outstanding by class"
+                            : panel === "paid"
+                              ? "Paid this month by class"
+                              : `Accounts due (${accountsDue.length})`}
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={() => setPanel(null)}
+                          className="min-h-11 px-2 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      {panel === "outstanding" && data.outstandingTree && (
+                        <DrilldownTree tree={data.outstandingTree} currencyCode={currencyCode} />
+                      )}
+                      {panel === "paid" && data.paidThisMonthTree && (
+                        <DrilldownTree tree={data.paidThisMonthTree} currencyCode={currencyCode} />
+                      )}
+                      {panel === "due" &&
+                        (accountsDue.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">Nothing owing right now.</p>
+                        ) : (
+                          <div className="divide-y divide-border">
+                            {accountsDue.map((a) => (
+                              <Link
+                                key={a.childId}
+                                href={`/dashboard/accounting/children/${a.childId}`}
+                                className="transition-standard flex min-h-11 items-center justify-between gap-3 py-2 text-sm text-foreground hover:text-brand"
+                              >
+                                <span className="underline underline-offset-2">{a.name}</span>
+                                <span className="shrink-0 tabular-nums">{money(a.amountCents)}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        ))}
+                    </Card>
+                  </div>
+                )}
               </>
             )}
-            <Card className="p-4">
-              <p className="text-xs text-muted-foreground">Children</p>
-              <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-                {data.childrenCount}
-              </p>
-            </Card>
-          </div>
 
-          {data.canViewMoney && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Link
-                href="/dashboard/accounting/reminders?filter=unsent"
-                className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
-              >
-                <p className="text-xs text-muted-foreground">Reminders unsent</p>
-                <p className="font-display mt-1 text-2xl font-semibold text-danger">
-                  {data.remindersUnsentCount ?? 0}
+            <Card as="div" className="p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="font-display text-sm font-semibold text-foreground">Recent accounting activity</h2>
+                {canSeeActivityLog && (
+                  <Link
+                    href="/dashboard/accounting/settings/activity"
+                    className="text-xs font-medium text-brand hover:underline"
+                  >
+                    Full log →
+                  </Link>
+                )}
+              </div>
+              {error ? (
+                <p className="text-sm text-danger">Couldn&apos;t load recent activity.</p>
+              ) : !data ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : data.activity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nothing yet — recording payments, sending reminders and similar will show up here.
                 </p>
-                <p className="mt-1 text-xs text-muted">Owing parents never reminded — click to send</p>
-              </Link>
-              <Link
-                href="/dashboard/accounting/reminders?filter=sent"
-                className="transition-standard block rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
-              >
-                <p className="text-xs text-muted-foreground">Reminders sent</p>
-                <p className="font-display mt-1 text-2xl font-semibold text-foreground">
-                  {data.remindersSentCount ?? 0}
-                </p>
-                <p className="mt-1 text-xs text-muted">Owing parents already reminded at least once</p>
-              </Link>
-            </div>
-          )}
-
-          {showOutstanding && data.outstandingTree && (
-            <Card className="animate-in p-4">
-              <h2 className="mb-2 text-sm font-medium text-foreground">
-                Outstanding by class
-              </h2>
-              <DrilldownTree tree={data.outstandingTree} currencyCode={currencyCode} />
-            </Card>
-          )}
-
-          {showPaid && data.paidThisMonthTree && (
-            <Card className="animate-in p-4">
-              <h2 className="mb-2 text-sm font-medium text-foreground">
-                Paid this month by class
-              </h2>
-              <DrilldownTree tree={data.paidThisMonthTree} currencyCode={currencyCode} />
-            </Card>
-          )}
-
-          {data.canViewMoney && (
-            <Card className="p-4">
-              <button
-                onClick={() => setShowAccountsDue((v) => !v)}
-                className="mb-2 flex w-full items-center justify-between text-left"
-              >
-                <h2 className="text-sm font-medium text-foreground">Accounts due</h2>
-                <span className="text-xs text-muted">
-                  {(data.accountsDue ?? []).length} account
-                  {(data.accountsDue ?? []).length === 1 ? "" : "s"}
-                </span>
-              </button>
-              {showAccountsDue && (
-                <div className="animate-in divide-y divide-border">
-                  {(data.accountsDue ?? []).length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nothing owing right now.</p>
-                  ) : (
-                    (data.accountsDue ?? []).map((a) => (
-                      <Link
-                        key={a.childId}
-                        href={`/dashboard/accounting/children/${a.childId}`}
-                        className="transition-standard flex items-center justify-between py-2 text-sm text-foreground hover:text-brand"
-                      >
-                        <span className="underline">{a.name}</span>
-                        <span>{formatCents(a.amountCents, currencyCode)}</span>
-                      </Link>
-                    ))
-                  )}
+              ) : (
+                <div className="divide-y divide-border">
+                  {data.activity.slice(0, 10).map((a) => (
+                    <div key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+                      {a.entityType && (
+                        <Badge variant="brand">{ENTITY_LABEL[a.entityType] ?? a.entityType}</Badge>
+                      )}
+                      <p className="min-w-0 flex-1 text-sm text-foreground">
+                        <span className="font-medium">{a.userName}</span> {a.label}
+                      </p>
+                      <span className="shrink-0 text-xs text-muted-foreground">{formatWhen(a.createdAt)}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </Card>
-          )}
+          </div>
 
-          <Card className="p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={toggleActivityLifetime}
-                className="text-sm font-medium text-foreground underline-offset-2 hover:underline"
-              >
-                Recent activity
-                {activityView === "lifetime" && " — lifetime"}
-                {activityView === "month" && " — this month"}
-              </button>
-              <button
-                type="button"
-                onClick={toggleActivityDropdown}
-                aria-label={activityView === "recent" ? "Show this month's activity" : "Show fewer"}
-                className="transition-standard rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
-              >
-                <svg
-                  className={`h-3.5 w-3.5 transition-transform ${activityView !== "recent" ? "rotate-180" : ""}`}
-                  viewBox="0 0 12 12"
-                  fill="none"
-                >
-                  <path
-                    d="M2.5 4.5L6 8l3.5-3.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+          {/* Right: to-do panel (on top on phones), same as Centre */}
+          <aside className="order-first lg:order-none">
+            <div className="lg:sticky lg:top-4 lg:min-h-[28rem]">
+              <TodoList mode="accounting" variant="panel" />
             </div>
-            {activityLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : visibleActivity.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-1.5">
-                {visibleActivity.map((a) => (
-                  <li key={a.id} className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{a.userName}</span>{" "}
-                    {a.label}{" "}
-                    <span className="text-xs text-muted">
-                      {new Date(a.createdAt).toLocaleString()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          </aside>
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../../OrgContext";
 import { Button, Card, PageHeader } from "@/components/ui";
+import { formatDateZA } from "@/lib/date";
 
 type BillingConfig = { monthlyConfigured: boolean; yearlyConfigured: boolean };
 
@@ -80,7 +81,7 @@ export default function BillingPage() {
         </p>
         {subscriptionStatus === "trialing" && trialEndsAt && (
           <p className="mt-1 text-sm text-muted-foreground">
-            Trial ends {new Date(trialEndsAt).toLocaleDateString()}
+            Trial ends {formatDateZA(trialEndsAt)}
           </p>
         )}
         {!hasActiveAccess && (

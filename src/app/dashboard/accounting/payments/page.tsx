@@ -6,7 +6,7 @@ import { Button, Card, Input, Label, LinkButton, PageHeader, Select } from "@/co
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
-import { todayLocal } from "@/lib/date";
+import { formatDateZA, todayLocal } from "@/lib/date";
 
 type Category = { id: string; name: string };
 type Child = { id: string; firstName: string; lastName: string; categoryId: string };
@@ -313,7 +313,42 @@ export default function PaymentsPage() {
       ) : payments.length === 0 ? (
         <p className="text-sm text-muted-foreground">No payments found.</p>
       ) : (
-        <Card as="div" className="overflow-x-auto">
+        <>
+        {/* Phones: one card per payment instead of a 7-column table
+            (mobile pass, 24 Sept). */}
+        <div className="flex flex-col gap-2 sm:hidden">
+          {payments.map((p) => (
+            <Card key={p.id} as="div" className="p-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-medium text-foreground">
+                  {p.child.firstName} {p.child.lastName}
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                  {formatCents(p.amountCents, currencyCode)}
+                </span>
+              </div>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {formatDateZA(p.date)} · {p.method}
+                {p.receipt?.number ? ` · Receipt ${p.receipt.number}` : ""}
+              </p>
+              <p className="text-xs text-muted">Recorded by {p.recordedBy.name}</p>
+              <div className="mt-1 flex justify-end">
+                <DeletionControl
+                  organizationId={organizationId}
+                  targetType="PAYMENT"
+                  targetId={p.id}
+                  targetLabel={`${formatCents(p.amountCents, currencyCode)} payment for ${p.child.firstName} ${p.child.lastName}`}
+                  deletionRequest={p.deletionRequest}
+                  canRequest={canRequestDeletion}
+                  isAdmin={isAdmin}
+                  onChanged={loadPayments}
+                  confirm={confirm}
+                />
+              </div>
+            </Card>
+          ))}
+        </div>
+        <Card as="div" className="hidden overflow-x-auto sm:block">
           <table className="w-full text-sm">
             <thead className="bg-background text-left">
               <tr>
@@ -329,7 +364,7 @@ export default function PaymentsPage() {
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id} className="border-t border-border">
-                  <td className="px-3 py-2 text-foreground">{new Date(p.date).toLocaleDateString()}</td>
+                  <td className="px-3 py-2 text-foreground">{formatDateZA(p.date)}</td>
                   <td className="px-3 py-2 text-foreground">
                     {p.child.firstName} {p.child.lastName}
                   </td>
@@ -355,6 +390,7 @@ export default function PaymentsPage() {
             </tbody>
           </table>
         </Card>
+        </>
       )}
     </div>
   );

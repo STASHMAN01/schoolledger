@@ -113,7 +113,7 @@ export default function CategoriesPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => toggleArchive(category)}
-                className="text-xs text-muted-foreground underline transition-standard hover:text-foreground"
+                className="inline-flex min-h-11 items-center px-1 text-xs text-muted-foreground underline transition-standard hover:text-foreground sm:min-h-0 sm:px-0"
               >
                 {category.archived ? "Restore" : "Archive"}
               </button>
@@ -143,9 +143,10 @@ export default function CategoriesPage() {
       <PageHeader
         title="Classes"
         actions={
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <label className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
+              className="h-5 w-5 sm:h-4 sm:w-4"
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
             />
@@ -157,7 +158,7 @@ export default function CategoriesPage() {
       {canManage && (
         <Card as="div" className="mb-8 p-4">
           <form onSubmit={addCategory} className="flex flex-wrap items-end gap-3">
-            <Label className="flex flex-col gap-1">
+            <Label className="flex w-full flex-col gap-1 sm:w-auto">
               Name
               <Input
                 required

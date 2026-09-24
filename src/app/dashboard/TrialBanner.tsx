@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useOrg } from "./OrgContext";
 import { Button } from "@/components/ui";
+import { formatDateZA } from "@/lib/date";
 
 /**
  * A persistent, impossible-to-miss banner once trial/subscription access
@@ -38,7 +39,7 @@ export function TrialBanner() {
 
   const reason =
     subscriptionStatus === "trialing"
-      ? `Your free trial ended${trialEndsAt ? ` on ${new Date(trialEndsAt).toLocaleDateString()}` : ""}.`
+      ? `Your free trial ended${trialEndsAt ? ` on ${formatDateZA(trialEndsAt)}` : ""}.`
       : "This school's subscription is not active.";
 
   return (
