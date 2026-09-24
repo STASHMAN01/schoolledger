@@ -15,7 +15,7 @@ export function MarketingFooter() {
           <Link href="/" className="flex items-center gap-2">
             <Logo variant="icon" size={24} />
             <span className="text-sm text-muted-foreground">
-              Crechely — fee tracking &amp; statements for preschools
+              Crechely — centre management &amp; fees for preschools
             </span>
           </Link>
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-muted-foreground">

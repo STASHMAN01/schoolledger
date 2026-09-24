@@ -748,3 +748,10 @@ profile-view logging, wording audit, lawyer-reviewed operator agreement).
 - Every .json() read is now guarded, so a server error page can't crash a screen.
 - Accounting > Children > Add child now uses the same full form as Centre > Enrolled (core details required), plus an optional per-child monthly fee for money roles.
 - No schema change. tsc, eslint, 61 tests all pass.
+
+## Landing page -- 24 Sept 2026: full centre management positioning
+- Homepage rewritten for what Crechely is now: new hero ("Run your whole centre from one place, not five notebooks."), a sample "today" panel (labelled sample data), and features grouped as Admissions & enrolment / The school day / Fees & payments / Your team & your records. Every claim matches a shipped feature.
+- Kept: founder story, approved-testimonials-only rule, R499 / R4,990 pricing, trial wording, "records payments, doesn't collect them", email-only reminders, no WhatsApp integration.
+- Pricing FAQ: removed the false "payments import from CSV" claim (only children import, from Excel/CSV); roles answer now covers Teacher/Receptionist and per-person permissions; data export points to the Backup ZIP; POPIA question no longer phrased as a compliance claim.
+- Site description, OG/Twitter description, footer tagline and login description updated. Site TITLE left unchanged pending Dylan's sign-off (3 options offered).
+- Secondary CTA changed from "sample statement" to "email us for a walkthrough".

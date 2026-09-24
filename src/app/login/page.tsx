@@ -6,7 +6,7 @@ import { LoginForm } from "./LoginForm";
 // site-wide default title/description with every other page.
 export const metadata: Metadata = {
   title: "Log in",
-  description: "Log in to your Crechely account to manage fees, payments, and statements.",
+  description: "Log in to your Crechely account to manage your centre, fees and statements.",
   alternates: { canonical: "/login" },
   openGraph: {
     title: "Log in | Crechely",

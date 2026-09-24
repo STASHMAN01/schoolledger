@@ -9,63 +9,125 @@ import { Reveal } from "@/components/Reveal";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
 import { TRIAL_DAYS } from "@/lib/trial";
 
-// A real (fictional) excerpt of what the product actually produces —
-// standing in for the "dashboard screenshot" hero image without being one.
-const STATEMENT_ROWS = [
-  { label: "Naledi M. — School fees", amount: "R 850.00", status: "Paid", paid: true },
-  { label: "Naledi M. — Aftercare", amount: "R 300.00", status: "Paid", paid: true },
-  { label: "Thabo K. — School fees", amount: "R 850.00", status: "Due 1 Oct", paid: false },
-  { label: "Amahle N. — Registration", amount: "R 200.00", status: "Paid", paid: true },
+// Sample snapshot of a centre's day, standing in for a dashboard
+// screenshot without pretending to be one. Fictional names and numbers,
+// and captioned as such below.
+const TODAY_ROWS = [
+  { label: "Present today", value: "42 of 46", tone: "ok" },
+  { label: "Absent", value: "4", tone: "muted" },
+  { label: "New applications to review", value: "2", tone: "warn" },
+  { label: "Profiles missing details", value: "3", tone: "warn" },
+  { label: "Fees outstanding", value: "R3,400", tone: "warn" },
+] as const;
+
+const TODAY_TODOS = [
+  "Review Naledi M.'s application",
+  "Add Thabo K.'s allergy details",
+  "Send September statements",
 ];
 
 const WHO_ITS_FOR = [
   {
     label: "Preschools & nurseries",
     description:
-      "Stop being the only person who understands the fee book. Anyone on your team can see who's up to date in seconds.",
+      "Stop being the only person who knows where everything is. Your team can see who's enrolled, who's here today and who's paid, without asking you.",
   },
   {
     label: "Crèches & daycares",
     description:
-      "Built for how you actually get paid — cash, EFT, and card, often on different days for different families — not how a big accounting company assumes you do.",
+      "Built for how a crèche actually runs: parents who pay cash, EFT or card on different days, and teachers who need the register, not the books.",
   },
   {
     label: "Small private schools",
     description:
-      "Registration, uniforms, trips, aftercare — every payment type in one place, with a statement you're proud to hand a parent or an accountant.",
+      "Applications, class lists, registers, trips and statements in one place, with records you're comfortable showing a parent, an inspector or your accountant.",
   },
 ];
 
-const FEATURES = [
+// Grouped by the part of the day they help with, so a principal can see
+// the whole centre is covered, not just the fee book. Every line below
+// describes a feature that exists in the app today; don't add a claim
+// here until the feature ships.
+const FEATURE_GROUPS = [
   {
-    term: "Never lose track of who owes what",
-    definition:
-      "Every child, every fee, one record. Open the app and know instantly who's paid and who hasn't — no notebook, no memory required.",
+    heading: "Admissions & enrolment",
+    items: [
+      {
+        term: "Take applications online",
+        definition:
+          "Share one link. Parents fill in the application on their phone, and you review it and accept the child in a few clicks, with no forms to retype.",
+      },
+      {
+        term: "A complete profile for every child",
+        definition:
+          "Guardians, contact details and medical information in one place. ID numbers stay hidden until you choose to show them, and Crechely flags any child whose profile is missing core details.",
+      },
+      {
+        term: "Bring your current list across",
+        definition:
+          "Import your children from an Excel or CSV file instead of typing them in one by one.",
+      },
+    ],
   },
   {
-    term: "Stop calculating fees by hand every month",
-    definition:
-      "School fees bill themselves, automatically, every period. You add a uniform or a trip charge once — it's never manual math again.",
+    heading: "The school day",
+    items: [
+      {
+        term: "Registers in seconds",
+        definition:
+          "Teachers take attendance for their class on a phone, and you see who's absent today at a glance.",
+      },
+      {
+        term: "Classes, timetables and a to-do list",
+        definition:
+          "Each class with its teacher and age group, a weekly timetable, and a to-do list for everything that still needs doing.",
+      },
+      {
+        term: "Forms and parent groups",
+        definition:
+          "Online forms for parents and blank forms to print. There's also a checklist of which parents you've added to each class's WhatsApp group. Crechely doesn't connect to WhatsApp; it just keeps track for you.",
+      },
+    ],
   },
   {
-    term: "Get paid faster, without chasing anyone",
-    definition:
-      "Payments are applied oldest-owing-first the moment they come in, and overdue families get an automatic reminder — so you're not the one sending awkward messages.",
+    heading: "Fees & payments",
+    items: [
+      {
+        term: "Fees that bill themselves",
+        definition:
+          "Monthly fees are created automatically for every child. Add a uniform, trip or event charge once and the right families are billed.",
+      },
+      {
+        term: "Know who's paid and who owes",
+        definition:
+          "Record cash, EFT and card payments as they come in. Crechely puts each payment against the oldest amount owing first, so every family's balance is always right.",
+      },
+      {
+        term: "Statements and reminders",
+        definition:
+          "Send a clean PDF statement a parent (or your accountant) can trust, and email reminders to families who are behind.",
+      },
+    ],
   },
   {
-    term: "Look professional in front of every parent",
-    definition:
-      "One click sends a clean, proper statement — the kind a parent (or your accountant) can trust, not a handwritten note torn from a book.",
-  },
-  {
-    term: "Collect for trips and events without a spreadsheet",
-    definition:
-      "Create the trip once and every enrolled family is billed automatically — no manually working out who owes for the school outing.",
-  },
-  {
-    term: "Let your bookkeeper in, without handing over everything",
-    definition:
-      "Invite your bookkeeper, your accountant, or a teacher with a role that shows them exactly what they need — money for the bookkeeper, enrolments for the classroom, nothing more.",
+    heading: "Your team & your records",
+    items: [
+      {
+        term: "Everyone sees only what they need",
+        definition:
+          "A teacher sees only their own class. Your bookkeeper sees the money. Your receptionist can add children. You decide, person by person.",
+      },
+      {
+        term: "Your records are yours",
+        definition:
+          "Download everything Crechely holds for your school as one password-protected ZIP file, any time you like.",
+      },
+      {
+        term: "Works on the phone you already have",
+        definition:
+          "It runs in your phone's browser, with nothing to install from an app store. It's built to work on a mid-range Android phone on mobile data.",
+      },
+    ],
   },
 ];
 
@@ -92,8 +154,8 @@ export default async function RootPage() {
 
       <main className="flex-1">
         {/* Hero — asymmetric, left-set. No centered pill badge, no dashboard
-            screenshot; the "statement" panel is the actual shape of the
-            product's real output, typeset rather than photographed. */}
+            screenshot; the "today" panel is the shape of the Centre dashboard,
+            typeset rather than photographed. */}
         <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20 lg:pb-24">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-16">
             <div className="animate-in">
@@ -101,14 +163,13 @@ export default async function RootPage() {
                 For preschool, nursery &amp; crèche owners
               </p>
               <h1 className="font-display mt-4 max-w-xl text-4xl font-semibold leading-[1.08] text-foreground sm:text-5xl">
-                Know exactly who&rsquo;s paid and who owes you — without opening a notebook.
+                Run your whole centre from one place, not five notebooks.
               </h1>
               <p className="mt-5 max-w-md text-base text-muted-foreground">
-                Crechely does the fee tracking and chasing you&rsquo;re doing by
-                hand right now — automatically. Set it up once, and every
-                month it bills the right families, tracks every cash, EFT,
-                and card payment, and reminds the ones who haven&rsquo;t paid,
-                so you don&rsquo;t have to.
+                Applications, enrolment, attendance, classes and fees, all
+                in one app. You and your staff always know who&rsquo;s enrolled,
+                who&rsquo;s here today and who&rsquo;s paid, without digging
+                through files or asking around.
               </p>
               <div className="mt-8">
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -133,8 +194,8 @@ export default async function RootPage() {
                       WhatsApp us
                     </a>
                   ) : (
-                    <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Send me a sample statement")}`} className="font-medium text-brand hover:underline">
-                      Email us for a sample statement
+                    <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("I'd like to see Crechely")}`} className="font-medium text-brand hover:underline">
+                      Email us for a walkthrough
                     </a>
                   )}
                   .
@@ -142,47 +203,59 @@ export default async function RootPage() {
               </div>
             </div>
 
-            {/* The statement panel — an illustrative example (fictional
-                names/amounts), styled exactly like the app's real output.
-                C5: previously captioned as "not a mockup," which wasn't
-                true — Naledi M./Thabo K./Amahle N. are made-up example
-                names, not a real customer's data. Real product screenshots
-                are still pending (see OPEN_QUESTIONS.md — dashboard access
-                needed to capture them honestly). */}
+            {/* A sample "today" snapshot: the shape of the Centre
+                dashboard, typeset rather than photographed. Fictional
+                names and numbers, captioned as sample data below. Real
+                product screenshots are still pending. */}
             <div className="lg:pt-1">
               <div className="border border-border-strong bg-surface">
                 <div className="flex items-baseline justify-between border-b border-border-strong px-5 py-3">
                   <span className="font-display text-sm font-semibold text-foreground">
                     Little Acorns Preschool
                   </span>
-                  <span className="font-mono text-[11px] text-muted-foreground">Sep 2026</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">Today</span>
                 </div>
                 <dl className="divide-y divide-border">
-                  {STATEMENT_ROWS.map((row) => (
+                  {TODAY_ROWS.map((row) => (
                     <div key={row.label} className="flex items-baseline gap-3 px-5 py-3">
                       <dt className="text-sm text-foreground">{row.label}</dt>
                       <div
                         className="flex-1 border-b border-dotted border-border-strong"
                         aria-hidden="true"
                       />
-                      <dd className="font-mono flex items-baseline gap-2 text-sm text-foreground">
-                        {row.amount}
-                        <span
-                          className={`text-[11px] ${row.paid ? "text-success" : "text-accent-soft-foreground"}`}
-                        >
-                          {row.status}
-                        </span>
+                      <dd
+                        className={`font-mono text-sm ${
+                          row.tone === "ok"
+                            ? "text-success"
+                            : row.tone === "warn"
+                              ? "text-accent-soft-foreground"
+                              : "text-foreground"
+                        }`}
+                      >
+                        {row.value}
                       </dd>
                     </div>
                   ))}
                 </dl>
-                <div className="flex items-baseline justify-between border-t border-border-strong px-5 py-3">
-                  <span className="text-sm font-medium text-foreground">Outstanding</span>
-                  <span className="font-mono text-sm font-medium text-accent-soft-foreground">R 850.00</span>
+                <div className="border-t border-border-strong px-5 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    To do
+                  </p>
+                  <ul className="mt-2 flex flex-col gap-1.5">
+                    {TODAY_TODOS.map((t) => (
+                      <li key={t} className="flex items-start gap-2 text-sm text-foreground">
+                        <span
+                          className="mt-1 h-3 w-3 shrink-0 rounded-sm border border-border-strong"
+                          aria-hidden="true"
+                        />
+                        {t}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                An example of the statement layout — shown with sample data, not a real school&rsquo;s.
+                An example of a centre&rsquo;s day in Crechely, shown with sample data, not a real school&rsquo;s.
               </p>
             </div>
           </div>
@@ -193,7 +266,7 @@ export default async function RootPage() {
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <Reveal>
               <h2 className="font-display max-w-sm text-xl font-semibold text-foreground sm:text-2xl">
-                Built for early-years admin, not general ledgers
+                Built for early-years centres, not primary and high schools
               </h2>
             </Reveal>
             <div className="mt-8 divide-y divide-border border-t border-border">
@@ -217,32 +290,45 @@ export default async function RootPage() {
             <Reveal>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-                  What this actually gets you
+                  Everything your centre runs on
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   One plan. Everything below, from day one. No add-ons to unlock later.
                 </p>
               </div>
             </Reveal>
-            <dl className="mt-8 grid gap-x-12 gap-y-8 border-t border-border pt-8 sm:grid-cols-2">
-              {FEATURES.map((feature, i) => (
-                <Reveal key={feature.term} delay={(i % 2) * 60}>
-                  <div>
-                    <dt className="font-display text-sm font-semibold text-foreground">
-                      {feature.term}
-                    </dt>
-                    <dd className="mt-1.5 text-sm text-muted-foreground">{feature.definition}</dd>
-                  </div>
-                </Reveal>
+            <div className="mt-8 flex flex-col gap-12 border-t border-border pt-8">
+              {FEATURE_GROUPS.map((group) => (
+                <div key={group.heading}>
+                  <Reveal>
+                    <h3 className="font-mono text-xs font-medium uppercase tracking-wide text-brand">
+                      {group.heading}
+                    </h3>
+                  </Reveal>
+                  <dl className="mt-4 grid gap-x-10 gap-y-6 sm:grid-cols-3">
+                    {group.items.map((feature, i) => (
+                      <Reveal key={feature.term} delay={i * 60}>
+                        <div>
+                          <dt className="font-display text-sm font-semibold text-foreground">
+                            {feature.term}
+                          </dt>
+                          <dd className="mt-1.5 text-sm text-muted-foreground">
+                            {feature.definition}
+                          </dd>
+                        </div>
+                      </Reveal>
+                    ))}
+                  </dl>
+                </div>
               ))}
-            </dl>
+            </div>
             {/* H8: product truth, stated plainly where the feature claims
                 are made, not just buried on /pricing. */}
             <p className="mt-8 max-w-2xl border-t border-border pt-6 text-xs text-muted-foreground">
               To be clear: Crechely <strong className="text-foreground">records</strong>{" "}
-              cash, EFT, and card payments your school already received — it
+              cash, EFT and card payments your school has already received. It
               doesn&rsquo;t collect money from parents itself. Reminders go out by
-              email only.
+              email only, and Crechely doesn&rsquo;t send WhatsApp messages.
             </p>
             {/* H2: second low-commitment CTA, after the benefits section. */}
             <p className="mt-4 text-sm text-muted-foreground">
@@ -252,11 +338,11 @@ export default async function RootPage() {
                   WhatsApp us
                 </a>
               ) : (
-                <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Send me a sample statement")}`} className="font-medium text-brand hover:underline">
+                <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("I'd like to see Crechely")}`} className="font-medium text-brand hover:underline">
                   Email us
                 </a>
               )}{" "}
-              and we&rsquo;ll send a sample statement.
+              and we&rsquo;ll show you around.
             </p>
           </div>
         </section>
@@ -369,8 +455,8 @@ export default async function RootPage() {
                   </h2>
                   <p className="mt-3 max-w-md text-sm text-background/70">
                     One paying family a month covers it. Paying yearly saves
-                    R998 — exactly 2 months free. Every feature either way;
-                    nothing to upgrade into later, ever.
+                    R998, exactly 2 months free. Every feature, Centre
+                    Management and fees, either way. Nothing to upgrade into later.
                   </p>
                 </div>
                 <div>

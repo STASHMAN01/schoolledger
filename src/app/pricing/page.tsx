@@ -37,7 +37,7 @@ const OBJECTIONS = [
   },
   {
     q: "Can I get my data out before I leave?",
-    a: "Yes — every payment record exports to CSV from the app at any time, so you're never locked in to keep your own records.",
+    a: "Yes. From Settings → Backup you can download everything Crechely holds for your school (children, guardians, classes, fees, payments, attendance and forms) as one password-protected ZIP file, any time. You're never locked in.",
   },
   {
     q: "What if I pay yearly and it's not for me?",
@@ -49,23 +49,23 @@ const OBJECTIONS = [
 const FAQ = [
   {
     q: "How long does setup take?",
-    a: "Most schools are entering real children and fees within 15–20 minutes: add your classes, add children, and the monthly fee schedule generates itself.",
+    a: "Add your classes, then your children (one by one or from an Excel file), and the monthly fees create themselves. Most of the work is typing in your children, so importing a list you already have is the quickest way.",
   },
   {
-    q: "I track fees in a spreadsheet or paper book right now — can I bring that in?",
-    a: "Payments import from a CSV in bulk, so a spreadsheet of past payments can be brought in rather than re-typed one by one. A paper fee book has to be entered by hand — there's no OCR/scanning for that yet.",
+    q: "I keep my children's list in a spreadsheet or paper book right now. Can I bring that in?",
+    a: "Your children can be imported from an Excel or CSV file, so a spreadsheet list doesn't need retyping. Past payments are entered by hand, and so is anything on paper, because there's no scanning yet.",
   },
   {
     q: "What happens to our data if we cancel?",
     a: "It's kept for a period after cancellation in case you want to come back or export it, then deleted — see the Privacy Policy for the exact retention period.",
   },
   {
-    q: "Is this POPIA-compliant for the children's and parents' information we store?",
+    q: "How is the children's and parents' information handled under POPIA?",
     a: "We act as the operator/processor of that data on your instructions — your school remains the responsible party under POPIA, same as with a paper fee book or a spreadsheet. Read the full Privacy Policy and POPIA notice for exactly how data is handled and secured.",
   },
   {
     q: "Who on my staff can see what?",
-    a: "You choose per person: Admin sees and manages everything including billing; Accountant and Manager handle day-to-day fees/payments/enrolment; Viewer can look but not change anything.",
+    a: "You choose per person. An Admin sees and manages everything. An Accountant handles fees and payments. A Manager organises children and classes without seeing money. A Teacher sees only their own class, and a Receptionist can add children. You can also switch individual permissions on or off for one person.",
   },
   {
     q: "Does it work on my phone?",
@@ -77,7 +77,7 @@ const FAQ = [
   },
   {
     q: "How do reminders reach families?",
-    a: "By email, to the address on the child's record. There's no SMS or WhatsApp reminder yet.",
+    a: "By email, to the address on the child's record. There are no SMS or WhatsApp reminders.",
   },
 ];
 

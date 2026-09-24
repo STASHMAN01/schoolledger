@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "Crechely is fee and payment tracking built for preschools, nurseries, and crèches: enrolments, recurring fees, payment history, and statements in one place.",
+    "Crechely helps preschools, nurseries and crèches run the whole centre: online applications, enrolment, attendance, classes, timetables, fees, payments and statements in one place.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
@@ -62,13 +62,13 @@ export const metadata: Metadata = {
     url: SITE_URL,
     title: `${SITE_NAME} — Accounting built for preschools`,
     description:
-      "Records cash, EFT, and card payments, and sends email reminders — so you always know who's paid.",
+      "Applications, enrolment, attendance, classes and fees for preschools, all in one place.",
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — Accounting built for preschools`,
     description:
-      "Records cash, EFT, and card payments, and sends email reminders — so you always know who's paid.",
+      "Applications, enrolment, attendance, classes and fees for preschools, all in one place.",
   },
 };
 
