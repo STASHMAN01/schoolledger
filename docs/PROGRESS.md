@@ -741,3 +741,10 @@ Still open / Dylan's call: VIEWER role (U6), platform + testimonials area (U7), 
 (D9), dropping the dead columns/enum values (U4/U5), the /categories URL rename, one money formatter everywhere
 (D1), backup password in the body instead of a header (N5), and the POPIA items (encrypted file storage,
 profile-view logging, wording audit, lawyer-reviewed operator agreement).
+
+## Session E -- 24 Sept 2026: error messages + full add-child in Accounting
+- Older pages no longer fail silently: Payments, Reminders (mark sent, send request, template), both child profiles (load, guardian edits, reveal ID), events, classes, payment types, billing, team, submission review and platform pages now show a message when a load or save fails.
+- New dashboard-wide ErrorCatcher: catches any unhandled failure and shows a "Something didn't work -- please try again" banner (or an offline message) instead of nothing happening.
+- Every .json() read is now guarded, so a server error page can't crash a screen.
+- Accounting > Children > Add child now uses the same full form as Centre > Enrolled (core details required), plus an optional per-child monthly fee for money roles.
+- No schema change. tsc, eslint, 61 tests all pass.

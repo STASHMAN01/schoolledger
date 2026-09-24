@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { Card, Input, PageHeader, Select } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
 import { ImportChildrenCsv } from "@/components/ImportChildrenCsv";
+import { AddChildForm } from "@/components/AddChildForm";
 
 type Category = { id: string; name: string; archived: boolean };
 type Child = {
@@ -23,15 +24,6 @@ type Child = {
   deletionRequest: DeletionRequestInfo | null;
 };
 
-const emptyForm = {
-  categoryId: "",
-  firstName: "",
-  lastName: "",
-  parentName: "",
-  parentPhone: "",
-  parentEmail: "",
-  enrollmentDate: "",
-};
 
 export default function ChildrenPage() {
   const { organizationId, permissions } = useOrg();
@@ -43,7 +35,6 @@ export default function ChildrenPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyForm);
   const [siblingNotice, setSiblingNotice] = useState<string | null>(null);
   // Closed by default — Dylan wants "Add child" to be a dropdown you open,
   // not a form that's always sitting open at the top of the page.
@@ -52,8 +43,9 @@ export default function ChildrenPage() {
 
   const loadCategories = useCallback(async () => {
     const res = await fetch(`/api/organizations/${organizationId}/categories`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setCategories(data.categories.filter((c: Category) => !c.archived));
+    else setError(data.error ?? "Couldn't load classes.");
   }, [organizationId]);
 
   const loadChildren = useCallback(async () => {
@@ -64,8 +56,9 @@ export default function ChildrenPage() {
     const res = await fetch(
       `/api/organizations/${organizationId}/children?${params.toString()}`
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setChildren(data.children);
+    else setError(data.error ?? "Couldn't load children.");
     setLoading(false);
   }, [organizationId, filterCategory, showArchived]);
 
@@ -91,37 +84,6 @@ export default function ChildrenPage() {
       )
     : children;
 
-  async function addChild(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSiblingNotice(null);
-    const res = await fetch(`/api/organizations/${organizationId}/children`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? "Could not add child. Check phone/email format.");
-      return;
-    }
-    const siblings = (data.possibleSiblings as { id: string }[]).filter(
-      (s) => s.id !== data.child.id
-    );
-    if (siblings.length > 0) {
-      setSiblingNotice(
-        `Note: there ${siblings.length === 1 ? "is" : "are"} already ${
-          siblings.length
-        } other child${siblings.length === 1 ? "" : "ren"} with the surname "${
-          form.lastName
-        }" — joint parent statements are a later phase, but flagging it now.`
-      );
-    }
-    setForm(emptyForm);
-    setShowAddForm(false);
-    await loadChildren();
-  }
-
   async function toggleArchive(child: Child) {
     if (!child.archived) {
       const confirmed = await confirm({
@@ -135,7 +97,12 @@ export default function ChildrenPage() {
     const url = child.archived
       ? `/api/organizations/${organizationId}/children/${child.id}/restore`
       : `/api/organizations/${organizationId}/children/${child.id}`;
-    await fetch(url, { method: child.archived ? "POST" : "DELETE" });
+    const res = await fetch(url, { method: child.archived ? "POST" : "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? `${child.firstName} couldn't be ${child.archived ? "restored" : "archived"}. Please try again.`);
+      return;
+    }
     await loadChildren();
   }
 
@@ -181,87 +148,25 @@ export default function ChildrenPage() {
       )}
 
       {canManage && showAddForm && (
-        <Card as="div" className="mb-8 p-4">
-          <form onSubmit={addChild} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Label className="flex flex-col gap-1">
-              Class
-              <Select
-                required
-                value={form.categoryId}
-                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-              >
-                <option value="">Select a class...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </Label>
-            <Label className="flex flex-col gap-1">
-              Enrollment date
-              <Input
-                required
-                type="date"
-                value={form.enrollmentDate}
-                onChange={(e) => setForm({ ...form, enrollmentDate: e.target.value })}
-              />
-            </Label>
-            <Label className="flex flex-col gap-1">
-              First name
-              <Input
-                required
-                value={form.firstName}
-                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              />
-            </Label>
-            <Label className="flex flex-col gap-1">
-              Last name
-              <Input
-                required
-                value={form.lastName}
-                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              />
-            </Label>
-            <Label className="flex flex-col gap-1">
-              Parent/guardian name
-              <Input
-                required
-                value={form.parentName}
-                onChange={(e) => setForm({ ...form, parentName: e.target.value })}
-              />
-            </Label>
-            <Label className="flex flex-col gap-1">
-              Parent phone (e.g. +27821234567)
-              <Input
-                value={form.parentPhone}
-                onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
-              />
-            </Label>
-            <Label className="flex flex-col gap-1 sm:col-span-2">
-              Parent email
-              <Input
-                type="email"
-                value={form.parentEmail}
-                onChange={(e) => setForm({ ...form, parentEmail: e.target.value })}
-              />
-            </Label>
-            <div className="flex gap-2 sm:col-span-2">
-              <Button type="submit">Add child</Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setForm(emptyForm);
-                  setError(null);
-                  setShowAddForm(false);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </Card>
+        // Same form as Centre > Enrolled (core details required, Dylan 23
+        // Sept), plus the optional child-specific fee for money roles.
+        <AddChildForm
+          organizationId={organizationId}
+          classes={categories}
+          showFee={permissions.includes("VIEW_MONEY")}
+          onCancel={() => setShowAddForm(false)}
+          onAdded={(_id, siblingCount) => {
+            setShowAddForm(false);
+            setSiblingNotice(
+              siblingCount > 0
+                ? `Note: there ${siblingCount === 1 ? "is" : "are"} already ${siblingCount} other child${
+                    siblingCount === 1 ? "" : "ren"
+                  } with the same surname — check whether they're siblings.`
+                : null
+            );
+            loadChildren();
+          }}
+        />
       )}
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}

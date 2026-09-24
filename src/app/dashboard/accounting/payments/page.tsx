@@ -63,9 +63,9 @@ export default function PaymentsPage() {
       fetch(`/api/organizations/${organizationId}/payment-types`),
     ]);
     const [catData, childData, typeData] = await Promise.all([
-      catRes.json(),
-      childRes.json(),
-      typeRes.json(),
+      catRes.json().catch(() => ({})),
+      childRes.json().catch(() => ({})),
+      typeRes.json().catch(() => ({})),
     ]);
     if (catRes.ok) setCategories(catData.categories.filter((c: { archived: boolean }) => !c.archived));
     if (childRes.ok) setChildren(childData.children);
@@ -82,8 +82,9 @@ export default function PaymentsPage() {
     const res = await fetch(
       `/api/organizations/${organizationId}/payments?${params.toString()}`
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setPayments(data.payments);
+    else setError(data.error ?? "Couldn't load payments.");
     setLoading(false);
   }, [organizationId, filterMethod, filterCategory, filterChild]);
 
@@ -118,7 +119,7 @@ export default function PaymentsPage() {
         paymentTypeId: form.paymentTypeId || undefined,
       }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Could not record payment.");
       return;

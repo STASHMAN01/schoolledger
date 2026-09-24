@@ -57,7 +57,7 @@ export function DeletionControl({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetType, targetId, reason: reason.trim() }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Could not request deletion.");
         return;
@@ -78,7 +78,7 @@ export function DeletionControl({
         `/api/organizations/${organizationId}/deletion-requests/${deletionRequest!.id}/approve`,
         { method: "POST" }
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Could not approve.");
         return;
@@ -103,7 +103,7 @@ export function DeletionControl({
         `/api/organizations/${organizationId}/deletion-requests/${deletionRequest!.id}`,
         { method: "DELETE" }
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Could not cancel.");
         return;

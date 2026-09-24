@@ -27,7 +27,7 @@ export function TrialBanner() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ plan }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.url) {
       setError(data.error ?? "Could not start checkout.");
       setLoading(null);

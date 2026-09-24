@@ -38,8 +38,9 @@ export default function CategoriesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/organizations/${organizationId}/categories`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setCategories(data.categories);
+    else setError(data.error ?? "Couldn't load classes.");
     setLoading(false);
   }, [organizationId]);
 
@@ -61,7 +62,7 @@ export default function CategoriesPage() {
         monthlyFeeCents: inputToCents(fee),
       }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Could not add class.");
       return;
@@ -84,7 +85,12 @@ export default function CategoriesPage() {
     const url = category.archived
       ? `/api/organizations/${organizationId}/categories/${category.id}/restore`
       : `/api/organizations/${organizationId}/categories/${category.id}`;
-    await fetch(url, { method: category.archived ? "POST" : "DELETE" });
+    const res = await fetch(url, { method: category.archived ? "POST" : "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? `"${category.name}" couldn't be ${category.archived ? "restored" : "archived"}. Please try again.`);
+      return;
+    }
     await load();
   }
 

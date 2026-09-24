@@ -59,7 +59,7 @@ export default function SchedulePage() {
     if (isTeacher) return;
     (async () => {
       const res = await fetch(`/api/organizations/${organizationId}/categories`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         const active = (data.categories as Category[]).filter((c) => !c.archived);
         setCategories(active);
@@ -76,7 +76,7 @@ export default function SchedulePage() {
       setEditing(false);
       const qs = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : "";
       const res = await fetch(`/api/organizations/${organizationId}/schedule${qs}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setLoadedCategory(data.category);
         setItems(data.items);

@@ -54,6 +54,7 @@ export default function ChildDetailPage() {
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Feature-detect the Web Share API (files) rather than assuming — this is
   // the actual fix for "on the phone, after opening the PDF there's no
@@ -76,12 +77,12 @@ export default function ChildDetailPage() {
     const res = await fetch(
       `/api/organizations/${organizationId}/children/${params.childId}`
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setChild(data.child);
 
       const allRes = await fetch(`/api/organizations/${organizationId}/children`);
-      const allData = await allRes.json();
+      const allData = await allRes.json().catch(() => ({}));
       if (allRes.ok) {
         setSiblings(
           allData.children.filter(
@@ -91,6 +92,8 @@ export default function ChildDetailPage() {
           )
         );
       }
+    } else if (res.status !== 404) {
+      setLoadError(data.error ?? "This child's details couldn't be loaded. Please refresh the page.");
     }
     setLoading(false);
   }, [organizationId, params.childId]);
@@ -142,7 +145,13 @@ export default function ChildDetailPage() {
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
-  if (!child) return <p className="text-sm text-muted-foreground">Not found.</p>;
+  if (!child) {
+    return loadError ? (
+      <p className="text-sm text-danger">{loadError}</p>
+    ) : (
+      <p className="text-sm text-muted-foreground">Not found.</p>
+    );
+  }
 
   const totalDue = child.planEntries.reduce((sum, e) => sum + e.amountDueCents, 0);
   const totalPaid = child.planEntries.reduce((sum, e) => sum + e.amountPaidCents, 0);

@@ -241,7 +241,7 @@ export default function GeneralSettingsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/organizations/${organizationId}/profile`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       const org: Profile = data.organization;
       setProfile(org);
@@ -295,7 +295,7 @@ export default function GeneralSettingsPage() {
           timezone,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Could not save changes.");
         return;

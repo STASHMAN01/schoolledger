@@ -87,7 +87,7 @@ function RemindersPageInner() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/organizations/${organizationId}/reminders`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setReminders(data.reminders);
     else setError(data.error ?? "Could not load reminders.");
     setLoading(false);
@@ -97,8 +97,9 @@ function RemindersPageInner() {
     setSendRequestLoading(true);
     try {
       const res = await fetch(`/api/organizations/${organizationId}/reminders/send-request`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) setSendRequest(data.request);
+      else setSendError(data.error ?? "Couldn't check for a pending send request.");
     } finally {
       setSendRequestLoading(false);
     }
@@ -106,8 +107,9 @@ function RemindersPageInner() {
 
   const loadTemplate = useCallback(async () => {
     const res = await fetch(`/api/organizations/${organizationId}/reminders/template`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setTemplateBody(data.template);
+    else setTemplateError(data.error ?? "Couldn't load your reminder message.");
   }, [organizationId]);
 
   useEffect(() => {
@@ -142,7 +144,7 @@ function RemindersPageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ template: templateBody }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setTemplateError(data.error ?? "Could not save this template.");
         return;
@@ -171,7 +173,7 @@ function RemindersPageInner() {
       const res = await fetch(`/api/organizations/${organizationId}/reminders/send-request`, {
         method: "POST",
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSendError(data.error ?? "Could not request this.");
         return;
@@ -191,7 +193,7 @@ function RemindersPageInner() {
         `/api/organizations/${organizationId}/reminders/send-request/${sendRequest.id}/approve`,
         { method: "POST" }
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSendError(data.error ?? "Could not approve.");
         return;
@@ -229,7 +231,7 @@ function RemindersPageInner() {
         `/api/organizations/${organizationId}/reminders/send-request/${sendRequest.id}`,
         { method: "DELETE" }
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSendError(data.error ?? "Could not cancel.");
         return;
@@ -242,13 +244,24 @@ function RemindersPageInner() {
 
   async function markSent(childId: string, channel: "whatsapp" | "email" | "manual") {
     setBusyId(childId);
-    await fetch(`/api/organizations/${organizationId}/reminders/${childId}/mark-sent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channel }),
-    });
-    setBusyId(null);
-    await load();
+    setError(null);
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/reminders/${childId}/mark-sent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "That reminder couldn't be marked as sent. Please try again.");
+        return;
+      }
+      await load();
+    } catch {
+      setError("That reminder couldn't be marked as sent — check your connection and try again.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   function messageFor(r: Reminder) {

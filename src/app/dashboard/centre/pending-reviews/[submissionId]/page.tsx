@@ -75,7 +75,7 @@ export default function ReviewSubmissionPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/organizations/${organizationId}/parent-submissions/${params.submissionId}`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setSubmission(data.submission);
       setCurrent(data.current);
@@ -119,7 +119,7 @@ export default function ReviewSubmissionPage() {
         ),
       }
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setDeciding(false);
     if (!res.ok) {
       setError(data.error ?? "Could not save that decision.");

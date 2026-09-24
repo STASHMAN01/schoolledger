@@ -41,9 +41,9 @@ export default function EventDetailPage() {
     const res = await fetch(
       `/api/organizations/${organizationId}/events/${params.eventId}`
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setEvent(data.event);
-    else setError(data.error ?? "Could not load event.");
+    else setError(data.error ?? "Couldn't load this event.");
     setLoading(false);
   }, [organizationId, params.eventId]);
 
@@ -66,7 +66,7 @@ export default function EventDetailPage() {
       `/api/organizations/${organizationId}/events/${params.eventId}/children/${childId}`,
       { method: "DELETE" }
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setRemovingId(null);
     if (!res.ok) {
       setError(data.error ?? "Could not remove child.");

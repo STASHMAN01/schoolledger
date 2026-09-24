@@ -7,6 +7,7 @@ import { SignOutButton } from "./SignOutButton";
 import { TrialBanner } from "./TrialBanner";
 import { MobileMenu, NavBar, UtilityLinks } from "./NavLinks";
 import { ModeSwitch } from "./ModeSwitch";
+import { ErrorCatcher } from "./ErrorCatcher";
 import { hasActiveAccess } from "@/lib/billing/access";
 import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -82,6 +83,7 @@ export default async function DashboardLayout({
           </div>
         </header>
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
+        <ErrorCatcher />
       </div>
     </OrgProvider>
   );

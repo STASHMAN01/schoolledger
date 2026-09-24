@@ -125,7 +125,7 @@ export default function ActivityLogPage() {
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Could not load activity.");
         return;
@@ -155,7 +155,7 @@ export default function ActivityLogPage() {
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setEntries((prev) => [...prev, ...data.entries]);
         setCursor(data.nextCursor);

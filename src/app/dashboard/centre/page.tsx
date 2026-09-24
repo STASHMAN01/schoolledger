@@ -62,7 +62,7 @@ async function getJson<T>(url: string): Promise<T | null> {
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
-    return (await res.json()) as T;
+    return (await res.json().catch(() => ({}))) as T;
   } catch {
     return null;
   }

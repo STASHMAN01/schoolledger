@@ -61,7 +61,7 @@ export default function AbsentTodayPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setResult(
         `Emailed ${data.notifiedCount} ${data.notifiedCount === 1 ? "parent" : "parents"}` +

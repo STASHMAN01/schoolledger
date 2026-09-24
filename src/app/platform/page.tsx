@@ -43,7 +43,7 @@ export default function PlatformOverviewPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/platform/overview");
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     if (res.ok) setData(json);
     else setError(json.error ?? "Could not load platform stats.");
     setLoading(false);

@@ -27,12 +27,13 @@ export default function PaymentTypesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/organizations/${organizationId}/payment-types`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     // Event-generated types (one dedicated type per Event, e.g. "September
     // Trip") are managed from the Events page instead — hide them here so
     // this list stays the small, admin-curated set (School Fees,
     // Registration, Uniform, ...) rather than growing by one row per event.
     if (res.ok) setTypes(data.paymentTypes.filter((t: PaymentType) => !t.isEventType));
+    else setError(data.error ?? "Couldn't load payment types.");
     setLoading(false);
   }, [organizationId]);
 
@@ -54,7 +55,7 @@ export default function PaymentTypesPage() {
           defaultAmount.trim() === "" ? null : Math.round(Number(defaultAmount) * 100),
       }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Could not add payment type.");
       return;
@@ -75,7 +76,7 @@ export default function PaymentTypesPage() {
         body: JSON.stringify({ active: !type.active }),
       }
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Could not update payment type.");
       return;

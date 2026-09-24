@@ -24,7 +24,7 @@ export default function PlatformInviteAcceptPage() {
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/platform/join/${params.token}`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setInvite(data);
     else setNotFound(true);
     setLoading(false);
@@ -43,7 +43,7 @@ export default function PlatformInviteAcceptPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: params.token }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Could not accept this invite.");
       setSubmitting(false);
@@ -65,7 +65,7 @@ export default function PlatformInviteAcceptPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: params.token, name, password }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Could not accept this invite.");
       setSubmitting(false);

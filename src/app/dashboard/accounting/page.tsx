@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/organizations/${organizationId}/dashboard`);
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     if (res.ok) {
       setData(json);
     } else {
@@ -80,7 +80,7 @@ export default function DashboardPage() {
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`
       );
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (res.ok) {
         setExpandedActivity(
           (json.entries as AuditApiEntry[]).map((e) => ({

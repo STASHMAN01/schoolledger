@@ -25,7 +25,7 @@ export default function BackupPage() {
     try {
       const res = await fetch(`/api/organizations/${organizationId}/audit?entityTypes=Export`);
       if (!res.ok) return;
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setRecent((data.entries ?? []).slice(0, 10));
     } catch {
       // The log is a nice-to-have on this page; never block the backup on it.

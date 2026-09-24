@@ -47,9 +47,10 @@ export default function EventsPage() {
       fetch(`/api/organizations/${organizationId}/categories`),
       fetch(`/api/organizations/${organizationId}/events`),
     ]);
-    const [catData, eventData] = await Promise.all([catRes.json(), eventRes.json()]);
+    const [catData, eventData] = await Promise.all([catRes.json().catch(() => ({})), eventRes.json().catch(() => ({}))]);
     if (catRes.ok) setCategories(catData.categories.filter((c: Category) => !c.archived));
     if (eventRes.ok) setEvents(eventData.events);
+    else setError(eventData.error ?? "Couldn't load events.");
     setLoading(false);
   }, [organizationId]);
 
@@ -82,7 +83,7 @@ export default function EventsPage() {
         categoryIds: form.categoryIds,
       }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setSubmitting(false);
     if (!res.ok) {
       setError(data.error ?? "Could not create event.");

@@ -60,7 +60,7 @@ function RevealableId({
 }: {
   label: string;
   masked: string | null;
-  onReveal: () => Promise<string | null>;
+  onReveal: () => Promise<string | null | undefined>;
 }) {
   const [revealed, setRevealed] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,7 +79,8 @@ function RevealableId({
           onClick={async () => {
             setLoading(true);
             const value = await onReveal();
-            setRevealed(value ?? "(none)");
+            // undefined = the reveal failed (the page shows why); keep it masked.
+            if (value !== undefined) setRevealed(value ?? "(none)");
             setLoading(false);
           }}
         >
@@ -101,7 +102,7 @@ function GuardianCard({
   canManage: boolean;
   onUpdate: (id: string, patch: Partial<Guardian>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onReveal: (id: string) => Promise<string | null>;
+  onReveal: (id: string) => Promise<string | null | undefined>;
 }) {
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(guardian.firstName);
@@ -233,14 +234,16 @@ export default function ChildProfilePage() {
       setLoading(false);
       return;
     }
-    const data = await childRes.json();
+    const data = await childRes.json().catch(() => ({}));
     if (childRes.ok) {
       setChild(data.child);
       setDateOfBirth(data.child.dateOfBirth ? data.child.dateOfBirth.slice(0, 10) : "");
+    } else {
+      setError(data.error ?? "This child's profile couldn't be loaded. Please refresh the page.");
     }
-    const formsData = await formsRes.json();
+    const formsData = await formsRes.json().catch(() => ({}));
     if (formsRes.ok) setDocuments(formsData.documents);
-    const linksData = await linksRes.json();
+    const linksData = await linksRes.json().catch(() => ({}));
     if (linksRes.ok) setLinks(linksData.links);
     setLoading(false);
   }, [organizationId, childId]);
@@ -258,7 +261,7 @@ export default function ChildProfilePage() {
         body: JSON.stringify({ sendEmail }),
       }
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setGeneratingLink(false);
     if (!res.ok) {
       setError(data.error ?? "Could not generate a link.");
@@ -268,7 +271,7 @@ export default function ChildProfilePage() {
     const linksRes = await fetch(
       `/api/organizations/${organizationId}/children/${childId}/parent-form-links`
     );
-    const linksData = await linksRes.json();
+    const linksData = await linksRes.json().catch(() => ({}));
     if (linksRes.ok) setLinks(linksData.links);
   }
 
@@ -290,7 +293,7 @@ export default function ChildProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ formType }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setGenerating(null);
     if (!res.ok) {
       setError(data.error ?? "Could not generate that form.");
@@ -320,7 +323,7 @@ export default function ChildProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setSaving(false);
     if (!res.ok) {
       setError(data.error ?? "Could not save that change.");
@@ -338,8 +341,12 @@ export default function ChildProfilePage() {
         body: JSON.stringify({ field }),
       }
     );
-    const data = await res.json();
-    return res.ok ? (data.value as string | null) : null;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "The ID number couldn't be revealed. Please try again.");
+      return undefined;
+    }
+    return data.value as string | null;
   }
 
   async function revealGuardianId(guardianId: string) {
@@ -347,8 +354,12 @@ export default function ChildProfilePage() {
       `/api/organizations/${organizationId}/children/${childId}/guardians/${guardianId}/reveal-id`,
       { method: "POST" }
     );
-    const data = await res.json();
-    return res.ok ? (data.value as string | null) : null;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "The ID number couldn't be revealed. Please try again.");
+      return undefined;
+    }
+    return data.value as string | null;
   }
 
   async function addGuardian(e: React.FormEvent) {
@@ -367,7 +378,7 @@ export default function ChildProfilePage() {
         }),
       }
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setSaving(false);
     if (!res.ok) {
       setError(data.error ?? "Could not add that guardian.");
@@ -381,31 +392,39 @@ export default function ChildProfilePage() {
   }
 
   async function updateGuardian(id: string, patch: Partial<Guardian>) {
-    await fetch(
-      `/api/organizations/${organizationId}/children/${childId}/guardians/${id}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      }
-    );
+    setError(null);
+    const res = await fetch(`/api/organizations/${organizationId}/children/${childId}/guardians/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "That change to the guardian wasn't saved. Please try again.");
+      return;
+    }
     load();
   }
 
   async function deleteGuardian(id: string) {
     if (!confirm("Remove this guardian from the profile?")) return;
-    await fetch(
-      `/api/organizations/${organizationId}/children/${childId}/guardians/${id}`,
-      { method: "DELETE" }
-    );
+    setError(null);
+    const res = await fetch(`/api/organizations/${organizationId}/children/${childId}/guardians/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "That guardian couldn't be removed. Please try again.");
+      return;
+    }
     load();
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (notFound || !child) {
     return (
-      <p className="text-sm text-muted-foreground">
-        That child couldn&apos;t be found, or isn&apos;t in your class.
+      <p className={`text-sm ${error ? "text-danger" : "text-muted-foreground"}`}>
+        {error ?? "That child couldn't be found, or isn't in your class."}
       </p>
     );
   }

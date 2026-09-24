@@ -30,7 +30,7 @@ export default function PlatformTestimonialsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/platform/testimonials");
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setTestimonials(data.testimonials);
     else setError(data.error ?? "Could not load testimonials.");
     setLoading(false);
@@ -46,7 +46,7 @@ export default function PlatformTestimonialsPage() {
     setError(null);
     try {
       const res = await fetch(`/api/platform/testimonials/${id}/${action}`, { method: "POST" });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Could not update this testimonial.");
         return;

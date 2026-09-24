@@ -18,11 +18,15 @@ export function AddChildForm({
   classes,
   onAdded,
   onCancel,
+  showFee = false,
 }: {
   organizationId: string;
   classes: ClassOption[];
-  onAdded: (childId: string) => void;
+  /** siblingCount: other children already on file with the same surname. */
+  onAdded: (childId: string, siblingCount: number) => void;
   onCancel: () => void;
+  /** Accounting only (VIEW_MONEY): an optional child-specific monthly fee. */
+  showFee?: boolean;
 }) {
   const [f, setF] = useState({
     firstName: "",
@@ -38,6 +42,7 @@ export function AddChildForm({
     gPhone: "",
     gEmail: "",
     gIdNumber: "",
+    feeOverride: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +56,7 @@ export function AddChildForm({
       [f.lastName, "the child's surname"],
       [f.dateOfBirth, "date of birth"],
       [f.gender, "gender"],
-      [f.categoryId, "a class"],
+      [f.categoryId || classes[0]?.id || "", "a class"],
       [f.enrollmentDate, "a start date"],
       [f.gRelationship, "the parent/guardian's relationship to the child"],
       [f.gFirstName, "the parent/guardian's first name"],
@@ -64,19 +69,30 @@ export function AddChildForm({
       return;
     }
 
+    let feeOverrideCents: number | undefined;
+    if (showFee && f.feeOverride.trim()) {
+      const rand = Number(f.feeOverride.replace(/[^\d.]/g, ""));
+      if (Number.isNaN(rand) || rand < 0) {
+        setError("The fee must be an amount in rand, e.g. 1500.");
+        return;
+      }
+      feeOverrideCents = Math.round(rand * 100);
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/organizations/${organizationId}/children`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          categoryId: f.categoryId,
+          categoryId: f.categoryId || classes[0]?.id,
           firstName: f.firstName.trim(),
           lastName: f.lastName.trim(),
           dateOfBirth: f.dateOfBirth,
           gender: f.gender,
           enrollmentDate: f.enrollmentDate,
           childIdNumber: f.childIdNumber || undefined,
+          feeOverrideCents,
           // Billing contact = this first guardian.
           parentName: `${f.gFirstName.trim()} ${f.gLastName.trim()}`,
           parentPhone: f.gPhone,
@@ -103,7 +119,8 @@ export function AddChildForm({
         );
         return;
       }
-      onAdded(data.child.id);
+      const siblings = ((data.possibleSiblings ?? []) as { id: string }[]).filter((s) => s.id !== data.child.id);
+      onAdded(data.child.id, siblings.length);
     } catch {
       setError("The child couldn't be added — check your connection and try again.");
     } finally {
@@ -145,7 +162,7 @@ export function AddChildForm({
             </Select>
           </Field>
           <Field label="Class *" id="ac-class">
-            <Select id="ac-class" value={f.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>
+            <Select id="ac-class" value={f.categoryId || classes[0]?.id || ""} onChange={(e) => set({ categoryId: e.target.value })}>
               {classes.length === 0 && <option value="">No classes yet — add one under Classes</option>}
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -160,6 +177,17 @@ export function AddChildForm({
           <Field label="Child's ID / birth certificate number" id="ac-cid">
             <Input id="ac-cid" value={f.childIdNumber} onChange={(e) => set({ childIdNumber: e.target.value })} />
           </Field>
+          {showFee && (
+            <Field label="Monthly fee for this child (R) — leave blank to use the class fee" id="ac-fee">
+              <Input
+                id="ac-fee"
+                inputMode="decimal"
+                placeholder="e.g. 1500"
+                value={f.feeOverride}
+                onChange={(e) => set({ feeOverride: e.target.value })}
+              />
+            </Field>
+          )}
         </fieldset>
 
         <fieldset className="grid gap-3 sm:grid-cols-2">

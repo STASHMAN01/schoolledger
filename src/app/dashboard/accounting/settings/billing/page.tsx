@@ -18,7 +18,8 @@ export default function BillingPage() {
 
   const loadConfig = useCallback(async () => {
     const res = await fetch(`/api/organizations/${organizationId}/billing/config`);
-    if (res.ok) setConfig(await res.json());
+    if (res.ok) setConfig(await res.json().catch(() => ({})));
+    else setError("Couldn't load your billing details. Please refresh the page.");
   }, [organizationId]);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function BillingPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ plan }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.url) {
       setError(data.error ?? "Could not start checkout.");
       setLoading(null);
@@ -49,7 +50,7 @@ export default function BillingPage() {
     const res = await fetch(`/api/organizations/${organizationId}/billing/cancel`, {
       method: "POST",
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setLoading(null);
     if (!res.ok) {
       setError(data.error ?? "Could not cancel subscription.");

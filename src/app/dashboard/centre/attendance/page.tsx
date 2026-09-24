@@ -41,7 +41,7 @@ export default function AttendancePage() {
     if (isTeacher) return;
     (async () => {
       const res = await fetch(`/api/organizations/${organizationId}/categories`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         const active = (data.categories as Category[]).filter((c) => !c.archived);
         setCategories(active);

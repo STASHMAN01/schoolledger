@@ -17,7 +17,7 @@ export default function PlatformTeamPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/platform/team");
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setAdmins(data.admins);
       setInvites(data.invites);
@@ -41,7 +41,7 @@ export default function PlatformTeamPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Could not create invite.");
       return;

@@ -54,7 +54,7 @@ export default function PlatformOrganizationsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/platform/organizations");
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) setOrgs(data.organizations);
     else setError(data.error ?? "Could not load schools.");
     setLoading(false);

@@ -53,8 +53,8 @@ export default function TrashPage() {
         fetch(`/api/organizations/${organizationId}/trash`),
         fetch(`/api/organizations/${organizationId}/deletion-requests`),
       ]);
-      const trashData = await trashRes.json();
-      const pendingData = await pendingRes.json();
+      const trashData = await trashRes.json().catch(() => ({}));
+      const pendingData = await pendingRes.json().catch(() => ({}));
       if (!trashRes.ok) {
         setError(trashData.error ?? "Could not load trash.");
         return;

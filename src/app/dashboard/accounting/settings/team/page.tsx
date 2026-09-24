@@ -52,12 +52,14 @@ export default function TeamPage() {
       fetch(`/api/organizations/${organizationId}/categories`),
     ]);
     const [invitesData, categoriesData] = await Promise.all([
-      invitesRes.json(),
-      categoriesRes.json(),
+      invitesRes.json().catch(() => ({})),
+      categoriesRes.json().catch(() => ({})),
     ]);
     if (invitesRes.ok) {
       setMembers(invitesData.members);
       setInvites(invitesData.invites);
+    } else {
+      setError(invitesData.error ?? "Couldn't load your team.");
     }
     if (categoriesRes.ok) {
       setCategories(categoriesData.categories.filter((c: Category) => !c.archived));
@@ -79,7 +81,7 @@ export default function TeamPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, role: inviteRole }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Could not create invite.");
       return;
@@ -90,9 +92,15 @@ export default function TeamPage() {
   }
 
   async function revoke(inviteId: string) {
-    await fetch(`/api/organizations/${organizationId}/invites/${inviteId}/revoke`, {
+    setError(null);
+    const res = await fetch(`/api/organizations/${organizationId}/invites/${inviteId}/revoke`, {
       method: "POST",
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "That invite couldn't be cancelled. Please try again.");
+      return;
+    }
     await load();
   }
 
@@ -105,7 +113,7 @@ export default function TeamPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setMembers((prev) =>
         prev.map((m) => (m.membershipId === membershipId ? { ...m, ...data.member } : m))
