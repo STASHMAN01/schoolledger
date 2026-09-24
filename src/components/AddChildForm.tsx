@@ -5,7 +5,7 @@
 // parent fills in a form"). Agreed rule: the CORE details are required
 // here -- name, date of birth, gender, class, start date and one
 // parent/guardian with a phone number. Everything else (ID numbers,
-// medical info, more guardians, photo) is added on the child's profile
+// more guardians, photo) is added on the child's profile
 // afterwards; a child missing core details is flagged "incomplete".
 import { useState } from "react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
@@ -138,7 +138,7 @@ export function AddChildForm({
           </button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Fields marked * are required. ID numbers, medical details, more guardians and a photo can be added on the
+          Fields marked * are required. More guardians, ID numbers and a photo can be added on the
           child&apos;s profile afterwards.
         </p>
 

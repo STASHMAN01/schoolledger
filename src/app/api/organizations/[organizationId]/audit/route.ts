@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { redactMoneyMetadata } from "@/lib/auditLabel";
+import { PRIVACY_ACTIONS } from "@/lib/activityArea";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -19,6 +20,14 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { organizationId } = await params;
     const { permissions } = await requireMembership(organizationId, "VIEW_ACTIVITY_LOG");
     const canViewMoney = permissions.includes("VIEW_MONEY");
+
+    // "privacy=1": the admin-only Privacy log (who viewed children's
+    // records). Names children, so it's limited to people who manage the
+    // team rather than everyone with the activity log.
+    const privacy = req.nextUrl.searchParams.get("privacy") === "1";
+    if (privacy && !permissions.includes("MANAGE_TEAM")) {
+      return NextResponse.json({ error: "Only an admin can see the privacy log." }, { status: 403 });
+    }
 
     const cursor = req.nextUrl.searchParams.get("cursor");
     // "since" (ISO datetime) powers the dashboard's recent-activity card
@@ -44,7 +53,11 @@ export async function GET(req: NextRequest, { params }: Params) {
         organizationId,
         ...(since ? { createdAt: { gte: new Date(since) } } : {}),
         ...(userId ? { userId } : {}),
-        ...(entityTypes ? { entityType: { in: entityTypes } } : {}),
+        ...(privacy
+          ? { action: { in: [...PRIVACY_ACTIONS] } }
+          : entityTypes
+            ? { entityType: { in: entityTypes } }
+            : {}),
       },
       orderBy: { createdAt: "desc" },
       take: PAGE_SIZE + 1,

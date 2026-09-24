@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { Button, Card, Input, Label } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
+import { roleLabel } from "@/lib/permissions";
 
 type InviteInfo = {
   organizationName: string;
@@ -113,7 +114,7 @@ export default function InviteAcceptPage() {
         Join {invite.organizationName}
       </h1>
       <p className="mb-8 text-sm text-muted-foreground">
-        You&apos;ve been invited as <strong>{invite.role}</strong> for {invite.email}.
+        You&apos;ve been invited as <strong>{roleLabel(invite.role)}</strong> for {invite.email}.
       </p>
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}

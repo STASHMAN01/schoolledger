@@ -17,6 +17,18 @@ export const CENTRE_ENTITY_TYPES = [
   "ParentFormLink",
 ] as const;
 
+// POPIA (24 Sept 2026): who LOOKED at children's records, as opposed to
+// who changed them. Shown only in the admin-only "Privacy log" view of
+// Settings -> Activity log, never in the dashboard feeds (profile opens
+// would drown out everything else). Profile opens use their own entity
+// type so neither mode's feed picks them up.
+export const PRIVACY_ACTIONS = [
+  "child.profile.viewed",
+  "child.idNumber.revealed",
+  "parentSubmission.viewed",
+] as const;
+export const PROFILE_VIEW_ENTITY_TYPE = "ChildProfileView";
+
 export const ACCOUNTING_ENTITY_TYPES = [
   "Payment",
   "PaymentType",

@@ -20,7 +20,7 @@ const ACCOUNTING_LINKS: NavLink[] = [
   { href: "/dashboard/accounting", label: "Home", exact: true },
   { href: "/dashboard/accounting/children", label: "Children" },
   { href: "/dashboard/accounting/payments", label: "Payments" },
-  { href: "/dashboard/accounting/categories", label: "Classes" },
+  { href: "/dashboard/accounting/classes", label: "Classes" },
   { href: "/dashboard/accounting/events", label: "Events" },
   { href: "/dashboard/accounting/reminders", label: "Reminders" },
 ];

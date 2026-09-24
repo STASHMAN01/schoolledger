@@ -5,6 +5,7 @@ import { guardianSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { maskIdNumber } from "@/lib/idMask";
+import { pickBillingGuardianId } from "@/lib/billingContact";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
 
@@ -39,8 +40,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
       orderBy: { createdAt: "asc" },
     });
 
+    // Which guardian the fees/reminders contact belongs to (see
+    // lib/billingContact.ts), plus the contact itself so the profile can
+    // show it even when it matches no guardian.
     return NextResponse.json({
       guardians: guardians.map((g) => ({ ...g, idNumber: maskIdNumber(g.idNumber) })),
+      billingGuardianId: pickBillingGuardianId(guardians, child),
+      billingContact: {
+        name: child.parentName,
+        phone: child.parentPhone,
+        email: child.parentEmail,
+      },
     });
   } catch (err) {
     return handleApiError(err);

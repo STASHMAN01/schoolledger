@@ -22,7 +22,7 @@ const TODAY_ROWS = [
 
 const TODAY_TODOS = [
   "Review Naledi M.'s application",
-  "Add Thabo K.'s allergy details",
+  "Add Thabo K.'s second guardian",
   "Send September statements",
 ];
 
@@ -60,7 +60,7 @@ const FEATURE_GROUPS = [
       {
         term: "A complete profile for every child",
         definition:
-          "Guardians, contact details and medical information in one place. ID numbers stay hidden until you choose to show them, and Crechely flags any child whose profile is missing core details.",
+          "Every guardian and their contact details in one place, with printable forms (like a medical & allergy form) filled in from the profile. ID numbers stay hidden until you choose to show them, and Crechely flags any child whose profile is missing core details.",
       },
       {
         term: "Bring your current list across",

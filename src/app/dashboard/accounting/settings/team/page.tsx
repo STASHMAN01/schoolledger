@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../../OrgContext";
 import { Button, Card, Disclosure, Input, Label, PageHeader, Select } from "@/components/ui";
-import { ALL_PERMISSIONS, PERMISSION_INFO, ROLE_DEFAULT_PERMISSIONS } from "@/lib/permissions";
+import { ALL_PERMISSIONS, PERMISSION_INFO, ROLE_DEFAULT_PERMISSIONS, roleLabel } from "@/lib/permissions";
 import type { Permission, Role } from "@prisma/client";
 
 type Member = {
@@ -27,7 +27,7 @@ const ROLE_SUMMARY: Record<Role, string> = {
   ADMIN: "Full access — sees and can do everything, always. Not editable.",
   ACCOUNTANT: "Accounting only: money, payments, children, classes, events, reminders.",
   MANAGER: "Organizes children/classes in both modes, but can't see money.",
-  VIEWER: "Read-only in Accounting. No money by default.",
+  VIEWER: "Read-only in Accounting, for a business partner or outside accountant who should only look. No money by default.",
   TEACHER: "Centre Management only, limited to their one assigned class.",
   RECEPTIONIST: "Centre Management only, can add children.",
 };
@@ -43,7 +43,9 @@ export default function TeamPage() {
   const [newLink, setNewLink] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<(typeof ROLES)[number]>("VIEWER");
+  // No default role (Dylan, 24 Sept): it used to start on VIEWER, so a
+  // teacher invited in a hurry ended up read-only in Accounting.
+  const [inviteRole, setInviteRole] = useState<(typeof ROLES)[number] | "">("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,6 +78,10 @@ export default function TeamPage() {
     e.preventDefault();
     setError(null);
     setNewLink(null);
+    if (!inviteRole) {
+      setError("Choose a role for this person first.");
+      return;
+    }
     const res = await fetch(`/api/organizations/${organizationId}/invites`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -170,12 +176,16 @@ export default function TeamPage() {
             <Select
               id="invite-role"
               value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value as (typeof ROLES)[number])}
-              title={ROLE_SUMMARY[inviteRole]}
+              required
+              onChange={(e) => setInviteRole(e.target.value as (typeof ROLES)[number] | "")}
+              title={inviteRole ? ROLE_SUMMARY[inviteRole] : "Choose what this person can see and do"}
             >
+              <option value="" disabled>
+                Choose a role…
+              </option>
               {ROLES.map((r) => (
                 <option key={r} value={r} title={ROLE_SUMMARY[r]}>
-                  {r}
+                  {roleLabel(r)}
                 </option>
               ))}
             </Select>
@@ -231,7 +241,7 @@ export default function TeamPage() {
                     >
                       {ROLES.map((r) => (
                         <option key={r} value={r} title={ROLE_SUMMARY[r]}>
-                          {r}
+                          {roleLabel(r)}
                         </option>
                       ))}
                     </Select>
@@ -306,7 +316,7 @@ export default function TeamPage() {
                     <tr key={i.id}>
                       <td className="px-3 py-2 text-foreground">{i.email}</td>
                       <td className="px-3 py-2 text-foreground" title={ROLE_SUMMARY[i.role as Role]}>
-                        {i.role}
+                        {roleLabel(i.role)}
                       </td>
                       <td className="px-3 py-2 text-foreground">
                         {new Date(i.expiresAt).toLocaleDateString()}

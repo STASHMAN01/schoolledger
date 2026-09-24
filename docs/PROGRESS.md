@@ -755,3 +755,14 @@ profile-view logging, wording audit, lawyer-reviewed operator agreement).
 - Pricing FAQ: removed the false "payments import from CSV" claim (only children import, from Excel/CSV); roles answer now covers Teacher/Receptionist and per-person permissions; data export points to the Backup ZIP; POPIA question no longer phrased as a compliance claim.
 - Site description, OG/Twitter description, footer tagline and login description updated. Site TITLE left unchanged pending Dylan's sign-off (3 options offered).
 - Secondary CTA changed from "sample statement" to "email us for a walkthrough".
+
+## Batch 1 -- 24 Sept 2026: open items (Dylan: "apply all the recommendations")
+- Tab title is now "Crechely -- Centre management for preschools and creches" (option 3).
+- Billing contact (D9): the child profile shows who fees & reminders go to, and each guardian has a "Use for fees & reminders" button. Editing the matching guardian updates the billing contact too (only the fields changed). Approving a parent's update form has an "also send fees & reminders to..." tick box, off by default. Phone numbers are normalised; one reminders can't use is refused, never copied. New lib/billingContact.ts + tests. No schema change.
+- Privacy log (POPIA): opening a child's record is logged (at most once per person per child every 10 minutes, entity type ChildProfileView so it stays out of the dashboard feeds). Settings > Activity log has a new admin-only "Privacy log" view: profile opens, ID reveals, application views.
+- VIEWER role now shows as "Read-only (Accounting)" everywhere; the invite form has no default role, so you must choose one.
+- /dashboard/accounting/categories -> /dashboard/accounting/classes, with permanent redirects from the old address (next.config.ts).
+- Wording check: Privacy Policy, POPIA notice and Terms now list what Crechely actually stores (DOB, gender, masked ID numbers, consented photos, ID-document uploads, attendance, generated forms, WhatsApp-group checklist) and the current roles. Still DRAFT pending lawyer review.
+- Fixed a wrong landing-page claim: profiles don't store medical details (there's a printable medical & allergy form). Add child form wording fixed to match.
+- Decided: keep /platform + testimonials frozen (no new features); leave the unused DB fields (logoUrl, letterheadUrl, InviteStatus.EXPIRED) until the next schema change. PlanEntryStatus.UPCOMING is actually queried, so it stays.
+- Next: Dylan upgrades Render before ~12 Oct; then Batch 2 (files to private storage + drop the 2 unused fields, schema diff first); operator agreement draft for lawyer review.

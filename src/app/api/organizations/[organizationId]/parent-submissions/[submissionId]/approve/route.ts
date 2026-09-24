@@ -10,6 +10,7 @@ import {
   parentSubmissionChildSchema,
 } from "@/lib/validation";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
+import { billingFieldsFromGuardian } from "@/lib/billingContact";
 import { z } from "zod";
 
 type Params = { params: Promise<{ organizationId: string; submissionId: string }> };
@@ -60,6 +61,29 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const photoConsentGiven = parsed.child.photoConsentGiven === true;
 
+    // Optional tick box on the review page: "Also use the first
+    // parent/guardian for fees & reminders" (D9, 24 Sept). Off unless
+    // staff tick it, so an update from a grandparent never silently
+    // redirects fee reminders.
+    const options = z
+      .object({ updateBillingContact: z.boolean().optional() })
+      .catch({})
+      .parse(await req.json().catch(() => ({})));
+    let billingData: ReturnType<typeof billingFieldsFromGuardian>["fields"] | null = null;
+    if (options.updateBillingContact && parsed.guardians[0]) {
+      const { fields, phoneProblem } = billingFieldsFromGuardian(parsed.guardians[0]);
+      if (phoneProblem) {
+        return NextResponse.json(
+          {
+            error:
+              "The first parent/guardian's phone number isn't in a format reminders can use, so the billing contact can't be switched to them. Untick that box to approve, then fix the number on the profile.",
+          },
+          { status: 400 }
+        );
+      }
+      billingData = fields;
+    }
+
     await db.$transaction(async (tx) => {
       await tx.child.update({
         where: { id: child.id },
@@ -70,6 +94,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           photoImage: photoConsentGiven ? parsed.child.photoImage ?? undefined : undefined,
           photoConsentGiven: photoConsentGiven || undefined,
           photoConsentAt: photoConsentGiven ? new Date() : undefined,
+          ...(billingData ?? {}),
         },
       });
 
@@ -102,7 +127,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       action: "parentSubmission.approved",
       entityType: "ParentSubmission",
       entityId: submission.id,
-      metadata: { childId: child.id, guardiansAdded: parsed.guardians.length },
+      metadata: {
+        childId: child.id,
+        guardiansAdded: parsed.guardians.length,
+        billingContactUpdated: billingData !== null,
+      },
     });
 
     return NextResponse.json({ ok: true });
@@ -142,9 +171,10 @@ async function approveNewApplicant(
         categoryId: category.id,
         firstName: parsed.child.firstName,
         lastName: parsed.child.lastName,
-        parentName: `${primary.firstName} ${primary.lastName}`.trim(),
-        parentPhone: primary.phone ?? null,
-        parentEmail: primary.email ?? null,
+        // Normalised the same way as "Use for fees & reminders", so a
+        // phone typed as "082 123 4567" becomes +27821234567 and one
+        // that can't be read isn't stored as the billing number.
+        ...billingFieldsFromGuardian(primary).fields,
         enrollmentDate: choice.enrollmentDate,
         dateOfBirth: parsed.child.dateOfBirth,
         gender: parsed.child.gender,

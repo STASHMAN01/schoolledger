@@ -11,6 +11,7 @@ import { useOrg, useHasPermission } from "../../../OrgContext";
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { FORM_TYPES, FORM_TYPE_LABELS, MONEY_FORM_TYPES, type FormType } from "@/lib/forms/types";
+import { pickBillingGuardianId } from "@/lib/billingContact";
 
 type ParentFormLinkRow = {
   id: string;
@@ -50,6 +51,11 @@ type ChildProfile = {
   photoConsentGiven: boolean;
   childIdNumber: string | null;
   parentIdNumber: string | null;
+  // The billing contact: statements, fee reminders and absence emails go
+  // here (see lib/billingContact.ts).
+  parentName: string;
+  parentPhone: string | null;
+  parentEmail: string | null;
   guardians: Guardian[];
 };
 
@@ -94,15 +100,19 @@ function RevealableId({
 function GuardianCard({
   guardian,
   canManage,
+  isBilling,
   onUpdate,
   onDelete,
   onReveal,
+  onMakeBilling,
 }: {
   guardian: Guardian;
   canManage: boolean;
-  onUpdate: (id: string, patch: Partial<Guardian>) => Promise<void>;
+  isBilling: boolean;
+  onUpdate: (id: string, patch: Partial<Guardian>) => Promise<boolean>;
   onDelete: (id: string) => Promise<void>;
   onReveal: (id: string) => Promise<string | null | undefined>;
+  onMakeBilling: (id: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(guardian.firstName);
@@ -145,9 +155,10 @@ function GuardianCard({
                   disabled={saving}
                   onClick={async () => {
                     setSaving(true);
-                    await onUpdate(guardian.id, { firstName, lastName, relationship, occupation, phone, email });
+                    const ok = await onUpdate(guardian.id, { firstName, lastName, relationship, occupation, phone, email });
                     setSaving(false);
-                    setEditing(false);
+                    // Stay in edit mode on failure so nothing typed is lost.
+                    if (ok) setEditing(false);
                   }}
                 >
                   {saving ? "Saving…" : "Save"}
@@ -161,7 +172,8 @@ function GuardianCard({
             <>
               <p className="font-medium text-foreground">
                 {guardian.firstName} {guardian.lastName}{" "}
-                <Badge variant="neutral">{guardian.relationship}</Badge>
+                <Badge variant="neutral">{guardian.relationship}</Badge>{" "}
+                {isBilling && <Badge variant="success">Fees &amp; reminders</Badge>}
               </p>
               {guardian.occupation && (
                 <p className="text-sm text-muted-foreground">{guardian.occupation}</p>
@@ -176,10 +188,19 @@ function GuardianCard({
                 />
               </div>
               {canManage && (
-                <div className="mt-2 flex gap-3 text-sm">
+                <div className="mt-2 flex flex-wrap gap-3 text-sm">
                   <button type="button" className="text-brand underline underline-offset-2" onClick={() => setEditing(true)}>
                     Edit
                   </button>
+                  {!isBilling && (
+                    <button
+                      type="button"
+                      className="text-brand underline underline-offset-2"
+                      onClick={() => onMakeBilling(guardian.id)}
+                    >
+                      Use for fees &amp; reminders
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="text-danger underline underline-offset-2"
@@ -208,6 +229,7 @@ export default function ChildProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [showAddGuardian, setShowAddGuardian] = useState(false);
@@ -391,18 +413,37 @@ export default function ChildProfilePage() {
     load();
   }
 
-  async function updateGuardian(id: string, patch: Partial<Guardian>) {
+  async function updateGuardian(id: string, patch: Partial<Guardian>): Promise<boolean> {
     setError(null);
+    setNotice(null);
     const res = await fetch(`/api/organizations/${organizationId}/children/${childId}/guardians/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       setError(data.error ?? "That change to the guardian wasn't saved. Please try again.");
+      return false;
+    }
+    if (data.billingWarning) setNotice(data.billingWarning);
+    load();
+    return true;
+  }
+
+  async function makeBillingContact(id: string) {
+    setError(null);
+    setNotice(null);
+    const res = await fetch(
+      `/api/organizations/${organizationId}/children/${childId}/guardians/${id}/billing-contact`,
+      { method: "POST" }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "The fees & reminders contact couldn't be changed. Please try again.");
       return;
     }
+    setNotice("Done. Statements, fee reminders and absence emails now go to this guardian.");
     load();
   }
 
@@ -428,6 +469,8 @@ export default function ChildProfilePage() {
       </p>
     );
   }
+
+  const billingGuardianId = pickBillingGuardianId(child.guardians, child);
 
   return (
     <div className="animate-in">
@@ -546,6 +589,25 @@ export default function ChildProfilePage() {
         </Card>
       )}
 
+      {notice && <p className="mt-3 text-sm text-success">{notice}</p>}
+
+      <Card as="div" className="mt-3 p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Fees &amp; reminders go to
+        </p>
+        <p className="mt-1 text-sm text-foreground">
+          {child.parentName}
+          {child.parentPhone ? ` · ${child.parentPhone}` : ""}
+          {child.parentEmail ? ` · ${child.parentEmail}` : " · no email on file, so no reminder emails"}
+        </p>
+        {billingGuardianId === null && child.guardians.length > 0 && (
+          <p className="mt-1 text-xs text-accent-soft-foreground">
+            This contact doesn&apos;t match any guardian below. Choose &ldquo;Use for fees &amp;
+            reminders&rdquo; on the right guardian to keep them in step.
+          </p>
+        )}
+      </Card>
+
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {child.guardians.length === 0 ? (
           <p className="text-sm text-muted-foreground">No guardians on file yet.</p>
@@ -555,9 +617,11 @@ export default function ChildProfilePage() {
               key={g.id}
               guardian={g}
               canManage={canManage}
+              isBilling={g.id === billingGuardianId}
               onUpdate={updateGuardian}
               onDelete={deleteGuardian}
               onReveal={revealGuardianId}
+              onMakeBilling={makeBillingContact}
             />
           ))
         )}

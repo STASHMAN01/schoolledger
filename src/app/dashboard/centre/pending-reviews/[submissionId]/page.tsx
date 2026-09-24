@@ -49,6 +49,7 @@ type CurrentChild = {
   dateOfBirth: string | null;
   gender: string | null;
   childIdNumber: string | null;
+  parentName?: string;
 };
 
 function fmt(v: string | null | undefined) {
@@ -67,6 +68,9 @@ export default function ReviewSubmissionPage() {
   const [error, setError] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [reviewNotes, setReviewNotes] = useState("");
+  // Off by default: an update from (say) a grandparent shouldn't silently
+  // redirect fee reminders. See lib/billingContact.ts.
+  const [updateBilling, setUpdateBilling] = useState(false);
   // New family only: which class and from when (fees start from this date).
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [classId, setClassId] = useState("");
@@ -115,7 +119,7 @@ export default function ReviewSubmissionPage() {
             ? { reviewNotes }
             : submission?.isNewApplicant
               ? { categoryId: classId, enrollmentDate: startDate }
-              : undefined
+              : { updateBillingContact: updateBilling }
         ),
       }
     );
@@ -292,6 +296,22 @@ export default function ReviewSubmissionPage() {
                 <Input id="approveStart" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
             </div>
+          )}
+          {!isNew && submission.data.guardians.length > 0 && (
+            <label className="mb-4 flex items-start gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={updateBilling}
+                onChange={(e) => setUpdateBilling(e.target.checked)}
+              />
+              <span>
+                Also send fees &amp; reminders to {submission.data.guardians[0].firstName}{" "}
+                {submission.data.guardians[0].lastName} from now on
+                {onFile?.parentName ? ` (currently ${onFile.parentName})` : ""}. Statements, fee
+                reminders and absence emails use this contact.
+              </span>
+            </label>
           )}
           {error && <p className="mb-3 text-sm text-danger">{error}</p>}
           <div className="flex flex-wrap gap-2">

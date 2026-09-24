@@ -107,6 +107,22 @@ export const PERMISSION_INFO: Record<Permission, { label: string; description: s
 // per-role before this file existed, with two deliberate tightenings
 // flagged inline below (MANAGER and VIEWER no longer default to seeing
 // money) — an admin can grant either back per-person via an override.
+// What each role is CALLED on screen. VIEWER is shown as "Read-only
+// (Accounting)" (Dylan, 24 Sept 2026: keep the role for a business partner
+// or outside accountant who should only look, but make the name say so).
+export const ROLE_LABEL: Record<Role, string> = {
+  ADMIN: "Admin",
+  ACCOUNTANT: "Accountant",
+  MANAGER: "Manager",
+  VIEWER: "Read-only (Accounting)",
+  TEACHER: "Teacher",
+  RECEPTIONIST: "Receptionist",
+};
+
+export function roleLabel(role: string): string {
+  return (ROLE_LABEL as Record<string, string>)[role] ?? role;
+}
+
 export const ROLE_DEFAULT_PERMISSIONS: Record<Exclude<Role, "ADMIN">, Permission[]> = {
   ACCOUNTANT: [
     "VIEW_ACCOUNTING",

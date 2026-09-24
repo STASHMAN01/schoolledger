@@ -14,18 +14,21 @@ This policy explains how **[YOUR REGISTERED BUSINESS NAME]** ("**we**",
 "**us**", operating the Crechely product, referred to here as "**the
 Service**") collects, uses, stores and protects personal information when a
 school ("**you**", "**the school**", "**the customer**") uses the Service
-to manage its own records of children, parents/guardians, and payments.
+to run its centre: its records of children, parents/guardians, enrolment,
+attendance, forms and payments.
 
 Two kinds of people's data pass through the Service, and it's worth being
 explicit about the difference:
 
 - **The school's own staff accounts** (admins, accountants, managers,
-  viewers) — people who sign up and log in. We are the ones who decide how
+  teachers, receptionists and read-only users) — people who sign up and
+  log in. We are the ones who decide how
   this data is processed, so for this data **we are the "responsible
   party"** under POPIA (or "data controller" under GDPR, if that ever
   applies).
 - **The children and parents/guardians the school records in the
-  Service** (names, contact details, enrolment dates, payment history) —
+  Service** (see "What we collect" below: names, contact details, dates of
+  birth, ID numbers, photos, attendance, payment history and similar) —
   this data belongs to the school's own relationship with those families.
   The school decides what to record and why; we just provide the software
   and the hosting. For this data, **the school is the responsible
@@ -46,8 +49,9 @@ Contact for privacy questions: **support@crechely.co.za**
 The full policy below is long because it has to be; this is the plain-
 language summary (site-facing copy, see /privacy on crechely.co.za):
 
-- Your school enters children's and parents' details — we don't collect
-  them directly, and we don't sell or advertise using them.
+- Your school enters children's and parents' details, or asks parents to
+  fill them in through the school's own online forms. We don't collect
+  them for ourselves, and we don't sell or advertise using them.
 - Your school owns that data and decides what to record; we're the
   processor running the software it's stored in.
 - It's hosted on Vercel and Render, sent by email via Zoho Mail, and
@@ -62,16 +66,32 @@ language summary (site-facing copy, see /privacy on crechely.co.za):
 ### About your school's staff accounts
 - Name, email address, and hashed password (we never store or see your
   actual password — see "How we protect this data" below).
-- Role within your organization (Admin / Accountant / Manager / Viewer).
+- Role within your organization (Admin / Accountant / Manager / Teacher /
+  Receptionist / Read-only).
 - Login activity and an audit trail of actions taken in the Service (see
   "Audit logging" below).
 
 ### About the children and families your school records
-Entered by your school's own staff, not collected directly from families
-by us:
-- Child's name, enrolment/exit dates, category/class, fee arrangements.
-- Parent/guardian contact details (phone number, email) where your school
-  chooses to record them.
+Entered by your school's own staff, or by parents/guardians through the
+school's own online application and update forms. Either way it is the
+school's data, recorded on the school's instructions:
+- Child's name, date of birth, gender, enrolment/exit dates, class, and
+  fee arrangements.
+- Child and parent/guardian ID or birth-certificate numbers, where the
+  school records them. These are hidden (masked) on screen by default,
+  and every time a staff member reveals one it is logged.
+- Parent/guardian details: name, relationship to the child, phone number,
+  email address and occupation, where the school records them.
+- Photos of the child and guardians, **only** where the school has
+  recorded that a parent/guardian gave consent.
+- Photos of ID documents that a parent uploads with an online application,
+  for the school to check.
+- Daily attendance (present/absent) and whether the parent was told about
+  an absence.
+- Forms the school generates for a child (for example enrolment, indemnity
+  or medical & allergy forms) as PDF documents.
+- Which parents the school has added to its class WhatsApp groups (a
+  checklist only; Crechely does not connect to WhatsApp).
 - Payment and billing history: amounts due, amounts paid, payment dates,
   receipt records, outstanding balances.
 - Bank account details, where your school records them for statement
@@ -97,7 +117,8 @@ to sell it, and never to advertise to you or the families your school
 serves. Specifically:
 
 - **To operate the Service** — the whole product is a record of your
-  school's children, categories and payments, so this data is the product.
+  school's children, families, classes, attendance and payments, so this
+  data is the product.
 - **To authenticate and authorize** — so only the right people at your
   school can see your school's records, and no one else's.
 - **To bill your school** for the subscription.
@@ -165,6 +186,10 @@ this before finalizing.]
   database level; access always requires being an authenticated member of
   that specific school's account, with the appropriate role.
 - Bank account numbers are encrypted at rest.
+- ID numbers are masked on screen by default; revealing one is logged.
+- Access inside a school is limited by role (for example, a teacher only
+  sees their own class, and money is hidden from roles that don't need
+  it), and a school admin can see a log of who opened children's records.
 - All traffic to the Service is encrypted in transit (HTTPS/TLS).
 - Access to production data by our own team is limited to what's needed
   for support and maintenance, and is logged.
@@ -192,7 +217,8 @@ children and families, your school is responsible for:
   own notice to parents).
 - Responding to requests from parents/guardians to access, correct, or
   delete their own or their child's information — the Service gives you
-  the tools to do this (edit/archive records, export statements); reach out
+  the tools to do this (edit/archive records, export statements, download a
+  full backup of your school's data); reach out
   to **support@crechely.co.za** if you need help with something the interface
   doesn't cover.
 

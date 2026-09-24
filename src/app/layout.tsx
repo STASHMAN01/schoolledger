@@ -41,16 +41,14 @@ const plexMono = IBM_Plex_Mono({
 // (verified live — see CRECHELY_AUDIT.md H1). Each of those pages now sets
 // its own metadata; this is only the site-wide default/fallback plus the
 // OG/Twitter/canonical config every page shares.
-// Title wording deliberately UNCHANGED from what's live today
-// ("Accounting built for preschools") — M1 in CRECHELY_AUDIT.md flags this
-// exact phrase as worth reconsidering, but asks for 3 alternatives and
-// Dylan's sign-off before changing it, not a unilateral rewrite. Only the
-// technical metadata (per-page uniqueness, OG/Twitter, canonical,
-// metadataBase) changed here.
+// Title changed 2026-09-24 from "Accounting built for preschools" to
+// "Centre management for preschools and crèches": Dylan picked option 3
+// of the 3 offered (M1 in CRECHELY_AUDIT.md), now that Crechely runs the
+// whole centre, not just fees.
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — Accounting built for preschools`,
+    default: `${SITE_NAME} — Centre management for preschools and crèches`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
@@ -60,13 +58,13 @@ export const metadata: Metadata = {
     type: "website",
     siteName: SITE_NAME,
     url: SITE_URL,
-    title: `${SITE_NAME} — Accounting built for preschools`,
+    title: `${SITE_NAME} — Centre management for preschools and crèches`,
     description:
       "Applications, enrolment, attendance, classes and fees for preschools, all in one place.",
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — Accounting built for preschools`,
+    title: `${SITE_NAME} — Centre management for preschools and crèches`,
     description:
       "Applications, enrolment, attendance, classes and fees for preschools, all in one place.",
   },

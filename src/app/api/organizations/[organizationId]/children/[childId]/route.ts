@@ -6,13 +6,14 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { cancelEntriesAfterExit } from "@/lib/billing/financialPlan";
 import { serializeChild } from "@/lib/childView";
+import { PROFILE_VIEW_ENTITY_TYPE } from "@/lib/activityArea";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { role, assignedCategoryId, permissions } = await requireMembership(organizationId);
+    const { userId, role, assignedCategoryId, permissions } = await requireMembership(organizationId);
 
     const child = await db.child.findFirst({
       where: { id: childId, organizationId },
@@ -30,6 +31,30 @@ export async function GET(_req: NextRequest, { params }: Params) {
     // class — never confirm a child exists in a class they can't see.
     if (!child || (role === "TEACHER" && child.categoryId !== assignedCategoryId)) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+
+    // POPIA: record who opened this child's record (shown in the admin-only
+    // Privacy log). At most once per person per child every 10 minutes, so
+    // reloads and saves on the same page don't flood the log.
+    const recent = await db.auditLog.findFirst({
+      where: {
+        organizationId,
+        entityType: PROFILE_VIEW_ENTITY_TYPE,
+        entityId: childId,
+        userId,
+        createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+      },
+      select: { id: true },
+    });
+    if (!recent) {
+      await logAudit({
+        organizationId,
+        userId,
+        action: "child.profile.viewed",
+        entityType: PROFILE_VIEW_ENTITY_TYPE,
+        entityId: childId,
+        metadata: { childName: `${child.firstName} ${child.lastName}` },
+      });
     }
 
     // ID numbers are masked by default everywhere (see reveal-id/route.ts

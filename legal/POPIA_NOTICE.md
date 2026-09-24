@@ -12,8 +12,10 @@ _Last updated: [DATE]_
 ## The short version
 
 Crechely stores information about your school's staff, and information
-your school itself enters about children and their parents/guardians —
-names, contact details, enrolment dates, and payment history.
+your school enters (or asks parents to fill in through the school's online
+forms) about children and their parents/guardians: names, contact details,
+dates of birth, ID numbers, photos (with consent), attendance and payment
+history.
 
 - **Your school is the "responsible party"** under POPIA for the
   children's and parents' data it records — you decide what to record
@@ -27,9 +29,22 @@ names, contact details, enrolment dates, and payment history.
 
 ## What we actually store
 
-Names, contact details (phone/email), enrolment/exit dates, fee amounts,
-and payment history for the children your school enters. We do not
-collect this directly from parents — your school enters it.
+For the children and families your school records:
+
+- names, dates of birth, gender, class, enrolment/exit dates;
+- parent/guardian names, relationships, phone numbers, emails and
+  occupations;
+- ID or birth-certificate numbers (masked on screen, and every reveal is
+  logged);
+- photos of the child and guardians, only where consent is recorded, and
+  ID-document photos uploaded with an online application;
+- daily attendance;
+- fee amounts, payments and statements;
+- forms generated for the child (PDFs).
+
+Your school enters this, or parents fill it in through your school's own
+online forms. Either way it is collected for your school, on your
+school's instructions, not for Crechely.
 
 ## Where it's processed
 

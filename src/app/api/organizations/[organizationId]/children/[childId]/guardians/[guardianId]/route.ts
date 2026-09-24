@@ -5,6 +5,7 @@ import { guardianUpdateSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { maskIdNumber } from "@/lib/idMask";
+import { billingFieldsFromGuardian, pickBillingGuardianId } from "@/lib/billingContact";
 
 type Params = {
   params: Promise<{ organizationId: string; childId: string; guardianId: string }>;
@@ -62,6 +63,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       );
     }
 
+    // If this guardian is the billing contact, the edit carries through to
+    // the fees/reminders contact too -- but only for the fields actually
+    // being changed, so editing (say) an occupation never wipes a phone.
+    const siblings = await db.guardian.findMany({
+      where: { childId, organizationId },
+      orderBy: { createdAt: "asc" },
+    });
+    const wasBilling = pickBillingGuardianId(siblings, existing.child) === guardianId;
+
     const guardian = await db.guardian.update({
       where: { id: guardianId },
       data: {
@@ -76,17 +86,37 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       },
     });
 
+    let billingWarning: string | null = null;
+    if (wasBilling) {
+      const { fields, phoneProblem } = billingFieldsFromGuardian(guardian);
+      const data: Partial<typeof fields> = {};
+      if (body.firstName !== undefined || body.lastName !== undefined) data.parentName = fields.parentName;
+      if (body.email !== undefined) data.parentEmail = fields.parentEmail;
+      if (body.phone !== undefined) {
+        if (phoneProblem) {
+          billingWarning =
+            "Saved. The phone number isn't one reminders can use, so the old billing phone number was kept.";
+        } else {
+          data.parentPhone = fields.parentPhone;
+        }
+      }
+      if (Object.keys(data).length > 0) {
+        await db.child.update({ where: { id: childId }, data });
+      }
+    }
+
     await logAudit({
       organizationId,
       userId,
       action: "guardian.updated",
       entityType: "Guardian",
       entityId: guardian.id,
-      metadata: { childId },
+      metadata: { childId, billingContactUpdated: wasBilling },
     });
 
     return NextResponse.json({
       guardian: { ...guardian, idNumber: maskIdNumber(guardian.idNumber) },
+      billingWarning,
     });
   } catch (err) {
     return handleApiError(err);

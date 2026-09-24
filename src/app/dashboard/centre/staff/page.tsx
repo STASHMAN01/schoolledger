@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { roleLabel } from "@/lib/permissions";
 import { useOrg } from "../../OrgContext";
 import { Badge, Card, EmptyState, LinkButton, PageHeader } from "@/components/ui";
 
@@ -12,14 +13,6 @@ type StaffMember = {
   assignedClass: { id: string; name: string } | null;
 };
 
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: "Admin",
-  ACCOUNTANT: "Accountant",
-  MANAGER: "Manager",
-  VIEWER: "Viewer",
-  TEACHER: "Teacher",
-  RECEPTIONIST: "Receptionist",
-};
 
 export default function StaffPage() {
   const { organizationId, permissions } = useOrg();
@@ -92,7 +85,7 @@ export default function StaffPage() {
                   <p className="truncate text-xs text-muted-foreground">{s.email}</p>
                 </div>
                 {s.assignedClass && <span className="text-xs text-muted-foreground">{s.assignedClass.name}</span>}
-                <Badge variant={s.role === "TEACHER" ? "brand" : "neutral"}>{ROLE_LABEL[s.role] ?? s.role}</Badge>
+                <Badge variant={s.role === "TEACHER" ? "brand" : "neutral"}>{roleLabel(s.role)}</Badge>
               </div>
             ))}
           </Card>

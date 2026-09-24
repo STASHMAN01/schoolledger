@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../../OrgContext";
-import { ACCOUNTING_ENTITY_TYPES } from "@/lib/activityArea";
+import { ACCOUNTING_ENTITY_TYPES, PRIVACY_ACTIONS } from "@/lib/activityArea";
+import { describeAuditAction } from "@/lib/auditLabel";
 import { Badge, Button, Card, EmptyState, PageHeader, Select } from "@/components/ui";
 
 type AuditEntry = {
@@ -64,7 +65,10 @@ const ENTITY_BADGE: Record<string, "brand" | "accent" | "success" | "danger" | "
 // this just renders what the product now calls the thing.
 const ENTITY_LABEL: Record<string, string> = {
   Category: "Class",
+  ChildProfileView: "Child",
 };
+
+const PRIVACY_ACTION_SET = new Set<string>(PRIVACY_ACTIONS);
 
 function describeAction(action: string): string {
   const [, verb] = action.split(".");
@@ -91,7 +95,9 @@ function ActivityRow({ entry }: { entry: AuditEntry }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground">
           <span className="font-medium">{entry.actor ? entry.actor.name : "System"}</span>{" "}
-          {describeAction(entry.action)}
+          {PRIVACY_ACTION_SET.has(entry.action)
+            ? describeAuditAction(entry)
+            : describeAction(entry.action)}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {formatWhen(entry.createdAt)}
@@ -103,7 +109,11 @@ function ActivityRow({ entry }: { entry: AuditEntry }) {
 }
 
 export default function ActivityLogPage() {
-  const { organizationId } = useOrg();
+  const { organizationId, permissions } = useOrg();
+  const canSeePrivacy = permissions.includes("MANAGE_TEAM");
+  // "activity" = changes (Accounting); "privacy" = who viewed children's
+  // records (admin only, POPIA).
+  const [view, setView] = useState<"activity" | "privacy">("activity");
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +130,8 @@ export default function ActivityLogPage() {
     setError(null);
     try {
       const params = new URLSearchParams();
-      params.set("entityTypes", ACCOUNTING_ENTITY_TYPES.join(","));
+      if (view === "privacy") params.set("privacy", "1");
+      else params.set("entityTypes", ACCOUNTING_ENTITY_TYPES.join(","));
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`
@@ -138,7 +149,7 @@ export default function ActivityLogPage() {
     } finally {
       setLoading(false);
     }
-  }, [organizationId, userFilter]);
+  }, [organizationId, userFilter, view]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load + reload when the user filter changes
@@ -150,7 +161,8 @@ export default function ActivityLogPage() {
     setLoadingMore(true);
     try {
       const params = new URLSearchParams({ cursor });
-      params.set("entityTypes", ACCOUNTING_ENTITY_TYPES.join(","));
+      if (view === "privacy") params.set("privacy", "1");
+      else params.set("entityTypes", ACCOUNTING_ENTITY_TYPES.join(","));
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`
@@ -171,6 +183,31 @@ export default function ActivityLogPage() {
         title="Activity log"
         description="A record of changes made in this school's account — payments, children, settings, and more."
       />
+
+      {canSeePrivacy && (
+        <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Which log">
+          <Button
+            size="sm"
+            variant={view === "activity" ? "primary" : "secondary"}
+            onClick={() => setView("activity")}
+          >
+            Changes
+          </Button>
+          <Button
+            size="sm"
+            variant={view === "privacy" ? "primary" : "secondary"}
+            onClick={() => setView("privacy")}
+          >
+            Privacy log
+          </Button>
+        </div>
+      )}
+      {view === "privacy" && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Who opened a child&apos;s record, revealed an ID number or viewed an online
+          application. Only admins can see this.
+        </p>
+      )}
 
       {members.length > 0 && (
         <div className="mb-4">

@@ -97,6 +97,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
           dateOfBirth: child.dateOfBirth,
           gender: child.gender,
           childIdNumber: maskIdNumber(child.childIdNumber),
+          // Who fees & reminders currently go to, for the "also update the
+          // billing contact" tick box on the review page.
+          parentName: child.parentName,
         },
         guardians: child.guardians.map((g) => ({
           id: g.id,

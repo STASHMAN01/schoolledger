@@ -19,9 +19,11 @@ of your school, and you confirm you're authorized to do so.
 
 ## 2. What the Service is (and isn't)
 
-The Service is software that helps a school record categories/classes,
-children, payment plans, payments received, and generate statements. It is
-a record-keeping and billing-tracking tool for your school's own use.
+The Service is software that helps a school run its centre: record its
+classes, children and their parents/guardians, online applications,
+attendance, timetables and forms, as well as payment plans, payments
+received and statements. It is a record-keeping tool for your school's own
+use, and your school decides what is recorded in it.
 
 **It is not**: accounting, tax, or legal advice; a payment processor for
 collecting money from parents (your school still collects fees through
@@ -39,7 +41,8 @@ statements and financial records periodically.
 
 - Your school's account is created by whoever first registers; that person
   becomes the first Admin. Admins can invite other staff and assign them a
-  role (Admin, Accountant, Manager, or Viewer) that controls what they can
+  role (Admin, Accountant, Manager, Teacher, Receptionist or Read-only)
+  that controls what they can
   see and do.
 - You're responsible for who you invite and what role you give them —
   Accountant and Admin roles can record and see financial data; choose
