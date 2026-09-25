@@ -8,6 +8,8 @@ import { TrialBanner } from "./TrialBanner";
 import { MobileMenu, NavBar, UtilityLinks } from "./NavLinks";
 import { ModeSwitch } from "./ModeSwitch";
 import { ErrorCatcher } from "./ErrorCatcher";
+import { TourProvider } from "./TourContext";
+import { TourOverlay } from "./TourOverlay";
 import { hasActiveAccess } from "@/lib/billing/access";
 import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -42,8 +44,13 @@ export default async function DashboardLayout({
         subscriptionStatus: org.subscriptionStatus,
         trialEndsAt: org.trialEndsAt ? org.trialEndsAt.toISOString() : null,
         currencyCode: org.currencyCode,
+        centreTourSeenAt: membership.centreTourSeenAt ? membership.centreTourSeenAt.toISOString() : null,
+        accountingTourSeenAt: membership.accountingTourSeenAt
+          ? membership.accountingTourSeenAt.toISOString()
+          : null,
       }}
     >
+      <TourProvider>
       <div className="min-h-screen bg-background">
         <TrialBanner />
         {/* Two rows (Dylan 23 Sept, "tabs crashing into each other"): mode
@@ -88,7 +95,9 @@ export default async function DashboardLayout({
         </header>
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
         <ErrorCatcher />
+        <TourOverlay />
       </div>
+      </TourProvider>
     </OrgProvider>
   );
 }

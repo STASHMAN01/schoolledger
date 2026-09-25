@@ -23,9 +23,12 @@ type TodoItem = {
 export function TodoList({
   mode,
   variant = "card",
+  tourId,
 }: {
   mode: "centre" | "accounting";
   variant?: "card" | "panel";
+  /** Spotlight target for the guided walkthrough -- see src/lib/tourSteps.ts. */
+  tourId?: string;
 }) {
   const { organizationId } = useOrg();
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -57,7 +60,7 @@ export function TodoList({
   if (variant === "card") {
     if (!loaded || todos.length === 0) return null;
     return (
-      <Card as="div" className="mb-8 p-4">
+      <Card as="div" data-tour={tourId} className="mb-8 p-4">
         <h2 className="font-display mb-3 text-sm font-semibold text-foreground">Your to-dos</h2>
         <TodoRows todos={todos} />
       </Card>
@@ -66,7 +69,7 @@ export function TodoList({
 
   // Panel: always shown, so "nothing to do" is visible too.
   return (
-    <Card as="div" className="flex h-full flex-col overflow-hidden">
+    <Card as="div" data-tour={tourId} className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between gap-3 bg-brand px-4 py-3 text-brand-foreground">
         <h2 className="font-display text-base font-semibold">Your to-do list</h2>
         {total > 0 && (

@@ -247,6 +247,13 @@ model Membership {
   // clears rather than blocking the category's own deletion flow.
   assignedCategoryId String?
   createdAt      DateTime @default(now())
+  // Set the first time this person finishes or skips that mode's guided
+  // walkthrough (or dismisses it) -- null means "never seen it, show it
+  // automatically". A per-user, per-mode timestamp rather than a boolean so
+  // it can double as "when" if that's ever useful, same pattern as
+  // Child.photoConsentAt.
+  centreTourSeenAt     DateTime?
+  accountingTourSeenAt DateTime?
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

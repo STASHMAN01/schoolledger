@@ -808,3 +808,54 @@ per-instance, and the app runs on Vercel serverless in production -- SECURITY.md
 larger one -- encrypting ID numbers and uploaded photos/documents at rest (currently masked at the API layer
 only, plaintext in Postgres). That last one needs Dylan's sign-off on a migration/backfill approach before any
 code is written, per CLAUDE.md.
+
+## First-time guided walkthrough (2026-09-25)
+
+Dylan asked for a step-by-step walkthrough for first-time users, explaining every button/section, with a
+dimmed background and a popover, for both modes. Not in docs/PLAN.md, so scoped with Dylan first
+(AskUserQuestion, all four "Recommended" options): a hand-built overlay component (no new dependency); each
+mode's tour auto-shows once per user then stays available via a "Take a tour" header link; one tour per mode
+covering the key sections/primary actions on that mode's home page (not literally every control app-wide);
+seen/not-seen persisted on the Membership row (needs a migration).
+
+Schema (shown to Dylan, NOT YET APPLIED -- needs `npx prisma db push`):
+```sql
+ALTER TABLE "memberships" ADD COLUMN "centreTourSeenAt" TIMESTAMP(3);
+ALTER TABLE "memberships" ADD COLUMN "accountingTourSeenAt" TIMESTAMP(3);
+```
+Additive, nullable, no backfill needed (null = "hasn't seen it yet").
+
+Shipped:
+- `TourContext`/`TourOverlay` (src/app/dashboard/): a fixed dimmed backdrop with a spotlight cutout (box-shadow
+  technique, no canvas) around the current step's `data-tour="..."` element, a positioned popover (flips
+  above/below, clamps to viewport width for phones), Back/Next/Skip, and Escape/Arrow-key support. Mounted once
+  in dashboard/layout.tsx so it can spotlight header elements (mode switch, nav, Settings, Support) as well as
+  page-body elements (tiles, to-do panel, activity feed).
+- Steps content in `src/lib/tourSteps.ts`: 13 steps for Centre Management, 13 for Accounting -- the mode
+  switch, every home-page tile, the nav links with no tile of their own (Forms; Payments/Classes/Events on the
+  Accounting side), the Settings menu, the to-do panel, recent activity, and Communication/Support.
+- A step whose target isn't in the DOM right now is skipped automatically (not found -> try the next one) --
+  this is what makes the same step list work across roles without duplicating permission logic: a Teacher
+  without VIEW_MONEY simply never sees the Accounting money tiles' steps, same as the tiles themselves.
+- `POST /api/organizations/[organizationId]/tour` marks the caller's own membership's tour seen -- no
+  permission gate, this is a UI preference not data.
+- "Take a tour" link added next to Support in the header (desktop) and the phone menu's "More" group; it
+  navigates to `?tour=1` on that mode's home page, which the page's mount effect picks up to force-start the
+  tour even after it's been seen, then strips the query param.
+
+Known simplification, flagged rather than solved: on a phone, the desktop nav bar and some utility links live
+inside the collapsed ☰ menu, so a few nav/header steps (Forms, Payments, Classes, Events, Settings,
+Communication, Support) won't find their target and get silently skipped there -- the tile/mode-switch/to-do/
+activity steps (the majority of each tour) still show fine on any screen size. Revisit if Dylan wants full
+mobile coverage; would need those nav items rendered (even off-screen) rather than only inside the menu.
+
+Lint, tsc, 75/75 tests and a production build all passed in this session's device shell (unlike every prior
+schema-touching session -- npm install/prisma generate weren't network-restricted here, worth trying again
+before assuming the device bridge will hang).
+
+NOT YET DONE -- blocks this from being live: `npx prisma db push` for the two new columns (dashboard/layout.tsx
+now reads `membership.centreTourSeenAt`/`accountingTourSeenAt` unconditionally, so deploying before the push
+would 500 the dashboard the same way every prior Membership schema change would have). Also no live
+click-through yet (needs a staff login) -- once pushed, take a fresh look as a new user (or someone whose
+tour flags are still null) and confirm both tours open automatically, "Take a tour" replays them, and Skip/Done
+persist correctly.

@@ -5,10 +5,12 @@
 // activity underneath, and the to-do list as a tall panel on the right.
 // Each tile's data is fetched on its own so one failing request never
 // blanks the whole page -- a tile that can't load says so.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOrg } from "../OrgContext";
 import { TodoList } from "../TodoList";
+import { useTour } from "../TourContext";
 import { Tile, TileHeader } from "../DashboardTile";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
@@ -70,7 +72,11 @@ async function getJson<T>(url: string): Promise<T | null> {
 }
 
 export default function CentreManagementHomePage() {
-  const { organizationId, permissions, role } = useOrg();
+  const { organizationId, permissions, role, centreTourSeenAt } = useOrg();
+  const { start } = useTour();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tourTriggered = useRef(false);
   const isTeacher = role === "TEACHER";
   const canSeeAttendance = permissions.includes("MANAGE_ATTENDANCE");
   const canSeeSubmissions = permissions.includes("MANAGE_CHILDREN");
@@ -126,6 +132,18 @@ export default function CentreManagementHomePage() {
     load();
   }, [load]);
 
+  // First-time guided walkthrough: auto-opens once (centreTourSeenAt is
+  // null until it's finished/skipped), or on demand via the header's
+  // "Take a tour" link (?tour=1).
+  useEffect(() => {
+    if (tourTriggered.current) return;
+    const forced = searchParams.get("tour") === "1";
+    if (!forced && centreTourSeenAt) return;
+    tourTriggered.current = true;
+    start("centre");
+    if (forced) router.replace("/dashboard/centre");
+  }, [centreTourSeenAt, searchParams, start, router]);
+
   const active = (children ?? []).filter((c) => !c.archived);
   const enrolledCount = active.filter((c) => !c.exitDate).length;
   const newThisWeekCount = active.filter((c) => new Date(c.enrollmentDate) >= daysAgo(7)).length;
@@ -139,10 +157,16 @@ export default function CentreManagementHomePage() {
         {/* Left: tiles, then activity */}
         <div className="min-w-0">
           <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            <Tile title="Admissions" href="/dashboard/centre/admissions" value={num(children ? newThisWeekCount : null)} hint="New this week" />
+            <Tile
+              title="Admissions"
+              href="/dashboard/centre/admissions"
+              value={num(children ? newThisWeekCount : null)}
+              hint="New this week"
+              tourId="tile-admissions"
+            />
 
             {canSeeAttendance && (
-              <div className="overflow-hidden rounded-xl border border-border bg-surface">
+              <div data-tour="tile-attendance" className="overflow-hidden rounded-xl border border-border bg-surface">
                 <TileHeader title={`Attendance${attendance?.className ? ` · ${attendance.className}` : ""}`} />
                 {loading ? (
                   <p className="font-display p-3 text-2xl font-semibold text-foreground">…</p>
@@ -175,9 +199,16 @@ export default function CentreManagementHomePage() {
                 href="/dashboard/centre/admissions#submissions"
                 value={num(pendingCount)}
                 hint="Waiting for your review"
+                tourId="tile-online-submissions"
               />
             )}
-            <Tile title="Enrolled" href="/dashboard/centre/enrolled" value={num(children ? enrolledCount : null)} hint="By class, gender and age" />
+            <Tile
+              title="Enrolled"
+              href="/dashboard/centre/enrolled"
+              value={num(children ? enrolledCount : null)}
+              hint="By class, gender and age"
+              tourId="tile-enrolled"
+            />
             {canSeeStaff && (
               <Tile
                 title="Staff"
@@ -189,6 +220,7 @@ export default function CentreManagementHomePage() {
                     : "Team, roles and classes"
                 }
                 warn={unassignedTeachers > 0}
+                tourId="tile-staff"
               />
             )}
             <Tile
@@ -200,8 +232,15 @@ export default function CentreManagementHomePage() {
                   ? `Next: ${upcoming.events[0].name} · ${new Date(upcoming.events[0].eventDate).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}`
                   : "Nothing coming up"
               }
+              tourId="tile-upcoming-events"
             />
-            <Tile title="Classes" href="/dashboard/centre/classes" value={num(classCount)} hint="Teachers and age groups" />
+            <Tile
+              title="Classes"
+              href="/dashboard/centre/classes"
+              value={num(classCount)}
+              hint="Teachers and age groups"
+              tourId="tile-classes"
+            />
           </div>
 
           {isTeacher && todayItems !== null && (
@@ -231,7 +270,7 @@ export default function CentreManagementHomePage() {
           )}
 
           {canSeeActivity && (
-            <Card as="div" className="p-4">
+            <Card as="div" data-tour="recent-activity" className="p-4">
               <h2 className="font-display mb-3 text-sm font-semibold text-foreground">Recent centre activity</h2>
               {loading ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
@@ -262,7 +301,7 @@ export default function CentreManagementHomePage() {
         {/* Right: to-do panel (stacks under the tiles on phones) */}
         <aside className="order-first lg:order-none">
           <div className="lg:sticky lg:top-4 lg:min-h-[28rem]">
-            <TodoList mode="centre" variant="panel" />
+            <TodoList mode="centre" variant="panel" tourId="todo-panel" />
           </div>
         </aside>
       </div>

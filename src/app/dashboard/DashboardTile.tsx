@@ -16,9 +16,11 @@ type TileProps = {
   warn?: boolean;
   /** Money and other long values use a slightly smaller number. */
   compact?: boolean;
+  /** Spotlight target for the guided walkthrough -- see src/lib/tourSteps.ts. */
+  tourId?: string;
 } & ({ href: string; onClick?: never; expanded?: never } | { href?: never; onClick: () => void; expanded: boolean });
 
-export function Tile({ title, value, hint, warn, compact, href, onClick, expanded }: TileProps) {
+export function Tile({ title, value, hint, warn, compact, tourId, href, onClick, expanded }: TileProps) {
   const inner = (
     <>
       <TileHeader title={title} />
@@ -36,7 +38,7 @@ export function Tile({ title, value, hint, warn, compact, href, onClick, expande
     "transition-standard block w-full overflow-hidden rounded-xl border bg-surface text-left hover:border-border-strong";
   if (href) {
     return (
-      <Link href={href} className={`${cls} border-border`}>
+      <Link href={href} data-tour={tourId} className={`${cls} border-border`}>
         {inner}
       </Link>
     );
@@ -44,6 +46,7 @@ export function Tile({ title, value, hint, warn, compact, href, onClick, expande
   return (
     <button
       type="button"
+      data-tour={tourId}
       onClick={onClick}
       aria-expanded={expanded}
       className={`${cls} ${expanded ? "border-brand ring-1 ring-brand" : "border-border"}`}
