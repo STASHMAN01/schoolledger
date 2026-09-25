@@ -132,14 +132,23 @@ export const recordPaymentSchema = z.object({
   paymentTypeId: z.string().cuid().optional(),
 });
 
-export const eventSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(120),
-  date: z.coerce.date(),
-  amountCents: moneyCentsSchema.refine((v) => v > 0, "Amount must be greater than zero"),
-  categoryIds: z
-    .array(z.string().cuid())
-    .min(1, "Select at least one class"),
-});
+export const eventSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(120),
+    date: z.coerce.date(),
+    // A free event (a sports day, a photo day) has no amount and never
+    // touches Accounting at all -- isPaid is what actually decides whether
+    // amountCents is used, not just whether it happens to be present.
+    isPaid: z.boolean(),
+    amountCents: moneyCentsSchema.optional(),
+    categoryIds: z
+      .array(z.string().cuid())
+      .min(1, "Select at least one class"),
+  })
+  .refine((v) => !v.isPaid || (v.amountCents !== undefined && v.amountCents > 0), {
+    message: "Amount must be greater than zero for a paid event.",
+    path: ["amountCents"],
+  });
 
 export const checkoutSchema = z.object({
   plan: z.enum(["monthly", "yearly"]),

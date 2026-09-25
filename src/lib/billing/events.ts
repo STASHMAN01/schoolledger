@@ -30,33 +30,38 @@ export async function activeChildrenForEvent(
 }
 
 /**
- * Creates an Event and its dedicated one-time PaymentType, generates a
- * FinancialPlanEntry for every currently-active child in the target
- * categories, and links the two EventCategory rows. Everything happens in
- * one transaction so an Event can never exist half-created (e.g. with a
- * PaymentType but no charges, or charges under a PaymentType that was
- * never actually saved).
+ * Creates an Event, and -- only when it's a paid one (amountCents is not
+ * null) -- its dedicated one-time PaymentType plus a FinancialPlanEntry for
+ * every currently-active child in the target categories. A free event (a
+ * sports day, a photo day) is just a calendar entry: no PaymentType, no
+ * charges, no Accounting footprint at all. Everything happens in one
+ * transaction so a paid event can never exist half-created (e.g. with a
+ * PaymentType but no charges).
  */
 export async function createEventWithCharges(
   tx: Tx,
   organizationId: string,
   userId: string | null,
-  input: { name: string; date: Date; amountCents: number; categoryIds: string[] }
+  input: { name: string; date: Date; amountCents: number | null; categoryIds: string[] }
 ) {
-  const paymentType = await tx.paymentType.create({
-    data: {
-      organizationId,
-      name: input.name,
-      isRecurring: false,
-      defaultAmountCents: input.amountCents,
-      isEventType: true,
-    },
-  });
+  const isPaid = input.amountCents !== null;
+
+  const paymentType = isPaid
+    ? await tx.paymentType.create({
+        data: {
+          organizationId,
+          name: input.name,
+          isRecurring: false,
+          defaultAmountCents: input.amountCents,
+          isEventType: true,
+        },
+      })
+    : null;
 
   const event = await tx.event.create({
     data: {
       organizationId,
-      paymentTypeId: paymentType.id,
+      paymentTypeId: paymentType?.id ?? null,
       name: input.name,
       eventDate: input.date,
       amountCents: input.amountCents,
@@ -66,28 +71,32 @@ export async function createEventWithCharges(
     },
   });
 
-  const children = await activeChildrenForEvent(
-    tx,
-    organizationId,
-    input.categoryIds,
-    input.date
-  );
+  let chargedChildCount = 0;
+  if (isPaid && paymentType) {
+    const children = await activeChildrenForEvent(
+      tx,
+      organizationId,
+      input.categoryIds,
+      input.date
+    );
 
-  for (const child of children) {
-    await tx.financialPlanEntry.create({
-      data: {
-        organizationId,
-        childId: child.id,
-        paymentTypeId: paymentType.id,
-        year: input.date.getUTCFullYear(),
-        month: null,
-        description: input.name,
-        amountDueCents: input.amountCents,
-      },
-    });
-    // A child holding credit gets it applied to the new charge straight
-    // away, same rule as the annual plan (final inspection B4).
-    await sweepCreditIntoOutstanding(tx, organizationId, child.id, userId);
+    for (const child of children) {
+      await tx.financialPlanEntry.create({
+        data: {
+          organizationId,
+          childId: child.id,
+          paymentTypeId: paymentType.id,
+          year: input.date.getUTCFullYear(),
+          month: null,
+          description: input.name,
+          amountDueCents: input.amountCents!,
+        },
+      });
+      // A child holding credit gets it applied to the new charge straight
+      // away, same rule as the annual plan (final inspection B4).
+      await sweepCreditIntoOutstanding(tx, organizationId, child.id, userId);
+    }
+    chargedChildCount = children.length;
   }
 
   await logAudit({
@@ -96,8 +105,8 @@ export async function createEventWithCharges(
     action: "event.created",
     entityType: "Event",
     entityId: event.id,
-    metadata: { name: input.name, chargedChildCount: children.length },
+    metadata: { name: input.name, chargedChildCount, isPaid },
   });
 
-  return { event, paymentType, chargedChildCount: children.length };
+  return { event, chargedChildCount, isPaid };
 }

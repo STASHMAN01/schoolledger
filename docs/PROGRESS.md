@@ -859,3 +859,46 @@ would 500 the dashboard the same way every prior Membership schema change would 
 click-through yet (needs a staff login) -- once pushed, take a fresh look as a new user (or someone whose
 tour flags are still null) and confirm both tours open automatically, "Take a tour" replays them, and Skip/Done
 persist correctly.
+
+## Events: free vs. paid, and Centre can now create them (2026-09-25)
+
+Dylan asked for a calendar date picker (the existing native date input already renders one) and a "is this
+paid" tick box on Events, in both modes -- unticked, it never touches Accounting; ticked, an amount is required
+and it charges children same as before. Previously every Event was implicitly paid (amountCents/paymentTypeId
+were required columns) and Centre's Events page was read-only, redirecting all creation to Accounting.
+
+Schema (shown to Dylan, NOT YET APPLIED -- needs `npx prisma db push`):
+```sql
+ALTER TABLE "events" ALTER COLUMN "paymentTypeId" DROP NOT NULL;
+ALTER TABLE "events" ALTER COLUMN "amountCents" DROP NOT NULL;
+```
+Both columns already exist; this only relaxes NOT NULL. No data loss -- every existing event keeps its
+paymentTypeId/amountCents exactly as-is (they just become "always non-null for this row" instead of
+"required by the schema").
+
+Shipped:
+- `createEventWithCharges` (src/lib/billing/events.ts) only creates a PaymentType and FinancialPlanEntry rows
+  when `amountCents` is non-null. A free event is just an Event row + its EventCategory links -- no billing
+  footprint anywhere.
+- `eventSchema` gained `isPaid: boolean`; `amountCents` is required only when `isPaid` is true (zod `.refine`).
+- `POST .../events` now also requires VIEW_MONEY when `isPaid` is true, on top of the existing MANAGE_EVENTS --
+  entering an amount is money, whichever mode the request came from. Enforced server-side, not just hidden in
+  the form.
+- New shared `EventForm` (src/app/dashboard/EventForm.tsx), used by both Accounting and Centre's Events pages:
+  name, date, classes, and (only rendered for someone with VIEW_MONEY) a "this event has a fee" tick box that
+  reveals the amount field. One form, one place the create logic lives, instead of duplicating it per mode.
+- Centre Management > Events (previously read-only, gated behind VIEW_MONEY + VIEW_ACCOUNTING just to see the
+  page) now shows the create form to anyone with MANAGE_EVENTS, independent of VIEW_MONEY -- a Receptionist or
+  Teacher who somehow has MANAGE_EVENTS (not a default for either role today) can create free events without
+  ever seeing money; only VIEW_MONEY unlocks the fee tick box. The per-child charge breakdown for a paid event
+  still lives only in Accounting -- Centre's list links through to it (as before) only when the event is paid
+  and the viewer has VIEW_MONEY + VIEW_ACCOUNTING; a free event has nothing to break down.
+- Accounting's Events list/detail pages show a "Free event" badge and skip the collected/outstanding columns
+  and the per-child charge table for a free event, instead of a broken/empty money view.
+- `events/upcoming` (Centre's money-free list) now always includes `isPaid` (not a money figure, just whether
+  one exists) alongside the existing VIEW_MONEY-gated `amountCents`.
+- Audit label for `event.created` now says "(free)" instead of the misleading "(charged 0 children)" for a
+  free event.
+
+Lint, tsc, 75/75 tests and a production build all passed. NOT YET DONE -- blocks this from being live: the
+`ALTER COLUMN` migration above, and a live click-through creating one free and one paid event from each mode.

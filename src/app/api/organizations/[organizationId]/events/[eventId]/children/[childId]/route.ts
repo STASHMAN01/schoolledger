@@ -24,6 +24,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!event) {
       return NextResponse.json({ error: "Event not found." }, { status: 404 });
     }
+    // A free event has no PaymentType at all, so nothing was ever charged --
+    // there's no entry to remove.
+    if (!event.paymentTypeId) {
+      return NextResponse.json(
+        { error: "That child is not part of this event." },
+        { status: 404 }
+      );
+    }
 
     const entry = await db.financialPlanEntry.findFirst({
       where: { organizationId, childId, paymentTypeId: event.paymentTypeId },

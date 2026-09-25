@@ -21,7 +21,8 @@ type EventDetail = {
   id: string;
   name: string;
   eventDate: string;
-  amountCents: number;
+  isPaid: boolean;
+  amountCents: number | null;
   categories: { id: string; name: string }[];
   entries: Entry[];
 };
@@ -91,60 +92,70 @@ export default function EventDetailPage() {
       <h1 className="font-display mb-1 text-2xl font-semibold text-foreground">{event.name}</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         {formatDateZA(event.eventDate)} ·{" "}
-        {formatCents(event.amountCents, currencyCode)} per child ·{" "}
+        {event.isPaid && event.amountCents !== null
+          ? `${formatCents(event.amountCents, currencyCode)} per child · `
+          : "Free event · "}
         {event.categories.map((c) => c.name).join(", ")}
       </p>
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
-      <Card className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-background text-left">
-            <tr>
-              <th className="px-3 py-2 text-muted-foreground">Child</th>
-              <th className="px-3 py-2 text-muted-foreground">Due</th>
-              <th className="px-3 py-2 text-muted-foreground">Paid</th>
-              <th className="px-3 py-2 text-muted-foreground">Status</th>
-              {canManage && <th className="px-3 py-2"></th>}
-            </tr>
-          </thead>
-          <tbody>
-            {event.entries.map((entry) => (
-              <tr key={entry.id} className="border-t border-border">
-                <td className="px-3 py-2 text-foreground">
-                  {entry.child.firstName} {entry.child.lastName}
-                </td>
-                <td className="px-3 py-2 text-foreground">
-                  {formatCents(entry.amountDueCents, currencyCode)}
-                </td>
-                <td className="px-3 py-2 text-foreground">
-                  {formatCents(entry.amountPaidCents, currencyCode)}
-                </td>
-                <td className="px-3 py-2 text-foreground">{entry.status}</td>
-                {canManage && (
-                  <td className="px-3 py-2 text-right">
-                    {entry.amountPaidCents === 0 ? (
-                      <button
-                        onClick={() => removeChild(entry.child.id)}
-                        disabled={removingId === entry.child.id}
-                        className="transition-standard text-xs text-danger underline disabled:opacity-50"
-                      >
-                        {removingId === entry.child.id ? "Removing..." : "Remove"}
-                      </button>
-                    ) : (
-                      <span className="text-xs text-muted">Paid — can&apos;t remove</span>
-                    )}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-      {event.entries.length === 0 && (
-        <p className="mt-4 text-sm text-muted-foreground">
-          No children were charged for this event.
+      {!event.isPaid ? (
+        <p className="text-sm text-muted-foreground">
+          This is a free event — nothing was charged, so there&apos;s nothing to show here.
         </p>
+      ) : (
+        <>
+          <Card className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-background text-left">
+                <tr>
+                  <th className="px-3 py-2 text-muted-foreground">Child</th>
+                  <th className="px-3 py-2 text-muted-foreground">Due</th>
+                  <th className="px-3 py-2 text-muted-foreground">Paid</th>
+                  <th className="px-3 py-2 text-muted-foreground">Status</th>
+                  {canManage && <th className="px-3 py-2"></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {event.entries.map((entry) => (
+                  <tr key={entry.id} className="border-t border-border">
+                    <td className="px-3 py-2 text-foreground">
+                      {entry.child.firstName} {entry.child.lastName}
+                    </td>
+                    <td className="px-3 py-2 text-foreground">
+                      {formatCents(entry.amountDueCents, currencyCode)}
+                    </td>
+                    <td className="px-3 py-2 text-foreground">
+                      {formatCents(entry.amountPaidCents, currencyCode)}
+                    </td>
+                    <td className="px-3 py-2 text-foreground">{entry.status}</td>
+                    {canManage && (
+                      <td className="px-3 py-2 text-right">
+                        {entry.amountPaidCents === 0 ? (
+                          <button
+                            onClick={() => removeChild(entry.child.id)}
+                            disabled={removingId === entry.child.id}
+                            className="transition-standard text-xs text-danger underline disabled:opacity-50"
+                          >
+                            {removingId === entry.child.id ? "Removing..." : "Remove"}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted">Paid — can&apos;t remove</span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+          {event.entries.length === 0 && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              No children were charged for this event.
+            </p>
+          )}
+        </>
       )}
     </div>
   );

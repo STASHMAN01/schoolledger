@@ -701,15 +701,18 @@ model PaymentType {
 model Event {
   id             String   @id @default(cuid())
   organizationId String
-  paymentTypeId  String   @unique
+  // Null for a free event -- no PaymentType, no charges, no billing
+  // footprint at all. Non-null (and amountCents non-null) for a paid one,
+  // same as before this field became optional.
+  paymentTypeId  String?  @unique
   name           String
   eventDate      DateTime
-  amountCents    Int
+  amountCents    Int?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  paymentType  PaymentType     @relation(fields: [paymentTypeId], references: [id])
+  paymentType  PaymentType?    @relation(fields: [paymentTypeId], references: [id])
   categories   EventCategory[]
 
   @@index([organizationId])

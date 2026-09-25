@@ -146,6 +146,7 @@ export function describeAuditAction(row: AuditRow): string {
     case "financialPlan.cancelledAfterExit":
       return "cancelled future charges after a child's exit";
     case "event.created": {
+      if (!m.isPaid) return `created event "${m.name ?? ""}" (free)`;
       const count = typeof m.chargedChildCount === "number" ? m.chargedChildCount : 0;
       return `created event "${m.name ?? ""}" (charged ${count} ${count === 1 ? "child" : "children"})`;
     }
