@@ -12,7 +12,7 @@ type Tx = Prisma.TransactionClient;
  * *specific* recurring PaymentType (e.g. an Aftercare category billing
  * under the Aftercare type instead) — flagged in PHASES.md.
  */
-async function getPrimaryRecurringPaymentType(tx: Tx, organizationId: string) {
+export async function getPrimaryRecurringPaymentType(tx: Tx, organizationId: string) {
   const type = await tx.paymentType.findFirst({
     where: { organizationId, isRecurring: true, active: true },
     orderBy: { createdAt: "asc" },
@@ -36,7 +36,7 @@ async function getRegistrationPaymentType(tx: Tx, organizationId: string) {
   });
 }
 
-function monthlyFeeForChild(child: Pick<Child, "feeOverrideCents">, category: Pick<Category, "monthlyFeeCents">) {
+export function monthlyFeeForChild(child: Pick<Child, "feeOverrideCents">, category: Pick<Category, "monthlyFeeCents">) {
   return child.feeOverrideCents ?? category.monthlyFeeCents ?? 0;
 }
 
@@ -109,7 +109,10 @@ export async function generateAnnualPlanForChild(
   child: Child,
   category: Category,
   year: number,
-  userId?: string | null
+  userId?: string | null,
+  // false when filling in months after an edit (Edit details, 25 Sept):
+  // editing must never add a Registration charge that wasn't there.
+  includeRegistration = true
 ) {
   const recurringType = await getPrimaryRecurringPaymentType(tx, organizationId);
   const monthlyFee = monthlyFeeForChild(child, category);
@@ -143,7 +146,7 @@ export async function generateAnnualPlanForChild(
     });
   }
 
-  const registrationType = await getRegistrationPaymentType(tx, organizationId);
+  const registrationType = includeRegistration ? await getRegistrationPaymentType(tx, organizationId) : null;
   if (registrationType) {
     const alreadyCharged = await tx.financialPlanEntry.findFirst({
       where: { organizationId, childId: child.id, paymentTypeId: registrationType.id },

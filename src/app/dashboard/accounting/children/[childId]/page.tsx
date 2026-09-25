@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useOrg } from "../../../OrgContext";
 import { Card, Input } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
+import { EditChildDetails } from "@/components/EditChildDetails";
+import { formatDateZA } from "@/lib/date";
 
 type Entry = {
   id: string;
@@ -24,6 +26,12 @@ type ChildDetail = {
   lastName: string;
   parentName: string;
   category: { name: string };
+  categoryId: string;
+  enrollmentDate: string;
+  exitDate: string | null;
+  feeOverrideCents: number | null;
+  childIdNumber: string | null;
+  parentIdNumber: string | null;
   creditBalance: { amountCents: number } | null;
   planEntries: Entry[];
 };
@@ -43,7 +51,7 @@ const statusColor: Record<string, string> = {
 };
 
 export default function ChildDetailPage() {
-  const { organizationId, currencyCode, permissions } = useOrg();
+  const { organizationId, currencyCode, permissions, role } = useOrg();
   const canViewMoney = permissions.includes("VIEW_MONEY");
   const params = useParams<{ childId: string }>();
   const [child, setChild] = useState<ChildDetail | null>(null);
@@ -168,9 +176,23 @@ export default function ChildDetailPage() {
       <h1 className="font-display mt-2 mb-1 text-2xl font-semibold text-foreground">
         {child.firstName} {child.lastName}
       </h1>
-      <p className="mb-6 text-sm text-muted-foreground">
+      <p className="mb-4 text-sm text-muted-foreground">
         {child.category.name} · Parent/guardian: {child.parentName}
+        {child.exitDate ? ` · left ${formatDateZA(child.exitDate)}` : ""}
       </p>
+
+      {permissions.includes("MANAGE_CHILDREN") && (
+        <div className="mb-6">
+          <EditChildDetails
+            organizationId={organizationId}
+            child={child}
+            canViewMoney={canViewMoney}
+            canChangeDates={role !== "TEACHER"}
+            currencyCode={currencyCode}
+            onSaved={load}
+          />
+        </div>
+      )}
 
       {/* Three small totals side by side, also on phones (mobile pass). */}
       <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">

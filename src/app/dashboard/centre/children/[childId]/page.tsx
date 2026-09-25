@@ -12,6 +12,8 @@ import { Badge, Button, Card, Input, Label, PageHeader, Select } from "@/compone
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { FORM_TYPES, FORM_TYPE_LABELS, MONEY_FORM_TYPES, type FormType } from "@/lib/forms/types";
 import { pickBillingGuardianId } from "@/lib/billingContact";
+import { EditChildDetails } from "@/components/EditChildDetails";
+import { formatDateZA } from "@/lib/date";
 
 type ParentFormLinkRow = {
   id: string;
@@ -45,6 +47,10 @@ type ChildProfile = {
   firstName: string;
   lastName: string;
   category: { name: string };
+  categoryId: string;
+  enrollmentDate: string;
+  exitDate: string | null;
+  feeOverrideCents?: number | null;
   dateOfBirth: string | null;
   gender: "MALE" | "FEMALE" | "OTHER" | null;
   photoImage: string | null;
@@ -219,7 +225,7 @@ function GuardianCard({
 }
 
 export default function ChildProfilePage() {
-  const { organizationId } = useOrg();
+  const { organizationId, role, currencyCode } = useOrg();
   const canManage = useHasPermission("MANAGE_CHILDREN");
   const params = useParams<{ childId: string }>();
   const childId = params.childId;
@@ -476,8 +482,21 @@ export default function ChildProfilePage() {
     <div className="animate-in">
       <PageHeader
         title={`${child.firstName} ${child.lastName}`}
-        description={child.category.name}
+        description={`${child.category.name}${child.exitDate ? ` · left ${formatDateZA(child.exitDate)}` : ""}`}
       />
+
+      {canManage && (
+        <div className="mb-6">
+          <EditChildDetails
+            organizationId={organizationId}
+            child={child}
+            canViewMoney={canViewMoney}
+            canChangeDates={role !== "TEACHER"}
+            currencyCode={currencyCode}
+            onSaved={load}
+          />
+        </div>
+      )}
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
@@ -551,8 +570,7 @@ export default function ChildProfilePage() {
             />
             <p className="text-xs text-muted-foreground">
               Masked by default. Every reveal is recorded in the activity log.
-              To add or change one, use Accounting → Children (this page doesn&apos;t
-              edit them yet).
+              To add or change one, use &ldquo;Edit details&rdquo; at the top of this page.
             </p>
           </div>
         </Card>

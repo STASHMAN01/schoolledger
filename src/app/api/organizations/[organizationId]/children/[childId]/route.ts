@@ -4,7 +4,12 @@ import { requireMembership } from "@/lib/tenant";
 import { childSchema, childProfileSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { cancelEntriesAfterExit } from "@/lib/billing/financialPlan";
+import {
+  generateAnnualPlanForChild,
+  getPrimaryRecurringPaymentType,
+  monthlyFeeForChild,
+} from "@/lib/billing/financialPlan";
+import { planAdjustments, summariseAdjustments, ymFromDate } from "@/lib/billing/planAdjust";
 import { serializeChild } from "@/lib/childView";
 import { PROFILE_VIEW_ENTITY_TYPE } from "@/lib/activityArea";
 
@@ -118,22 +123,71 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       );
     }
 
-    if (body.categoryId) {
-      const category = await db.category.findFirst({
-        where: { id: body.categoryId, organizationId, deletedAt: null },
-      });
-      if (!category) {
-        return NextResponse.json(
-          { error: "Class not found." },
-          { status: 400 }
-        );
-      }
+    // Start and leaving dates decide which months are billed, so a teacher
+    // (scoped to one class, no billing role) can't change them.
+    const startChanged =
+      body.enrollmentDate !== undefined && body.enrollmentDate.getTime() !== existing.enrollmentDate.getTime();
+    const exitChanged =
+      body.exitDate !== undefined && (body.exitDate?.getTime() ?? null) !== (existing.exitDate?.getTime() ?? null);
+    if (role === "TEACHER" && (startChanged || exitChanged)) {
+      return NextResponse.json(
+        { error: "Only the office can change a child's start or leaving date." },
+        { status: 403 }
+      );
     }
 
-    const exitDateChanged =
-      body.exitDate !== undefined &&
-      body.exitDate !== null &&
-      body.exitDate.getTime() !== existing.exitDate?.getTime();
+    const oldCategory = await db.category.findFirst({ where: { id: existing.categoryId, organizationId } });
+    const newCategory = body.categoryId
+      ? await db.category.findFirst({ where: { id: body.categoryId, organizationId, deletedAt: null } })
+      : oldCategory;
+    if (!newCategory || !oldCategory) {
+      return NextResponse.json({ error: "Class not found." }, { status: 400 });
+    }
+
+    const newStart = body.enrollmentDate ?? existing.enrollmentDate;
+    const newExit = body.exitDate === undefined ? existing.exitDate : body.exitDate;
+    if (newExit && newExit.getTime() < newStart.getTime()) {
+      return NextResponse.json(
+        { error: "The leaving date can't be before the start date." },
+        { status: 400 }
+      );
+    }
+
+    // What this edit does to the monthly fee charges (lib/billing/planAdjust.ts).
+    const oldFee = monthlyFeeForChild(existing, oldCategory);
+    const newFee = monthlyFeeForChild(
+      { feeOverrideCents: body.feeOverrideCents === undefined ? existing.feeOverrideCents : body.feeOverrideCents },
+      newCategory
+    );
+    const feeChanged = newFee !== oldFee;
+    const datesChanged = startChanged || exitChanged;
+    const recurringType =
+      feeChanged || datesChanged ? await getPrimaryRecurringPaymentType(db, organizationId) : null;
+    const adjustments = recurringType
+      ? planAdjustments({
+          entries: await db.financialPlanEntry.findMany({
+            where: { organizationId, childId, paymentTypeId: recurringType.id },
+          }),
+          recurringTypeId: recurringType.id,
+          today: ymFromDate(new Date()),
+          newFeeCents: newFee,
+          start: ymFromDate(newStart),
+          exit: newExit ? ymFromDate(newExit) : null,
+          feeChanged,
+          datesChanged,
+        })
+      : [];
+
+    // "?preview=1": say what would change, without changing anything.
+    if (req.nextUrl.searchParams.get("preview") === "1") {
+      return NextResponse.json({
+        preview: {
+          ...summariseAdjustments(adjustments),
+          feeChanged,
+          ...(canViewMoney ? { oldFeeCents: oldFee, newFeeCents: newFee } : {}),
+        },
+      });
+    }
 
     const child = await db.$transaction(async (tx) => {
       const updated = await tx.child.update({
@@ -147,6 +201,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           parentEmail: body.parentEmail === undefined ? undefined : body.parentEmail,
           enrollmentDate: body.enrollmentDate ?? undefined,
           exitDate: body.exitDate === undefined ? undefined : body.exitDate,
+          // ID numbers: a new value replaces the old one; blank leaves it.
+          childIdNumber: body.childIdNumber ?? undefined,
+          parentIdNumber: body.parentIdNumber ?? undefined,
           feeOverrideCents:
             body.feeOverrideCents === undefined ? undefined : body.feeOverrideCents,
           dateOfBirth:
@@ -163,26 +220,60 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         },
       });
 
-      if (exitDateChanged && updated.exitDate) {
-        await cancelEntriesAfterExit(
+      for (const u of adjustments) {
+        // Guarded: only applies if the charge is still exactly as it was
+        // read (unpaid / still cancelled), so a payment recorded at the
+        // same moment is never overwritten.
+        await tx.financialPlanEntry.updateMany({
+          where: {
+            id: u.id,
+            organizationId,
+            ...(u.kind === "restored" ? { status: "CANCELLED" } : { amountPaidCents: 0 }),
+          },
+          data: { status: u.status, ...(u.amountDueCents !== undefined ? { amountDueCents: u.amountDueCents } : {}) },
+        });
+      }
+      // Fill in this year's months that are now inside the enrolled
+      // period but were never created (e.g. an earlier start date), and
+      // let any credit settle the new amounts. Never adds Registration.
+      if (feeChanged || datesChanged) {
+        await generateAnnualPlanForChild(
           tx,
           organizationId,
-          childId,
-          updated.exitDate,
-          userId
+          updated,
+          newCategory,
+          new Date().getUTCFullYear(),
+          userId,
+          false
         );
       }
 
       return updated;
     });
 
+    const changedFields = Object.keys(rawBody ?? {}).filter((k) => k !== "childIdNumber" && k !== "parentIdNumber");
     await logAudit({
       organizationId,
       userId,
       action: "child.updated",
       entityType: "Child",
       entityId: child.id,
+      metadata: {
+        fields: changedFields,
+        ...(adjustments.length > 0 ? { feeCharges: summariseAdjustments(adjustments) } : {}),
+      },
     });
+    if (body.childIdNumber || body.parentIdNumber) {
+      // Never the numbers themselves -- just that they changed.
+      await logAudit({
+        organizationId,
+        userId,
+        action: "child.idNumber.changed",
+        entityType: "Child",
+        entityId: child.id,
+        metadata: { child: Boolean(body.childIdNumber), parent: Boolean(body.parentIdNumber) },
+      });
+    }
 
     return NextResponse.json({ child: serializeChild(child, canViewMoney) });
   } catch (err) {

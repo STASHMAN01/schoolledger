@@ -56,6 +56,8 @@ export function describeAuditAction(row: AuditRow): string {
       return "removed a guardian";
     case "child.idNumber.revealed":
       return `viewed a masked ID number`;
+    case "child.idNumber.changed":
+      return "changed a child's ID number";
     case "child.billingContact.changed":
       return "changed who gets a child's fees and reminders";
     case "child.profile.viewed":

@@ -774,3 +774,12 @@ profile-view logging, wording audit, lawyer-reviewed operator agreement).
 - Phones: children list, payment history and a child's charges show as cards instead of tables that ran off the screen; a child's three totals sit side by side; bigger tap targets for Archive/Delete/Approve/Cancel, joint-statement and "show archived" checkboxes, and breakdown rows.
 - Dates everywhere in the dashboard now read "24 Sept 2026" (new formatDateZA in lib/date.ts) instead of 9/24/2026.
 - Dashboard API activity items now include entityType (for the badge). No schema change.
+
+## Edit child details -- 25 Sept 2026
+- Found: after a child was added, nothing in the app could change their name, class, start/leaving date, own fee or ID numbers (the Accounting child page had no edit form; the Centre profile pointed to it). The child PATCH route also ignored ID numbers and never repriced future fees on a class/fee change.
+- New "Edit details" (src/components/EditChildDetails.tsx) on BOTH the Accounting child page and the Centre profile (one record, so both always match). Fee field only for VIEW_MONEY; class and dates not for teachers (also enforced server-side).
+- Fee-safe rules in lib/billing/planAdjust.ts (+8 tests): only unpaid monthly school-fee charges change; new fee applies from this month on; dates outside the enrolled period cancel unpaid months; moving dates back brings cancelled months back; paid/part-paid months, earlier months, registration and events never change; a name/ID-only edit touches no charges. Updates are guarded so a payment recorded at the same moment is never overwritten.
+- Fee changes are previewed first ("3 unpaid monthly charges from this month on will change from R2,200 to R2,500") and only saved after "Yes, save these changes" (PATCH ?preview=1).
+- ID numbers: typing a new one replaces it (blank keeps it); logged as "changed a child's ID number" without the number.
+- generateAnnualPlanForChild gained includeRegistration (false for edits, so an edit never adds a Registration charge). No schema change.
+- FLAG for Dylan: nothing creates the NEXT year's monthly fees for children already enrolled (fees are only generated when a child is added). Needs a year-rollover before January 2027.
