@@ -44,15 +44,14 @@ export default function BackupPage() {
     setCopied(false);
     try {
       const res = await fetch(`/api/organizations/${organizationId}/export`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setError(data.error ?? "The backup could not be created. Please try again.");
         return;
       }
-      const pw = res.headers.get("X-Export-Password");
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "crechely-backup.zip";
-      const blob = await res.blob();
+      const filename = data.filename ?? "crechely-backup.zip";
+      const bytes = Uint8Array.from(atob(data.zipBase64), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/zip" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -61,7 +60,7 @@ export default function BackupPage() {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      setPassword(pw);
+      setPassword(data.password ?? null);
       loadRecent();
     } catch {
       setError("The backup could not be created. Please check your connection and try again.");

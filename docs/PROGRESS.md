@@ -783,3 +783,28 @@ profile-view logging, wording audit, lawyer-reviewed operator agreement).
 - ID numbers: typing a new one replaces it (blank keeps it); logged as "changed a child's ID number" without the number.
 - generateAnnualPlanForChild gained includeRegistration (false for edits, so an edit never adds a Registration charge). No schema change.
 - FLAG for Dylan: nothing creates the NEXT year's monthly fees for children already enrolled (fees are only generated when a child is added). Needs a year-rollover before January 2027.
+
+## Security pass, item 1 (lowest-risk) -- backup password out of a response header (2026-09-25)
+
+Ran a security review against SECURITY.md and PROGRESS.md's own open items, prioritized lowest-risk first per
+Dylan's request. First fix: the full-backup ZIP's one-time password was returned in a custom response header
+(`X-Export-Password`) alongside the binary ZIP body -- flagged open as N5 in Fix session D. A response header is
+more likely to be captured by intermediate logging/observability tooling than a JSON body field, and this is the
+one place in the app a raw, usable secret (the export password) leaves the server, so it's worth closing even
+though nothing indicated it was actually being logged anywhere.
+
+Changed `/api/organizations/[organizationId]/export` to return JSON (`{ password, filename, zipBase64 }`)
+instead of a binary body + header; the backup page decodes the base64 client-side into the same downloadable
+blob as before. No schema change, no new dependency, no behavior change visible to the user (same button, same
+one-time password display, same download).
+
+Note for future sessions: this device shell was NOT network-restricted -- `npm install`, `npx prisma generate`,
+`npm run lint`, `npm test` (75/75) and `npm run build` all completed successfully here, unlike every prior
+schema-touching session logged above. Worth trying the full local-verification loop again before assuming it'll
+hang.
+
+Next up (gradually increasing risk, per Dylan): shared/persistent rate limiting (currently in-memory,
+per-instance, and the app runs on Vercel serverless in production -- SECURITY.md's own caveat), then the
+larger one -- encrypting ID numbers and uploaded photos/documents at rest (currently masked at the API layer
+only, plaintext in Postgres). That last one needs Dylan's sign-off on a migration/backfill approach before any
+code is written, per CLAUDE.md.
