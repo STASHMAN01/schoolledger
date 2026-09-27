@@ -29,13 +29,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
     });
 
     const summarized = events.map((e) => {
-      const entries = e.paymentType.planEntries;
+      const entries = e.paymentType?.planEntries ?? [];
       const totalDueCents = entries.reduce((sum, en) => sum + en.amountDueCents, 0);
       const totalPaidCents = entries.reduce((sum, en) => sum + en.amountPaidCents, 0);
       return {
         id: e.id,
         name: e.name,
         eventDate: e.eventDate,
+        isPaid: e.amountCents !== null,
         amountCents: e.amountCents,
         categories: e.categories.map((c) => c.category),
         childCount: entries.length,
@@ -54,11 +55,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    // Events move money, so MANAGE_EVENTS (default ADMIN/ACCOUNTANT only)
-    // is deliberately narrower than MANAGE_CLASSES/MANAGE_CHILDREN.
-    const { userId } = await requireMembership(organizationId, "MANAGE_EVENTS");
+    // Creating an event (free or paid) needs MANAGE_EVENTS. A *paid* one
+    // additionally needs VIEW_MONEY -- entering an amount is money, even
+    // when the form it came from is Centre Management's.
+    const { userId, permissions } = await requireMembership(organizationId, "MANAGE_EVENTS");
 
     const body = eventSchema.parse(await req.json());
+    if (body.isPaid && !permissions.includes("VIEW_MONEY")) {
+      return NextResponse.json(
+        { error: "You don't have permission to create a paid event." },
+        { status: 403 }
+      );
+    }
 
     const categories = await db.category.findMany({
       where: { id: { in: body.categoryIds }, organizationId, archived: false },
@@ -74,7 +82,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       createEventWithCharges(tx, organizationId, userId, {
         name: body.name,
         date: body.date,
-        amountCents: body.amountCents,
+        amountCents: body.isPaid ? (body.amountCents ?? null) : null,
         categoryIds: body.categoryIds,
       })
     );

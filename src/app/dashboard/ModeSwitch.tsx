@@ -49,6 +49,7 @@ export function ModeSwitch() {
     <div
       role="tablist"
       aria-label="Mode"
+      data-tour="mode-switch"
       className="flex shrink-0 items-center gap-0.5 rounded-lg border border-border bg-background p-0.5 text-sm"
     >
       <button

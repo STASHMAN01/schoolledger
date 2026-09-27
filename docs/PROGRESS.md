@@ -783,3 +783,122 @@ profile-view logging, wording audit, lawyer-reviewed operator agreement).
 - ID numbers: typing a new one replaces it (blank keeps it); logged as "changed a child's ID number" without the number.
 - generateAnnualPlanForChild gained includeRegistration (false for edits, so an edit never adds a Registration charge). No schema change.
 - FLAG for Dylan: nothing creates the NEXT year's monthly fees for children already enrolled (fees are only generated when a child is added). Needs a year-rollover before January 2027.
+
+## Security pass, item 1 (lowest-risk) -- backup password out of a response header (2026-09-25)
+
+Ran a security review against SECURITY.md and PROGRESS.md's own open items, prioritized lowest-risk first per
+Dylan's request. First fix: the full-backup ZIP's one-time password was returned in a custom response header
+(`X-Export-Password`) alongside the binary ZIP body -- flagged open as N5 in Fix session D. A response header is
+more likely to be captured by intermediate logging/observability tooling than a JSON body field, and this is the
+one place in the app a raw, usable secret (the export password) leaves the server, so it's worth closing even
+though nothing indicated it was actually being logged anywhere.
+
+Changed `/api/organizations/[organizationId]/export` to return JSON (`{ password, filename, zipBase64 }`)
+instead of a binary body + header; the backup page decodes the base64 client-side into the same downloadable
+blob as before. No schema change, no new dependency, no behavior change visible to the user (same button, same
+one-time password display, same download).
+
+Note for future sessions: this device shell was NOT network-restricted -- `npm install`, `npx prisma generate`,
+`npm run lint`, `npm test` (75/75) and `npm run build` all completed successfully here, unlike every prior
+schema-touching session logged above. Worth trying the full local-verification loop again before assuming it'll
+hang.
+
+Next up (gradually increasing risk, per Dylan): shared/persistent rate limiting (currently in-memory,
+per-instance, and the app runs on Vercel serverless in production -- SECURITY.md's own caveat), then the
+larger one -- encrypting ID numbers and uploaded photos/documents at rest (currently masked at the API layer
+only, plaintext in Postgres). That last one needs Dylan's sign-off on a migration/backfill approach before any
+code is written, per CLAUDE.md.
+
+## First-time guided walkthrough (2026-09-25)
+
+Dylan asked for a step-by-step walkthrough for first-time users, explaining every button/section, with a
+dimmed background and a popover, for both modes. Not in docs/PLAN.md, so scoped with Dylan first
+(AskUserQuestion, all four "Recommended" options): a hand-built overlay component (no new dependency); each
+mode's tour auto-shows once per user then stays available via a "Take a tour" header link; one tour per mode
+covering the key sections/primary actions on that mode's home page (not literally every control app-wide);
+seen/not-seen persisted on the Membership row (needs a migration).
+
+Schema (shown to Dylan, NOT YET APPLIED -- needs `npx prisma db push`):
+```sql
+ALTER TABLE "memberships" ADD COLUMN "centreTourSeenAt" TIMESTAMP(3);
+ALTER TABLE "memberships" ADD COLUMN "accountingTourSeenAt" TIMESTAMP(3);
+```
+Additive, nullable, no backfill needed (null = "hasn't seen it yet").
+
+Shipped:
+- `TourContext`/`TourOverlay` (src/app/dashboard/): a fixed dimmed backdrop with a spotlight cutout (box-shadow
+  technique, no canvas) around the current step's `data-tour="..."` element, a positioned popover (flips
+  above/below, clamps to viewport width for phones), Back/Next/Skip, and Escape/Arrow-key support. Mounted once
+  in dashboard/layout.tsx so it can spotlight header elements (mode switch, nav, Settings, Support) as well as
+  page-body elements (tiles, to-do panel, activity feed).
+- Steps content in `src/lib/tourSteps.ts`: 13 steps for Centre Management, 13 for Accounting -- the mode
+  switch, every home-page tile, the nav links with no tile of their own (Forms; Payments/Classes/Events on the
+  Accounting side), the Settings menu, the to-do panel, recent activity, and Communication/Support.
+- A step whose target isn't in the DOM right now is skipped automatically (not found -> try the next one) --
+  this is what makes the same step list work across roles without duplicating permission logic: a Teacher
+  without VIEW_MONEY simply never sees the Accounting money tiles' steps, same as the tiles themselves.
+- `POST /api/organizations/[organizationId]/tour` marks the caller's own membership's tour seen -- no
+  permission gate, this is a UI preference not data.
+- "Take a tour" link added next to Support in the header (desktop) and the phone menu's "More" group; it
+  navigates to `?tour=1` on that mode's home page, which the page's mount effect picks up to force-start the
+  tour even after it's been seen, then strips the query param.
+
+Known simplification, flagged rather than solved: on a phone, the desktop nav bar and some utility links live
+inside the collapsed ☰ menu, so a few nav/header steps (Forms, Payments, Classes, Events, Settings,
+Communication, Support) won't find their target and get silently skipped there -- the tile/mode-switch/to-do/
+activity steps (the majority of each tour) still show fine on any screen size. Revisit if Dylan wants full
+mobile coverage; would need those nav items rendered (even off-screen) rather than only inside the menu.
+
+Lint, tsc, 75/75 tests and a production build all passed in this session's device shell (unlike every prior
+schema-touching session -- npm install/prisma generate weren't network-restricted here, worth trying again
+before assuming the device bridge will hang).
+
+NOT YET DONE -- blocks this from being live: `npx prisma db push` for the two new columns (dashboard/layout.tsx
+now reads `membership.centreTourSeenAt`/`accountingTourSeenAt` unconditionally, so deploying before the push
+would 500 the dashboard the same way every prior Membership schema change would have). Also no live
+click-through yet (needs a staff login) -- once pushed, take a fresh look as a new user (or someone whose
+tour flags are still null) and confirm both tours open automatically, "Take a tour" replays them, and Skip/Done
+persist correctly.
+
+## Events: free vs. paid, and Centre can now create them (2026-09-25)
+
+Dylan asked for a calendar date picker (the existing native date input already renders one) and a "is this
+paid" tick box on Events, in both modes -- unticked, it never touches Accounting; ticked, an amount is required
+and it charges children same as before. Previously every Event was implicitly paid (amountCents/paymentTypeId
+were required columns) and Centre's Events page was read-only, redirecting all creation to Accounting.
+
+Schema (shown to Dylan, NOT YET APPLIED -- needs `npx prisma db push`):
+```sql
+ALTER TABLE "events" ALTER COLUMN "paymentTypeId" DROP NOT NULL;
+ALTER TABLE "events" ALTER COLUMN "amountCents" DROP NOT NULL;
+```
+Both columns already exist; this only relaxes NOT NULL. No data loss -- every existing event keeps its
+paymentTypeId/amountCents exactly as-is (they just become "always non-null for this row" instead of
+"required by the schema").
+
+Shipped:
+- `createEventWithCharges` (src/lib/billing/events.ts) only creates a PaymentType and FinancialPlanEntry rows
+  when `amountCents` is non-null. A free event is just an Event row + its EventCategory links -- no billing
+  footprint anywhere.
+- `eventSchema` gained `isPaid: boolean`; `amountCents` is required only when `isPaid` is true (zod `.refine`).
+- `POST .../events` now also requires VIEW_MONEY when `isPaid` is true, on top of the existing MANAGE_EVENTS --
+  entering an amount is money, whichever mode the request came from. Enforced server-side, not just hidden in
+  the form.
+- New shared `EventForm` (src/app/dashboard/EventForm.tsx), used by both Accounting and Centre's Events pages:
+  name, date, classes, and (only rendered for someone with VIEW_MONEY) a "this event has a fee" tick box that
+  reveals the amount field. One form, one place the create logic lives, instead of duplicating it per mode.
+- Centre Management > Events (previously read-only, gated behind VIEW_MONEY + VIEW_ACCOUNTING just to see the
+  page) now shows the create form to anyone with MANAGE_EVENTS, independent of VIEW_MONEY -- a Receptionist or
+  Teacher who somehow has MANAGE_EVENTS (not a default for either role today) can create free events without
+  ever seeing money; only VIEW_MONEY unlocks the fee tick box. The per-child charge breakdown for a paid event
+  still lives only in Accounting -- Centre's list links through to it (as before) only when the event is paid
+  and the viewer has VIEW_MONEY + VIEW_ACCOUNTING; a free event has nothing to break down.
+- Accounting's Events list/detail pages show a "Free event" badge and skip the collected/outstanding columns
+  and the per-child charge table for a free event, instead of a broken/empty money view.
+- `events/upcoming` (Centre's money-free list) now always includes `isPaid` (not a money figure, just whether
+  one exists) alongside the existing VIEW_MONEY-gated `amountCents`.
+- Audit label for `event.created` now says "(free)" instead of the misleading "(charged 0 children)" for a
+  free event.
+
+Lint, tsc, 75/75 tests and a production build all passed. NOT YET DONE -- blocks this from being live: the
+`ALTER COLUMN` migration above, and a live click-through creating one free and one paid event from each mode.

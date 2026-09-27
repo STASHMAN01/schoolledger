@@ -78,6 +78,16 @@ function canSeeLink(href: string, permissions: readonly string[]): boolean {
   return !needed || needed.some((p) => permissions.includes(p));
 }
 
+// Which of the guided walkthrough's steps a nav link is (see
+// src/lib/tourSteps.ts). Only links not already covered by a dashboard
+// tile need one.
+const TOUR_ID: Record<string, string> = {
+  "/dashboard/centre/forms": "nav-forms",
+  "/dashboard/accounting/payments": "nav-payments",
+  "/dashboard/accounting/classes": "nav-classes-accounting",
+  "/dashboard/accounting/events": "nav-events-accounting",
+};
+
 function isActive(pathname: string, href: string, exact?: boolean) {
   return exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
 }
@@ -94,7 +104,10 @@ function useNav() {
     !inAccounting && canSeeLink("/dashboard/centre/communication", permissions)
       ? { href: "/dashboard/centre/communication", label: "Communication" }
       : null;
-  return { pathname, links, settings, communication };
+  // Replays that mode's guided walkthrough -- the home page's mount effect
+  // watches for ?tour=1 (see CentreManagementHomePage/AccountingHomePage).
+  const tourHref = inAccounting ? "/dashboard/accounting?tour=1" : "/dashboard/centre?tour=1";
+  return { pathname, links, settings, communication, tourHref };
 }
 
 const tabClass = (active: boolean) =>
@@ -132,7 +145,12 @@ export function NavBar() {
   return (
     <nav className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5" aria-label="Main">
       {links.map((l) => (
-        <Link key={l.href} href={l.href} className={tabClass(isActive(pathname, l.href, l.exact))}>
+        <Link
+          key={l.href}
+          href={l.href}
+          data-tour={TOUR_ID[l.href]}
+          className={tabClass(isActive(pathname, l.href, l.exact))}
+        >
           {l.label}
         </Link>
       ))}
@@ -140,6 +158,7 @@ export function NavBar() {
         <div ref={settingsRef} className="relative">
           <button
             type="button"
+            data-tour="nav-settings"
             onClick={() => setSettingsOpen((v) => !v)}
             aria-expanded={settingsOpen}
             className={`${tabClass(pathname.startsWith("/dashboard/accounting/settings"))} flex items-center gap-1`}
@@ -178,7 +197,7 @@ export function NavBar() {
 
 /** Top-right utility links on tablet/desktop (Communication, Platform, Support). */
 export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
-  const { pathname, communication } = useNav();
+  const { pathname, communication, tourHref } = useNav();
   const small = (active: boolean) =>
     `transition-standard hidden whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium md:inline-flex ${
       active ? "bg-brand-soft text-brand-soft-foreground" : "text-muted-foreground hover:bg-background hover:text-foreground"
@@ -186,7 +205,11 @@ export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) 
   return (
     <>
       {communication && (
-        <Link href={communication.href} className={small(isActive(pathname, communication.href))}>
+        <Link
+          href={communication.href}
+          data-tour="header-communication"
+          className={small(isActive(pathname, communication.href))}
+        >
           Communication
         </Link>
       )}
@@ -195,7 +218,15 @@ export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) 
           Platform
         </Link>
       )}
-      <Link href="/support" title="Support & how to use Crechely" className={small(false)}>
+      <Link href={tourHref} title="Replay the guided walkthrough" className={small(false)}>
+        Take a tour
+      </Link>
+      <Link
+        href="/support"
+        title="Support & how to use Crechely"
+        data-tour="header-support"
+        className={small(false)}
+      >
         Support
       </Link>
     </>
@@ -204,7 +235,7 @@ export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) 
 
 /** Phones: ☰ button + full menu (main tabs, settings, utility links). */
 export function MobileMenu({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
-  const { pathname, links, settings, communication } = useNav();
+  const { pathname, links, settings, communication, tourHref } = useNav();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -233,6 +264,7 @@ export function MobileMenu({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
       label: "More",
       items: [
         ...(isPlatformAdmin ? [{ href: "/platform", label: "Platform" }] : []),
+        { href: tourHref, label: "Take a tour" },
         { href: "/support", label: "Support" },
       ],
     },

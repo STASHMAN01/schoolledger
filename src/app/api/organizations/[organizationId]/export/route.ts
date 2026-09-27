@@ -12,8 +12,11 @@ type Params = { params: Promise<{ organizationId: string }> };
 
 // Full data backup (Phase 4). POST rather than GET so a link, prefetch or
 // crawler can never trigger a bulk export of children's data. The ZIP's
-// password is generated per download, returned once in a header, and
-// never stored anywhere.
+// password is generated per download and never stored anywhere. Returned
+// as JSON (password + base64 zip) rather than a response header + binary
+// body — a custom response header is more likely to be captured by
+// intermediate logging/observability tooling than a JSON body field, and
+// this is the one place in the app a raw, usable secret leaves the server.
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
@@ -30,14 +33,14 @@ export async function POST(_req: NextRequest, { params }: Params) {
       metadata: counts,
     });
 
-    return new NextResponse(new Uint8Array(zipBuffer), {
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${backupFilename(schoolName)}"`,
-        "X-Export-Password": password,
-        "Cache-Control": "no-store",
+    return NextResponse.json(
+      {
+        password,
+        filename: backupFilename(schoolName),
+        zipBase64: zipBuffer.toString("base64"),
       },
-    });
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err) {
     return handleApiError(err);
   }

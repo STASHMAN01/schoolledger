@@ -36,10 +36,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
         id: event.id,
         name: event.name,
         eventDate: event.eventDate,
+        isPaid: event.amountCents !== null,
         amountCents: event.amountCents,
         paymentTypeId: event.paymentTypeId,
         categories: event.categories.map((c) => c.category),
-        entries: event.paymentType.planEntries,
+        entries: event.paymentType?.planEntries ?? [],
       },
     });
   } catch (err) {

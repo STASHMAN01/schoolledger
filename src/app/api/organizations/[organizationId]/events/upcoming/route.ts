@@ -50,6 +50,9 @@ export async function GET(req: NextRequest, { params }: Params) {
         name: e.name,
         eventDate: e.eventDate.toISOString(),
         classes: e.categories.map((ec) => ec.category.name),
+        // Whether it has a fee at all isn't a money figure, so it's fine to
+        // show to everyone; the actual amountCents stays VIEW_MONEY-gated.
+        isPaid: e.amountCents !== null,
         ...(canSeeMoney ? { amountCents: e.amountCents } : {}),
       })),
     });

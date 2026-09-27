@@ -16,6 +16,10 @@ type OrgContextValue = {
   subscriptionStatus: string;
   trialEndsAt: string | null;
   currencyCode: string;
+  // Null means "hasn't seen that mode's guided walkthrough yet" -- see
+  // TourProvider/TourOverlay.
+  centreTourSeenAt: string | null;
+  accountingTourSeenAt: string | null;
 };
 
 const OrgContext = createContext<OrgContextValue | null>(null);

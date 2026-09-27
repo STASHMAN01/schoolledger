@@ -247,6 +247,13 @@ model Membership {
   // clears rather than blocking the category's own deletion flow.
   assignedCategoryId String?
   createdAt      DateTime @default(now())
+  // Set the first time this person finishes or skips that mode's guided
+  // walkthrough (or dismisses it) -- null means "never seen it, show it
+  // automatically". A per-user, per-mode timestamp rather than a boolean so
+  // it can double as "when" if that's ever useful, same pattern as
+  // Child.photoConsentAt.
+  centreTourSeenAt     DateTime?
+  accountingTourSeenAt DateTime?
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -694,15 +701,18 @@ model PaymentType {
 model Event {
   id             String   @id @default(cuid())
   organizationId String
-  paymentTypeId  String   @unique
+  // Null for a free event -- no PaymentType, no charges, no billing
+  // footprint at all. Non-null (and amountCents non-null) for a paid one,
+  // same as before this field became optional.
+  paymentTypeId  String?  @unique
   name           String
   eventDate      DateTime
-  amountCents    Int
+  amountCents    Int?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  paymentType  PaymentType     @relation(fields: [paymentTypeId], references: [id])
+  paymentType  PaymentType?    @relation(fields: [paymentTypeId], references: [id])
   categories   EventCategory[]
 
   @@index([organizationId])

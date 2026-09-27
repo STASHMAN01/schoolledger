@@ -8,8 +8,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOrg } from "../OrgContext";
 import { TodoList } from "../TodoList";
+import { useTour } from "../TourContext";
 import { Tile } from "../DashboardTile";
 import { DrilldownTree } from "./DrilldownTree";
 import { formatCents } from "@/lib/formatMoney";
@@ -50,9 +52,14 @@ function formatWhen(iso: string): string {
 }
 
 export default function AccountingHomePage() {
-  const { organizationId, organizationName, hasActiveAccess, currencyCode, permissions } = useOrg();
+  const { organizationId, organizationName, hasActiveAccess, currencyCode, permissions, accountingTourSeenAt } =
+    useOrg();
   const canSeeActivityLog = permissions.includes("VIEW_ACTIVITY_LOG");
   const { data: session } = useSession();
+  const { start } = useTour();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tourTriggered = useRef(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel | null>(null);
@@ -80,6 +87,18 @@ export default function AccountingHomePage() {
   useEffect(() => {
     if (panel) panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [panel]);
+
+  // First-time guided walkthrough: auto-opens once (accountingTourSeenAt is
+  // null until it's finished/skipped), or on demand via the header's
+  // "Take a tour" link (?tour=1).
+  useEffect(() => {
+    if (tourTriggered.current) return;
+    const forced = searchParams.get("tour") === "1";
+    if (!forced && accountingTourSeenAt) return;
+    tourTriggered.current = true;
+    start("accounting");
+    if (forced) router.replace("/dashboard/accounting");
+  }, [accountingTourSeenAt, searchParams, start, router]);
 
   const toggle = (p: Panel) => setPanel((cur) => (cur === p ? null : p));
   const money = (cents: number | undefined) => formatCents(cents ?? 0, currencyCode);
@@ -120,6 +139,7 @@ export default function AccountingHomePage() {
                         compact
                         onClick={() => toggle("outstanding")}
                         expanded={panel === "outstanding"}
+                        tourId="tile-outstanding"
                       />
                       <Tile
                         title="Paid this month"
@@ -128,6 +148,7 @@ export default function AccountingHomePage() {
                         compact
                         onClick={() => toggle("paid")}
                         expanded={panel === "paid"}
+                        tourId="tile-paid"
                       />
                       <Tile
                         title="Accounts due"
@@ -135,6 +156,7 @@ export default function AccountingHomePage() {
                         hint={accountsDue.length === 0 ? "Nobody owes right now" : "Tap to see who owes"}
                         onClick={() => toggle("due")}
                         expanded={panel === "due"}
+                        tourId="tile-due"
                       />
                       <Tile
                         title="Reminders"
@@ -142,6 +164,7 @@ export default function AccountingHomePage() {
                         value={unsent}
                         hint={unsent > 0 ? "Owing, never reminded" : "Everyone owing was reminded"}
                         warn={unsent > 0}
+                        tourId="tile-reminders"
                       />
                     </>
                   )}
@@ -150,6 +173,7 @@ export default function AccountingHomePage() {
                     href="/dashboard/accounting/children"
                     value={data.childrenCount}
                     hint="Active children"
+                    tourId="tile-children"
                   />
                 </div>
 
@@ -207,7 +231,7 @@ export default function AccountingHomePage() {
               </>
             )}
 
-            <Card as="div" className="p-4">
+            <Card as="div" data-tour="recent-activity" className="p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="font-display text-sm font-semibold text-foreground">Recent accounting activity</h2>
                 {canSeeActivityLog && (
@@ -248,7 +272,7 @@ export default function AccountingHomePage() {
           {/* Right: to-do panel (on top on phones), same as Centre */}
           <aside className="order-first lg:order-none">
             <div className="lg:sticky lg:top-4 lg:min-h-[28rem]">
-              <TodoList mode="accounting" variant="panel" />
+              <TodoList mode="accounting" variant="panel" tourId="todo-panel" />
             </div>
           </aside>
         </div>
