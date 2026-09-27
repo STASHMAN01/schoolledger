@@ -16,9 +16,12 @@ export type OrgBillingFields = {
   createdAt: Date;
 };
 
-export type Plan = "monthly" | "yearly" | "trial" | "unknown";
+export type Plan = "monthly" | "yearly" | "trial" | "lifetime" | "unknown";
 
 export function planForOrg(org: { paystackPlanCode: string | null; subscriptionStatus: string }): Plan {
+  // Checked first: a manually granted lifetime org has no Paystack plan
+  // code at all, but subscriptionStatus alone already settles it.
+  if (org.subscriptionStatus === "lifetime") return "lifetime";
   if (org.paystackPlanCode && org.paystackPlanCode === process.env.PAYSTACK_PLAN_CODE_MONTHLY) {
     return "monthly";
   }
@@ -32,8 +35,15 @@ export function planForOrg(org: { paystackPlanCode: string | null; subscriptionS
 // "Paying" = a subscription the payment provider currently considers
 // billable (active or past_due, same definition src/lib/billing/access.ts
 // uses for product access) — not just "has ever entered card details".
+// Lifetime counts too: it's a one-time-paid (or comped), permanently
+// active account, just not a recurring one — see the MRR/ARR note where
+// this is consumed in the overview route for why it's excluded from those.
 export function isPaying(org: { subscriptionStatus: string }): boolean {
-  return org.subscriptionStatus === "active" || org.subscriptionStatus === "past_due";
+  return (
+    org.subscriptionStatus === "active" ||
+    org.subscriptionStatus === "past_due" ||
+    org.subscriptionStatus === "lifetime"
+  );
 }
 
 export function isTrialing(org: { subscriptionStatus: string; trialEndsAt: Date | null }): boolean {

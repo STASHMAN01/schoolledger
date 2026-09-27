@@ -12,7 +12,14 @@ type SubscriptionFields = {
  * than letting Paystack's retry schedule run first).
  */
 export function hasActiveAccess(org: SubscriptionFields): boolean {
-  if (org.subscriptionStatus === "active" || org.subscriptionStatus === "past_due") {
+  if (
+    org.subscriptionStatus === "active" ||
+    org.subscriptionStatus === "past_due" ||
+    // Manually granted by a platform admin (see /platform/organizations) --
+    // permanent access, entirely outside the Paystack lifecycle. Never set by
+    // any webhook handler, so it only ever changes via that admin action.
+    org.subscriptionStatus === "lifetime"
+  ) {
     return true;
   }
   if (org.subscriptionStatus === "trialing") {

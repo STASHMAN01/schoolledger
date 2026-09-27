@@ -8,6 +8,7 @@ type Overview = {
   payingTotal: number;
   payingMonthly: number;
   payingYearly: number;
+  lifetime: number;
   trialing: number;
   pastDue: number;
   canceled: number;
@@ -72,8 +73,9 @@ export default function PlatformOverviewPage() {
         <StatCard
           label="Paying subscribers"
           value={String(data.payingTotal)}
-          hint={`${data.payingMonthly} monthly · ${data.payingYearly} yearly`}
+          hint={`${data.payingMonthly} monthly · ${data.payingYearly} yearly · ${data.lifetime} lifetime`}
         />
+        <StatCard label="Lifetime members" value={String(data.lifetime)} hint="Manually granted, see Schools" />
         <StatCard label="On free trial" value={String(freeTrialCount)} />
         <StatCard
           label="Past due / canceled"

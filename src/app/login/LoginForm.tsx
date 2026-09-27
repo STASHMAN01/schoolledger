@@ -11,7 +11,10 @@ import { Logo } from "@/components/Logo";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  // Only fall back to the platform-admin-aware default (see
+  // /api/auth/landing) when nothing else asked for a specific page —
+  // an invite link or a "please sign in again" bounce always wins.
+  const explicitCallbackUrl = searchParams.get("callbackUrl");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +35,20 @@ export function LoginForm() {
         setError("Incorrect email or password.");
         return;
       }
-      router.push(callbackUrl);
+      if (explicitCallbackUrl) {
+        router.push(explicitCallbackUrl);
+        return;
+      }
+      // No explicit destination was requested, so ask where this user's
+      // default landing page is (a platform admin goes to /platform
+      // instead of /dashboard) rather than assuming /dashboard.
+      try {
+        const res = await fetch("/api/auth/landing");
+        const data = await res.json().catch(() => ({}));
+        router.push(data.redirectTo || "/dashboard");
+      } catch {
+        router.push("/dashboard");
+      }
     } finally {
       setLoading(false);
     }

@@ -28,6 +28,7 @@ export async function GET() {
 
     let payingMonthly = 0;
     let payingYearly = 0;
+    let lifetime = 0;
     let trialing = 0;
     let pastDue = 0;
     let canceled = 0;
@@ -44,10 +45,13 @@ export async function GET() {
         const plan = planForOrg(org);
         if (plan === "monthly") payingMonthly++;
         else if (plan === "yearly") payingYearly++;
+        else if (plan === "lifetime") lifetime++;
       }
     }
 
-    const payingTotal = payingMonthly + payingYearly;
+    // Lifetime accounts count as paying (they have permanent access) but
+    // never contribute to MRR/ARR below — see that comment.
+    const payingTotal = payingMonthly + payingYearly + lifetime;
 
     // MRR: monthly-plan orgs pay their price every month; yearly-plan orgs
     // pay once a year, so their contribution is divided by 12. Null price
@@ -69,6 +73,7 @@ export async function GET() {
       payingTotal,
       payingMonthly,
       payingYearly,
+      lifetime,
       trialing,
       pastDue,
       canceled,
