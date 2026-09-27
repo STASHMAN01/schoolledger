@@ -902,3 +902,39 @@ Shipped:
 
 Lint, tsc, 75/75 tests and a production build all passed. NOT YET DONE -- blocks this from being live: the
 `ALTER COLUMN` migration above, and a live click-through creating one free and one paid event from each mode.
+
+## 27 Sept 2026 -- Platform: default owner landing + manual plan overrides
+
+No schema change, no migration. Picked up from the 25 Sept handoff (merged, migration applied
+that day) as a fresh feature request.
+
+Shipped:
+- Login sends a signed-in platform admin (`isPlatformAdmin` / `PLATFORM_ADMIN_EMAILS`, see
+  `src/lib/platformAdmin.ts`) straight to `/platform` instead of `/dashboard`, via a new
+  `GET /api/auth/landing` the login form calls whenever it wasn't given an explicit
+  `callbackUrl` (an invite link or "please sign in again" bounce still always wins). Fixes the
+  owner previously having to register/enter a school just to see business stats.
+- New `subscriptionStatus` value `"lifetime"`: a manual, platform-admin-only grant, entirely
+  outside the Paystack lifecycle -- no webhook handler ever writes it, so it only changes via
+  the new override endpoint below (or later, for real, if that org is ever actually charged
+  through Paystack). `hasActiveAccess`, `planForOrg`, and `isPaying` all recognize it; it counts
+  toward "paying subscribers" but is deliberately excluded from MRR/ARR since it's not
+  recurring revenue.
+- `/platform/organizations` gets a per-school "Manual override" control (Lifetime / Active /
+  Trialing / Past due / Canceled), backed by new `PATCH /api/platform/organizations/[organizationId]`
+  (Zod-validated against that fixed vocabulary, audit-logged as `platform.subscriptionOverride`).
+  Setting Lifetime or Canceled clears `trialEndsAt`/`currentPeriodEnd` so the table doesn't show
+  a stale renewal date.
+- `/platform` overview dashboard gets a "Lifetime members" stat card.
+
+Lint and `tsc --noEmit` both passed. `npm test` / `npx vitest` crashed with a native "Bus error"
+in this session's sandboxed device shell (same for a would-be `npm run build`) -- looks like an
+environment issue with this particular bridge, not the change itself; verified the changed pure
+functions (`hasActiveAccess`, `planForOrg`, `isPaying`) manually instead. Worth re-running the
+full local verification loop from a normal terminal before/after deploy if that's easy to do.
+
+NOT YET DONE: committed to `main` locally on Dylan's machine but not yet pushed (this session's
+device shell has no GitHub credentials) -- Dylan still needs to `git push origin main`. After
+that, a live click-through: log in as the platform admin and confirm the `/platform` landing,
+and grant one test org "Lifetime" from Schools and confirm it shows correctly and isn't counted
+in MRR/ARR.
