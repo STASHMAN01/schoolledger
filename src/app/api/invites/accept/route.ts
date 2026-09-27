@@ -106,8 +106,12 @@ export async function POST(req: NextRequest) {
     const passwordHash = await hashPassword(body.password);
 
     const newUser = await db.$transaction(async (tx) => {
+      // Receiving and clicking this invite link already proves control of
+      // this exact email address, same as a dedicated verification link
+      // would -- so this account starts out verified, no separate
+      // "verify your email" step for invited staff.
       const user = await tx.user.create({
-        data: { email: invite.email, passwordHash, name: body.name! },
+        data: { email: invite.email, passwordHash, name: body.name!, emailVerified: new Date() },
       });
       await tx.membership.create({
         data: { userId: user.id, organizationId: invite.organizationId, role: invite.role },

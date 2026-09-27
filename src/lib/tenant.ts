@@ -52,7 +52,7 @@ export async function requireMembership(
 
   const membership = await db.membership.findUnique({
     where: { userId_organizationId: { userId, organizationId } },
-    include: { permissionOverrides: true },
+    include: { permissionOverrides: true, user: { select: { emailVerified: true } } },
   });
 
   if (!membership) {
@@ -62,6 +62,14 @@ export async function requireMembership(
   }
 
   const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides);
+
+  // Defense in depth for the same gate the /dashboard layout enforces in
+  // the UI (VerifyEmailGate): belt-and-suspenders against any request that
+  // reaches an API route directly (a stale tab, a script) while this
+  // account still hasn't clicked its verification link.
+  if (!membership.user.emailVerified) {
+    throw new TenantAccessError("Please verify your email before continuing.", 403);
+  }
 
   if (requiredPermission && !permissions.includes(requiredPermission)) {
     throw new TenantAccessError("Not allowed for your role.", 403);

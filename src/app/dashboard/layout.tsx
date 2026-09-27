@@ -12,6 +12,8 @@ import { TourProvider } from "./TourContext";
 import { TourOverlay } from "./TourOverlay";
 import { hasActiveAccess } from "@/lib/billing/access";
 import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
+import { db } from "@/lib/db";
+import { VerifyEmailGate } from "./VerifyEmailGate";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function DashboardLayout({
@@ -32,6 +34,17 @@ export default async function DashboardLayout({
   const org = membership.organization;
   const isPlatformAdmin = await checkIsPlatformAdmin(session.user.id);
   const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides);
+
+  // Gate: registration isn't "done" until this admin has clicked the link
+  // sent to their email (see /api/auth/register + /api/auth/verify-email).
+  // This is deliberately checked fresh from the DB every request, not
+  // cached in the JWT, so verifying in one tab/device is reflected on the
+  // very next load here without needing to log out and back in.
+  const currentUser = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { email: true, emailVerified: true },
+  });
+  const emailVerified = Boolean(currentUser?.emailVerified);
 
   return (
     <OrgProvider
@@ -87,15 +100,19 @@ export default async function DashboardLayout({
               <MobileMenu isPlatformAdmin={isPlatformAdmin} />
             </div>
           </div>
-          <div className="hidden border-t border-border md:block">
-            <div className="mx-auto max-w-6xl px-4 sm:px-6">
-              <NavBar />
+          {emailVerified && (
+            <div className="hidden border-t border-border md:block">
+              <div className="mx-auto max-w-6xl px-4 sm:px-6">
+                <NavBar />
+              </div>
             </div>
-          </div>
+          )}
         </header>
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          {emailVerified ? children : <VerifyEmailGate email={currentUser?.email ?? ""} />}
+        </div>
         <ErrorCatcher />
-        <TourOverlay />
+        {emailVerified && <TourOverlay />}
       </div>
       </TourProvider>
     </OrgProvider>

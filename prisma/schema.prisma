@@ -864,6 +864,25 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+// Same shape/reasoning as PasswordResetToken directly above -- only the
+// SHA-256 hash is stored (src/lib/inviteToken.ts), one-time use via
+// usedAt, and expires. Created at registration (src/app/api/auth/register)
+// and consumed by POST /api/auth/verify-email. Deliberately its own table
+// rather than reusing PasswordResetToken: the two tokens must never be
+// interchangeable (a leaked/guessed password-reset link must not also be
+// able to mark an email verified, or vice versa).
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
 // Append-only trail: who did what, when. Required both for the "Frank
 // viewed records" activity feed the product spec asks for, and for being
 // able to answer "who accessed/changed this record" if a customer or

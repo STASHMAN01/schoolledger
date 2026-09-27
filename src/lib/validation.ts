@@ -371,6 +371,14 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
 });
 
+export const resendVerificationSchema = z.object({
+  email: emailSchema,
+});
+
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1),
+});
+
 export const registerSchema = z.object({
   organizationName: organizationNameSchema,
   countryCode: countryCodeSchema,

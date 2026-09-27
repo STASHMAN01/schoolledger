@@ -5,6 +5,7 @@ import { registerSchema } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
 import { TRIAL_DAYS } from "@/lib/trial";
+import { issueAndSendVerificationEmail } from "@/lib/emailVerification";
 
 // Creates a brand new Organization (school) plus its first user as ADMIN.
 // This is the ONLY place a User + Membership + Organization get created
@@ -106,6 +107,20 @@ export async function POST(req: NextRequest) {
     entityType: "Organization",
     entityId: result.organization.id,
   });
+
+  // Never let a mail-sending hiccup block account creation — the account
+  // and org already exist and are usable (this app signs the admin
+  // straight into /dashboard right after this call); the "verify your
+  // email" gate there is what actually enforces this, and it comes with
+  // its own resend button for exactly this case.
+  try {
+    await issueAndSendVerificationEmail(
+      { id: result.user.id, email: result.user.email, name: result.user.name },
+      req.nextUrl.origin
+    );
+  } catch (err) {
+    console.error("Failed to send verification email at registration", err);
+  }
 
   return NextResponse.json({
     organizationId: result.organization.id,

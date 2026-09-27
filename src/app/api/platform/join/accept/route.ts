@@ -72,8 +72,16 @@ export async function POST(req: NextRequest) {
     const passwordHash = await hashPassword(body.password);
 
     const newUser = await db.$transaction(async (tx) => {
+      // Same reasoning as invites/accept: this invite link only reaches an
+      // inbox this person controls, so it already counts as verification.
       const user = await tx.user.create({
-        data: { email: invite.email, passwordHash, name: body.name!, isPlatformAdmin: true },
+        data: {
+          email: invite.email,
+          passwordHash,
+          name: body.name!,
+          isPlatformAdmin: true,
+          emailVerified: new Date(),
+        },
       });
       await tx.platformInvite.update({ where: { id: invite.id }, data: { status: "ACCEPTED" } });
       return user;

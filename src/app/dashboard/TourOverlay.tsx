@@ -7,6 +7,7 @@
 // page-body elements (tiles, to-do panel) -- see TourContext for how a
 // page starts it and src/lib/tourSteps.ts for the step content.
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useOrg } from "./OrgContext";
 import { useTour } from "./TourContext";
 import { CENTRE_TOUR_STEPS, ACCOUNTING_TOUR_STEPS, type TourStep } from "@/lib/tourSteps";
@@ -31,6 +32,7 @@ function measure(target: string): Rect | null {
 export function TourOverlay() {
   const { organizationId } = useOrg();
   const { activeTour, stop } = useTour();
+  const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const steps = useMemo(() => (activeTour ? STEPS[activeTour] : NO_STEPS), [activeTour]);
@@ -41,12 +43,29 @@ export function TourOverlay() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: activeTour }),
-      }).catch(() => {
-        // Best-effort -- worst case the tour just auto-opens again next visit.
-      });
+      })
+        .then((res) => {
+          if (!res.ok) return;
+          // The dashboard layout (a Server Component) fetched
+          // centreTourSeenAt/accountingTourSeenAt once, at initial load, and
+          // hands them down through OrgContext -- switching modes only
+          // unmounts/remounts the page below that layout, it doesn't
+          // re-fetch that data. Without this refresh, OrgContext keeps
+          // reporting "never seen" for the rest of the session even though
+          // the row we just wrote says otherwise, so the per-page effect
+          // that auto-opens the tour (see centre/page.tsx, accounting/page.tsx)
+          // re-fires on every single switch back into that mode. refresh()
+          // re-runs the server layout in place (no full reload, no lost
+          // client state) so useOrg()'s value updates and that effect's
+          // own "already seen" check finally sees it.
+          router.refresh();
+        })
+        .catch(() => {
+          // Best-effort -- worst case the tour just auto-opens again next visit.
+        });
     }
     stop();
-  }, [activeTour, organizationId, stop]);
+  }, [activeTour, organizationId, router, stop]);
 
   const next = useCallback(() => setStepIndex((i) => i + 1), []);
   const back = useCallback(() => setStepIndex((i) => Math.max(0, i - 1)), []);
