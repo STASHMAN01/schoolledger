@@ -2,13 +2,44 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../../OrgContext";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { formatDateZA } from "@/lib/date";
+import { formatMoneyCents } from "@/lib/money";
 
 type BillingConfig = { monthlyConfigured: boolean; yearlyConfigured: boolean };
 
+type SubscriptionPayment = {
+  id: string;
+  receiptNumber: string;
+  paidAt: string;
+  amountCents: number;
+  currencyCode: string;
+  planInterval: string | null;
+  planName: string | null;
+  periodStart: string;
+  periodEnd: string;
+  cardBrand: string | null;
+  cardLast4: string | null;
+  channel: string | null;
+};
+
+function planLabel(p: Pick<SubscriptionPayment, "planInterval" | "planName">) {
+  if (p.planInterval === "annually") return "Yearly";
+  if (p.planInterval === "monthly") return "Monthly";
+  return p.planName ?? "Subscription";
+}
+
+function paidWith(p: SubscriptionPayment) {
+  if (p.cardLast4) {
+    const brand = p.cardBrand ? p.cardBrand.charAt(0).toUpperCase() + p.cardBrand.slice(1) : "Card";
+    return `${brand} •••• ${p.cardLast4}`;
+  }
+  return p.channel ? p.channel.replace(/_/g, " ") : "—";
+}
+
 export default function BillingPage() {
-  const { organizationId, permissions, subscriptionStatus, trialEndsAt, hasActiveAccess } = useOrg();
+  const { organizationId, permissions, subscriptionStatus, trialEndsAt, currentPeriodEnd, hasActiveAccess } =
+    useOrg();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -16,17 +47,30 @@ export default function BillingPage() {
   // flash enabled-then-disabled. Checked once on mount; whoever finishes
   // setting up Paystack just needs to reload this page afterward.
   const [config, setConfig] = useState<BillingConfig | null>(null);
+  const [payments, setPayments] = useState<SubscriptionPayment[] | null>(null);
 
-  const loadConfig = useCallback(async () => {
-    const res = await fetch(`/api/organizations/${organizationId}/billing/config`);
-    if (res.ok) setConfig(await res.json().catch(() => ({})));
+  const canManage = permissions.includes("MANAGE_BILLING");
+
+  const load = useCallback(async () => {
+    const [configRes, paymentsRes] = await Promise.all([
+      fetch(`/api/organizations/${organizationId}/billing/config`),
+      fetch(`/api/organizations/${organizationId}/billing/payments`),
+    ]);
+    if (configRes.ok) setConfig(await configRes.json().catch(() => ({})));
     else setError("Couldn't load your billing details. Please refresh the page.");
+    if (paymentsRes.ok) {
+      const data = await paymentsRes.json().catch(() => ({}));
+      setPayments(data.payments ?? []);
+    } else {
+      setPayments([]);
+    }
   }, [organizationId]);
 
   useEffect(() => {
+    if (!canManage) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
-    loadConfig();
-  }, [loadConfig]);
+    load();
+  }, [load, canManage]);
 
   async function checkout(plan: "monthly" | "yearly") {
     setLoading(plan);
@@ -64,11 +108,40 @@ export default function BillingPage() {
     window.location.reload();
   }
 
-  if (!permissions.includes("MANAGE_BILLING")) {
+  if (!canManage) {
     return <p className="text-sm text-muted-foreground">Only an admin can manage billing.</p>;
   }
 
   const isPaid = subscriptionStatus === "active" || subscriptionStatus === "past_due";
+  const isLifetime = subscriptionStatus === "lifetime";
+  const latestPlan = payments && payments.length > 0 ? planLabel(payments[0]) : null;
+
+  // One plain-language status line + detail, instead of the raw status word.
+  let statusTitle: string;
+  let statusDetail: string | null = null;
+  if (isLifetime) {
+    statusTitle = "Lifetime membership";
+    statusDetail = "Full access, no payments due.";
+  } else if (subscriptionStatus === "active") {
+    statusTitle = latestPlan ? `Active · ${latestPlan} plan` : "Active";
+    statusDetail = currentPeriodEnd ? `Renews on ${formatDateZA(currentPeriodEnd)}.` : null;
+  } else if (subscriptionStatus === "past_due") {
+    statusTitle = "Payment failed";
+    statusDetail =
+      "Your last renewal payment didn't go through. Paystack will retry it automatically; you keep full access meanwhile.";
+  } else if (subscriptionStatus === "trialing" && hasActiveAccess) {
+    statusTitle = "Free trial";
+    statusDetail = trialEndsAt ? `Trial ends ${formatDateZA(trialEndsAt)}.` : null;
+  } else if (subscriptionStatus === "canceled" && hasActiveAccess) {
+    statusTitle = "Cancelled";
+    statusDetail = `You keep full access until ${formatDateZA(currentPeriodEnd)}. After that the school becomes read-only until you subscribe again.`;
+  } else {
+    statusTitle = "Read-only";
+    statusDetail =
+      subscriptionStatus === "trialing"
+        ? `Your free trial ended${trialEndsAt ? ` on ${formatDateZA(trialEndsAt)}` : ""}. Everything is still visible, but nothing can be added or changed until you subscribe.`
+        : `Your subscription ended${currentPeriodEnd ? ` on ${formatDateZA(currentPeriodEnd)}` : ""}. Everything is still visible, but nothing can be added or changed until you subscribe again.`;
+  }
 
   return (
     <div className="animate-in">
@@ -76,29 +149,20 @@ export default function BillingPage() {
 
       <Card className="mb-6 p-4">
         <p className="text-sm text-muted-foreground">Current status</p>
-        <p className="font-display text-lg font-medium capitalize text-foreground">
-          {subscriptionStatus.replace("_", " ")}
+        <p className={`font-display text-lg font-medium ${hasActiveAccess ? "text-foreground" : "text-danger"}`}>
+          {statusTitle}
         </p>
-        {subscriptionStatus === "trialing" && trialEndsAt && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            Trial ends {formatDateZA(trialEndsAt)}
-          </p>
-        )}
-        {!hasActiveAccess && (
-          <p className="mt-2 text-sm text-danger">
-            Access is currently paused. Subscribe below to restore it immediately.
-          </p>
-        )}
+        {statusDetail && <p className="mt-1 text-sm text-muted-foreground">{statusDetail}</p>}
       </Card>
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
-      {isPaid ? (
+      {isLifetime ? null : isPaid ? (
         confirmingCancel ? (
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-foreground">
-              Cancel your subscription? You&apos;ll keep access until the end of the current
-              billing period.
+              Cancel your subscription? You won&apos;t be charged again, and you keep full access
+              {currentPeriodEnd ? ` until ${formatDateZA(currentPeriodEnd)}` : " until the end of the period you've paid for"}.
             </p>
             <Button onClick={cancelSubscription} disabled={loading !== null} variant="danger">
               {loading === "cancel" ? "Cancelling..." : "Yes, cancel"}
@@ -117,6 +181,11 @@ export default function BillingPage() {
           {config && !config.monthlyConfigured && !config.yearlyConfigured && (
             <p className="mb-4 text-sm text-muted-foreground">
               Billing isn&apos;t set up yet — check back shortly.
+            </p>
+          )}
+          {subscriptionStatus === "canceled" && hasActiveAccess && (
+            <p className="mb-3 text-sm text-muted-foreground">
+              Subscribing again starts a new billing period from today.
             </p>
           )}
           <div className="flex flex-wrap gap-3">
@@ -144,6 +213,62 @@ export default function BillingPage() {
             </Card>
           </div>
         </div>
+      )}
+
+      {/* Payment history + receipts (Dylan, 28 Sept 2026): every Crechely
+          payment this school has made, each with a PDF receipt they can
+          file as a business expense. */}
+      <h2 className="font-display mb-3 mt-10 text-base font-semibold text-foreground">Payment history</h2>
+      {payments === null ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : payments.length === 0 ? (
+        <Card className="p-4 text-sm text-muted-foreground">
+          No payments yet. Each payment you make shows up here with a receipt you can download.
+        </Card>
+      ) : (
+        <Card as="div" className="divide-y divide-border">
+          {payments.map((p) => {
+            const receiptUrl = `/api/organizations/${organizationId}/billing/payments/${p.id}/receipt`;
+            return (
+              <div key={p.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
+                <div className="min-w-36">
+                  <p className="font-medium text-foreground">{formatDateZA(p.paidAt)}</p>
+                  <p className="text-xs text-muted-foreground">{p.receiptNumber}</p>
+                </div>
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="text-foreground">
+                    {planLabel(p)} plan{" "}
+                    <Badge variant="success" className="ml-1">
+                      Paid
+                    </Badge>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDateZA(p.periodStart)} – {formatDateZA(p.periodEnd)} · {paidWith(p)}
+                  </p>
+                </div>
+                <p className="font-display w-24 text-right font-semibold text-foreground">
+                  {formatMoneyCents(p.amountCents, p.currencyCode)}
+                </p>
+                <div className="flex gap-2">
+                  <a
+                    href={receiptUrl}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex min-h-9 items-center rounded-lg border border-border px-3 text-sm text-foreground hover:bg-background"
+                  >
+                    View receipt
+                  </a>
+                  <a
+                    href={`${receiptUrl}?download=1`}
+                    className="inline-flex min-h-9 items-center rounded-lg px-3 text-sm text-brand underline"
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
       )}
     </div>
   );

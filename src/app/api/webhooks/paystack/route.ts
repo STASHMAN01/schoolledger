@@ -16,6 +16,33 @@ import { logAudit } from "@/lib/audit";
 // x-paystack-signature is HMAC-SHA512 of the raw request body, keyed with
 // the Paystack secret key, hex-encoded. See
 // https://paystack.com/docs/payments/webhooks/#verifying-webhook-signature
+// End of the period a payment covers. Paystack's plan intervals: hourly,
+// daily, weekly, monthly, quarterly, biannually, annually. Crechely only
+// sells monthly/annually; anything unknown falls back to a month.
+function addPlanInterval(from: Date, interval: string | undefined): Date {
+  const d = new Date(from);
+  switch (interval) {
+    case "annually":
+      d.setUTCFullYear(d.getUTCFullYear() + 1);
+      break;
+    case "biannually":
+      d.setUTCMonth(d.getUTCMonth() + 6);
+      break;
+    case "quarterly":
+      d.setUTCMonth(d.getUTCMonth() + 3);
+      break;
+    case "weekly":
+      d.setUTCDate(d.getUTCDate() + 7);
+      break;
+    case "daily":
+      d.setUTCDate(d.getUTCDate() + 1);
+      break;
+    default:
+      d.setUTCMonth(d.getUTCMonth() + 1);
+  }
+  return d;
+}
+
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("x-paystack-signature");
   const secretKey = process.env.PAYSTACK_SECRET_KEY;
@@ -53,16 +80,84 @@ export async function POST(req: NextRequest) {
       // learn which organization this Paystack customer belongs to.
       case "charge.success": {
         const data = event.data as {
-          metadata?: { organizationId?: string };
+          reference?: string;
+          amount?: number;
+          currency?: string;
+          paid_at?: string;
+          paidAt?: string;
+          channel?: string;
+          metadata?: { organizationId?: string } | string | null;
           customer?: { customer_code?: string };
+          authorization?: { brand?: string; last4?: string };
+          plan?: { plan_code?: string; name?: string; interval?: string } | null;
         };
-        const organizationId = data.metadata?.organizationId;
+        const metadata = typeof data.metadata === "object" && data.metadata ? data.metadata : {};
         const customerCode = data.customer?.customer_code;
+
+        // First payment: metadata carries the organizationId set at
+        // checkout -- link the Paystack customer to the school. Renewals
+        // carry no metadata, so they're matched by that customer code.
+        let organizationId = metadata.organizationId ?? null;
         if (organizationId && customerCode) {
           await db.organization.update({
             where: { id: organizationId },
             data: { paystackCustomerCode: customerCode },
           });
+        } else if (!organizationId && customerCode) {
+          const org = await db.organization.findUnique({
+            where: { paystackCustomerCode: customerCode },
+            select: { id: true },
+          });
+          organizationId = org?.id ?? null;
+        }
+
+        // Record the payment (history + receipts) and move the paid-until
+        // date forward, so a school that renews and then cancels keeps
+        // access for the days it paid for (Dylan, 28 Sept 2026).
+        if (organizationId && data.reference && typeof data.amount === "number") {
+          const paidAt = new Date(data.paid_at ?? data.paidAt ?? Date.now());
+          const periodEnd = addPlanInterval(paidAt, data.plan?.interval);
+          await db.subscriptionPayment.upsert({
+            // Paystack retries webhooks -- the reference makes this idempotent.
+            where: { paystackReference: data.reference },
+            update: {},
+            create: {
+              organizationId,
+              paystackReference: data.reference,
+              amountCents: data.amount, // Paystack amounts are already in cents
+              currencyCode: data.currency ?? "ZAR",
+              paidAt,
+              periodStart: paidAt,
+              periodEnd,
+              planCode: data.plan?.plan_code ?? null,
+              planName: data.plan?.name ?? null,
+              planInterval: data.plan?.interval ?? null,
+              channel: data.channel ?? null,
+              cardBrand: data.authorization?.brand ?? null,
+              cardLast4: data.authorization?.last4 ?? null,
+            },
+          });
+          if (data.plan?.plan_code) {
+            const org = await db.organization.findUnique({
+              where: { id: organizationId },
+              select: { currentPeriodEnd: true, subscriptionStatus: true },
+            });
+            if (org) {
+              await db.organization.update({
+                where: { id: organizationId },
+                data: {
+                  // Never move the date backwards (e.g. a delayed retry of
+                  // an older payment's webhook).
+                  currentPeriodEnd:
+                    org.currentPeriodEnd && org.currentPeriodEnd > periodEnd
+                      ? org.currentPeriodEnd
+                      : periodEnd,
+                  // A successful renewal clears a failed-payment state.
+                  ...(org.subscriptionStatus === "past_due" ? { subscriptionStatus: "active" } : {}),
+                },
+              });
+            }
+          }
         }
         break;
       }
@@ -116,7 +211,8 @@ export async function POST(req: NextRequest) {
       // route or directly in the Paystack dashboard. Access is left alone
       // here (currentPeriodEnd still governs it); this just stops treating
       // the org as an active payer going forward.
-      case "subscription.disable": {
+      case "subscription.disable":
+      case "subscription.not_renew": {
         const data = event.data as { subscription_code?: string };
         if (data.subscription_code) {
           const organization = await db.organization.findUnique({

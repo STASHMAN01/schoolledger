@@ -29,6 +29,24 @@ describe("hasActiveAccess", () => {
     expect(hasActiveAccess({ subscriptionStatus: "past_due", trialEndsAt: null })).toBe(true);
   });
 
+  it("keeps full access after cancelling until the paid period ends", () => {
+    const future = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    expect(
+      hasActiveAccess({ subscriptionStatus: "canceled", trialEndsAt: null, currentPeriodEnd: future })
+    ).toBe(true);
+  });
+
+  it("denies full access once a cancelled subscription's paid period is over", () => {
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    expect(
+      hasActiveAccess({ subscriptionStatus: "canceled", trialEndsAt: null, currentPeriodEnd: past })
+    ).toBe(false);
+  });
+
+  it("grants lifetime access regardless of dates", () => {
+    expect(hasActiveAccess({ subscriptionStatus: "lifetime", trialEndsAt: null })).toBe(true);
+  });
+
   it("denies access once canceled, even if a stale trialEndsAt is still in the future", () => {
     const future = new Date(Date.now() + 24 * 60 * 60 * 1000);
     expect(hasActiveAccess({ subscriptionStatus: "canceled", trialEndsAt: future })).toBe(false);

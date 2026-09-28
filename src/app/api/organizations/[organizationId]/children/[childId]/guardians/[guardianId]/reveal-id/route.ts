@@ -13,7 +13,7 @@ type Params = {
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId, guardianId } = await params;
-    const { userId, role, assignedCategoryId } = await requireMembership(organizationId);
+    const { userId, role, assignedCategoryId } = await requireMembership(organizationId, undefined, { allowWhenReadOnly: true });
 
     const guardian = await db.guardian.findFirst({
       where: { id: guardianId, childId, organizationId },

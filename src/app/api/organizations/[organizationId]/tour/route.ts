@@ -11,7 +11,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId);
+    const { userId } = await requireMembership(organizationId, undefined, { allowWhenReadOnly: true });
     const body = await req.json().catch(() => ({}));
     const mode = body?.mode;
     if (mode !== "centre" && mode !== "accounting") {

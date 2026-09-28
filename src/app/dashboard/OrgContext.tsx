@@ -15,6 +15,9 @@ type OrgContextValue = {
   hasActiveAccess: boolean;
   subscriptionStatus: string;
   trialEndsAt: string | null;
+  // End of the period already paid for -- after cancelling, full access
+  // continues until this date (see src/lib/billing/access.ts).
+  currentPeriodEnd: string | null;
   currencyCode: string;
   // Null means "hasn't seen that mode's guided walkthrough yet" -- see
   // TourProvider/TourOverlay.

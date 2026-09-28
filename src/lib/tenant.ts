@@ -1,7 +1,9 @@
+import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { Permission } from "@prisma/client";
 import { hasActiveAccess } from "@/lib/billing/access";
+import { REQUEST_METHOD_HEADER } from "@/lib/requestMethod";
 import { getEffectivePermissions } from "@/lib/permissions";
 
 export class TenantAccessError extends Error {
@@ -45,6 +47,10 @@ export async function requireMembership(
     // Only the restore route passes this: a school in the 30-day trash is
     // otherwise completely locked, for every member.
     allowDeletedOrganization?: boolean;
+    // For the few non-GET routes that only READ (export a backup, reveal a
+    // masked ID number, mark the tour seen): allowed even while the school
+    // is read-only because its subscription/trial has ended.
+    allowWhenReadOnly?: boolean;
   }
 ) {
   const session = await auth();
@@ -91,16 +97,24 @@ export async function requireMembership(
     throw new TenantAccessError("Not allowed for your role.", 403);
   }
 
-  if (!options?.skipAccessCheck) {
+  if (!options?.skipAccessCheck && !options?.allowWhenReadOnly) {
     const organization = await db.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionStatus: true, trialEndsAt: true },
+      select: { subscriptionStatus: true, trialEndsAt: true, currentPeriodEnd: true },
     });
+    // No trial/paid days left = READ-ONLY, not locked out (Dylan, 28 Sept
+    // 2026): reads still work, anything that changes data is refused.
+    // The method comes from a header src/middleware.ts sets on every
+    // request (overwriting anything the client sent). If it's missing we
+    // treat the request as a write -- fail closed.
     if (organization && !hasActiveAccess(organization)) {
-      throw new TenantAccessError(
-        "This school's trial has ended. An admin needs to subscribe to continue.",
-        402
-      );
+      const method = ((await headers()).get(REQUEST_METHOD_HEADER) ?? "").toUpperCase();
+      if (method !== "GET" && method !== "HEAD") {
+        throw new TenantAccessError(
+          "This school is read-only because its subscription has ended. An admin can resubscribe under Settings → Billing.",
+          402
+        );
+      }
     }
   }
 

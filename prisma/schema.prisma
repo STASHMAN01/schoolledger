@@ -198,6 +198,7 @@ model Organization {
   attendanceRecords AttendanceRecord[]
   scheduleItems ClassScheduleItem[]
   whatsappGroupChecks WhatsAppGroupCheck[]
+  subscriptionPayments SubscriptionPayment[]
 
   @@map("organizations")
 }
@@ -1032,4 +1033,35 @@ model Testimonial {
 
   @@index([status, createdAt])
   @@map("testimonials")
+}
+
+// One row per successful Crechely subscription charge (first payment and
+// every renewal), recorded from Paystack's charge.success webhook. Powers
+// the payment history + downloadable receipts on Settings -> Billing
+// (Dylan, 28 Sept 2026). paystackReference is unique so a webhook Paystack
+// retries can never record the same payment twice. receiptNumber is a
+// simple running number across the whole platform, printed as CRE-000001.
+model SubscriptionPayment {
+  id                String   @id @default(cuid())
+  receiptNumber     Int      @unique @default(autoincrement())
+  organizationId    String
+  paystackReference String   @unique
+  amountCents       Int
+  currencyCode      String
+  paidAt            DateTime
+  // The period this payment covers (paidAt to paidAt + plan interval).
+  periodStart       DateTime
+  periodEnd         DateTime
+  planCode          String?
+  planName          String?
+  planInterval      String? // "monthly" | "annually" (Paystack's own values)
+  channel           String? // "card", "eft", ...
+  cardBrand         String?
+  cardLast4         String?
+  createdAt         DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, paidAt])
+  @@map("subscription_payments")
 }

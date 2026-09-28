@@ -52,7 +52,7 @@ function formatWhen(iso: string): string {
 }
 
 export default function AccountingHomePage() {
-  const { organizationId, organizationName, hasActiveAccess, currencyCode, permissions, accountingTourSeenAt } =
+  const { organizationId, organizationName, currencyCode, permissions, accountingTourSeenAt } =
     useOrg();
   const canSeeActivityLog = permissions.includes("VIEW_ACTIVITY_LOG");
   const { data: session } = useSession();
@@ -77,10 +77,9 @@ export default function AccountingHomePage() {
   }, [organizationId]);
 
   useEffect(() => {
-    if (!hasActiveAccess) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
-  }, [load, hasActiveAccess]);
+  }, [load]);
 
   // On a phone the breakdown opens below all the tiles, so bring it into
   // view when a tile is tapped.
@@ -117,9 +116,9 @@ export default function AccountingHomePage() {
         description={`${greeting}${firstName ? `, ${firstName}` : ""}. Fees, payments and reminders for ${organizationName}.`}
       />
 
-      {!hasActiveAccess ? (
-        <p className="text-sm text-muted-foreground">Subscribe above to see your dashboard again.</p>
-      ) : (
+      {/* Read-only schools (subscription ended) still see their dashboard --
+          only changes are blocked, server-side (src/lib/tenant.ts). */}
+      {(
         <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
           {/* Left: tiles, breakdown, then activity */}
           <div className="min-w-0">

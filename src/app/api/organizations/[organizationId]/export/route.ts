@@ -20,7 +20,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, "EXPORT_DATA");
+    const { userId } = await requireMembership(organizationId, "EXPORT_DATA", { allowWhenReadOnly: true });
 
     const { zipBuffer, password, counts, schoolName } = await buildOrgBackupZip(organizationId);
 

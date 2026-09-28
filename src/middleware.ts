@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
+import { REQUEST_METHOD_HEADER } from "@/lib/requestMethod";
 
 const PUBLIC_PATHS = [
   "/",
@@ -61,10 +62,17 @@ function isPublicPath(pathname: string) {
 export default auth((req: NextRequest & { auth?: unknown }) => {
   const { pathname } = req.nextUrl;
 
+  // Pass the real HTTP method through to route handlers (see
+  // src/lib/requestMethod.ts). .set() replaces any client-supplied value,
+  // so it can't be spoofed to sneak a write past the read-only check.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set(REQUEST_METHOD_HEADER, req.method);
+  const next = () => NextResponse.next({ request: { headers: requestHeaders } });
+
   const response = isPublicPath(pathname)
-    ? NextResponse.next()
+    ? next()
     : req.auth
-      ? NextResponse.next()
+      ? next()
       : NextResponse.redirect(new URL("/login", req.url));
 
   // Baseline security headers on every response. HSTS only makes sense once

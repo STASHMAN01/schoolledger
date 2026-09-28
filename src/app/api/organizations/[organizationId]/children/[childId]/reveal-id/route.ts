@@ -17,7 +17,7 @@ const bodySchema = z.object({ field: z.enum(["childIdNumber", "parentIdNumber"])
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, childId } = await params;
-    const { userId, role, assignedCategoryId } = await requireMembership(organizationId);
+    const { userId, role, assignedCategoryId } = await requireMembership(organizationId, undefined, { allowWhenReadOnly: true });
 
     const child = await db.child.findFirst({ where: { id: childId, organizationId } });
     if (!child || (role === "TEACHER" && child.categoryId !== assignedCategoryId)) {

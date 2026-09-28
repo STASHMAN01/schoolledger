@@ -61,6 +61,7 @@ export default async function DashboardLayout({
         hasActiveAccess: hasActiveAccess(org),
         subscriptionStatus: org.subscriptionStatus,
         trialEndsAt: org.trialEndsAt ? org.trialEndsAt.toISOString() : null,
+        currentPeriodEnd: org.currentPeriodEnd ? org.currentPeriodEnd.toISOString() : null,
         currencyCode: org.currencyCode,
         centreTourSeenAt: membership.centreTourSeenAt ? membership.centreTourSeenAt.toISOString() : null,
         accountingTourSeenAt: membership.accountingTourSeenAt
