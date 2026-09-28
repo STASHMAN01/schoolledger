@@ -47,11 +47,17 @@ export async function POST(req: NextRequest) {
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
-    // Generic message: never confirm/deny an email already has an account
-    // via a distinct error, which would let an attacker enumerate users.
+    // Say so plainly (Dylan, 28 Sept: a generic "could not create account"
+    // just left people guessing). This does reveal that the email has an
+    // account; accepted trade-off -- the per-IP limit above (5/hour) stops
+    // it being used to check emails in bulk, and login / forgot-password
+    // stay generic.
     return NextResponse.json(
-      { error: "Could not create account with those details." },
-      { status: 400 }
+      {
+        error: "An account with this email already exists.",
+        code: "EMAIL_TAKEN",
+      },
+      { status: 409 }
     );
   }
 

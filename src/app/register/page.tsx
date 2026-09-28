@@ -26,11 +26,13 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailTaken, setEmailTaken] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setEmailTaken(false);
     if (!agreedToTerms) {
       setError("Please agree to the Terms and Privacy Policy to continue.");
       return;
@@ -51,6 +53,10 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.code === "EMAIL_TAKEN") {
+          setEmailTaken(true);
+          return;
+        }
         setError(data.error ?? "Something went wrong.");
         return;
       }
@@ -182,6 +188,19 @@ export default function RegisterPage() {
             </span>
           </label>
           {error && <p className="text-sm text-danger">{error}</p>}
+          {emailTaken && (
+            <p className="text-sm text-danger">
+              An account with this email already exists.{" "}
+              <Link href="/login" className="underline">
+                Log in
+              </Link>{" "}
+              or{" "}
+              <Link href="/forgot-password" className="underline">
+                reset your password
+              </Link>
+              , or use a different email.
+            </p>
+          )}
           <Button type="submit" disabled={loading} className="mt-2">
             {loading ? "Creating account…" : "Create account"}
           </Button>
