@@ -104,7 +104,9 @@ export async function generateSubscriptionReceiptPdf(
   rightText(isTaxInvoice ? "TAX INVOICE" : "RECEIPT", right, y - 4, 18, bold);
   y -= 42;
   const sellerLines = [
-    ...(SELLER.legalName && SELLER.legalName !== SELLER.tradingName ? [SELLER.legalName] : []),
+    ...(SELLER.legalName && SELLER.legalName !== SELLER.tradingName
+      ? [`${SELLER.tradingName} is a trading name of ${SELLER.legalName}`]
+      : []),
     ...SELLER.addressLines,
     ...(SELLER.registrationNumber ? [`Reg. no. ${SELLER.registrationNumber}`] : []),
     ...(SELLER.vatNumber ? [`VAT no. ${SELLER.vatNumber}`] : []),

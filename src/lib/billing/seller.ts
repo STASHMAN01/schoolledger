@@ -17,7 +17,10 @@ export const SELLER: {
   website: string;
 } = {
   tradingName: "Crechely",
-  legalName: null, // [ADD REAL: business name registered on Paystack]
+  // The business registered on Paystack (a Starter Business, not VAT
+  // registered). Printed as "Crechely is a trading name of Straight Glow" so
+  // a school can match the receipt to the name on its bank statement.
+  legalName: "Straight Glow",
   addressLines: [], // [ADD REAL: business address, one line per entry]
   registrationNumber: null,
   vatNumber: null,
