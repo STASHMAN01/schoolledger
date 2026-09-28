@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf
 import { formatMoneyCents } from "@/lib/money";
 import { formatDateZA } from "@/lib/date";
 import { SELLER, VAT_RATE } from "@/lib/billing/seller";
+import { RECEIPT_LOGO_ASPECT, RECEIPT_LOGO_PNG_BASE64 } from "@/lib/billing/receiptLogo";
 
 // Receipt for one Crechely subscription payment (Settings -> Billing),
 // so a school can file it as a business expense (Dylan, 28 Sept 2026).
@@ -66,7 +67,6 @@ const PAGE_HEIGHT = 841.89;
 const MARGIN = 56;
 const INK = rgb(0.1, 0.12, 0.16);
 const MUTED = rgb(0.42, 0.45, 0.5);
-const BRAND = rgb(0.02, 0.44, 0.73);
 const LINE = rgb(0.86, 0.88, 0.9);
 const GREEN = rgb(0.09, 0.55, 0.3);
 
@@ -92,10 +92,17 @@ export async function generateSubscriptionReceiptPdf(
   const right = PAGE_WIDTH - MARGIN;
   let y = PAGE_HEIGHT - MARGIN;
 
-  // Seller (left) and document title (right)
-  text(page, SELLER.tradingName, MARGIN, y - 4, 22, bold, BRAND);
+  // Seller logo (left) and document title (right)
+  const logo = await pdf.embedPng(Buffer.from(RECEIPT_LOGO_PNG_BASE64, "base64"));
+  const logoHeight = 34;
+  page.drawImage(logo, {
+    x: MARGIN,
+    y: y - logoHeight + 8,
+    width: logoHeight * RECEIPT_LOGO_ASPECT,
+    height: logoHeight,
+  });
   rightText(isTaxInvoice ? "TAX INVOICE" : "RECEIPT", right, y - 4, 18, bold);
-  y -= 26;
+  y -= 42;
   const sellerLines = [
     ...(SELLER.legalName && SELLER.legalName !== SELLER.tradingName ? [SELLER.legalName] : []),
     ...SELLER.addressLines,
