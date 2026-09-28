@@ -29,7 +29,14 @@ function getTransport() {
   return cachedTransport;
 }
 
-export async function sendMail(opts: { to: string; subject: string; html: string; text: string }) {
+export type SendMailResult = { sent: true } | { sent: false; error?: string };
+
+export async function sendMail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<SendMailResult> {
   const transport = getTransport();
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
 
@@ -45,15 +52,31 @@ export async function sendMail(opts: { to: string; subject: string; html: string
         `[mail] SMTP not configured — would have sent "${opts.subject}" to ${opts.to}:\n${opts.text}`
       );
     }
-    return { sent: false as const };
+    return { sent: false, error: "SMTP not configured" };
   }
 
-  await transport.sendMail({
-    from: `Crechely <${from}>`,
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
-    text: opts.text,
-  });
-  return { sent: true as const };
+  // A real SMTP failure (bad/expired app password, Gmail blocking the
+  // connection, a bounce, ...) used to throw straight out of here with
+  // nowhere visible to see it -- every caller either doesn't await the
+  // result (fire-and-forget) or, worse, has it silently swallowed by an
+  // outer try/catch (e.g. registration, which must never fail just
+  // because mail did). Catching it here and returning {sent:false,error}
+  // instead means every caller CAN see and record why a send failed,
+  // without this function ever needing to be the thing that breaks a
+  // request. console.error still runs too, for whenever server logs are
+  // reachable.
+  try {
+    await transport.sendMail({
+      from: `Crechely <${from}>`,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+    });
+    return { sent: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[mail] Failed to send "${opts.subject}" to ${opts.to}:`, err);
+    return { sent: false, error: message };
+  }
 }

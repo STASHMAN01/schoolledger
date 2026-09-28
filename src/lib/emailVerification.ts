@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { generateInviteToken } from "@/lib/inviteToken";
 import { sendMail } from "@/lib/mail";
 import { publicBaseUrl } from "@/lib/applyLink";
+import { logAudit } from "@/lib/audit";
 
 export const VERIFY_EXPIRY_HOURS = 48;
 
@@ -12,10 +13,17 @@ export const VERIFY_EXPIRY_HOURS = 48;
  * same reasoning as reset-password: only ever one live link per user, so
  * an old email sitting in an inbox can't be used after a newer one was
  * requested.
+ *
+ * `organizationId` is only used to attach the send result to an audit log
+ * entry (AuditLog requires one) so a send failure is visible via a direct
+ * Postgres query even when Vercel's own runtime logs aren't reachable --
+ * see the "email.verificationSendFailed" / "email.verificationSent"
+ * entries below.
  */
 export async function issueAndSendVerificationEmail(
   user: { id: string; email: string; name: string },
-  originForFallback: string
+  originForFallback: string,
+  organizationId: string
 ) {
   await db.emailVerificationToken.updateMany({
     where: { userId: user.id, usedAt: null },
@@ -33,7 +41,7 @@ export async function issueAndSendVerificationEmail(
 
   const verifyUrl = `${publicBaseUrl(originForFallback)}/verify-email/${token}`;
 
-  await sendMail({
+  const result = await sendMail({
     to: user.email,
     subject: "Verify your email for Crechely",
     text: `Hi ${user.name},\n\nOne last step to finish setting up your school: confirm this is a real, working email address by clicking the link below. This link works once and expires in ${VERIFY_EXPIRY_HOURS} hours:\n\n${verifyUrl}\n\nIf you didn't create a Crechely account, you can ignore this email.`,
@@ -44,4 +52,26 @@ export async function issueAndSendVerificationEmail(
       <p style="color:#666;font-size:13px">This link works once and expires in ${VERIFY_EXPIRY_HOURS} hours. If you didn't create a Crechely account, you can ignore this email.</p>
     `,
   });
+
+  if (result.sent) {
+    await logAudit({
+      organizationId,
+      userId: user.id,
+      action: "email.verificationSent",
+      entityType: "User",
+      entityId: user.id,
+      metadata: { to: user.email },
+    });
+  } else {
+    await logAudit({
+      organizationId,
+      userId: user.id,
+      action: "email.verificationSendFailed",
+      entityType: "User",
+      entityId: user.id,
+      metadata: { to: user.email, error: result.error ?? "unknown" },
+    });
+  }
+
+  return result;
 }

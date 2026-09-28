@@ -116,7 +116,8 @@ export async function POST(req: NextRequest) {
   try {
     await issueAndSendVerificationEmail(
       { id: result.user.id, email: result.user.email, name: result.user.name },
-      req.nextUrl.origin
+      req.nextUrl.origin,
+      result.organization.id
     );
   } catch (err) {
     console.error("Failed to send verification email at registration", err);

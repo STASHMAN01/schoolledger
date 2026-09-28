@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { resendVerificationSchema } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { issueAndSendVerificationEmail } from "@/lib/emailVerification";
+import { getPrimaryMembership } from "@/lib/org";
 import { handleApiError } from "@/lib/apiError";
 
 // Same generic-response, two-tier-rate-limited shape as
@@ -50,9 +51,18 @@ export async function POST(req: NextRequest) {
       return genericResponse;
     }
 
+    const membership = await getPrimaryMembership(user.id);
+    if (!membership) {
+      // No organization to attach the audit entry to (shouldn't happen in
+      // practice -- registration always creates one) -- still respond
+      // generically rather than leaking that detail.
+      return genericResponse;
+    }
+
     await issueAndSendVerificationEmail(
       { id: user.id, email: user.email, name: user.name },
-      req.nextUrl.origin
+      req.nextUrl.origin,
+      membership.organizationId
     );
 
     return genericResponse;
