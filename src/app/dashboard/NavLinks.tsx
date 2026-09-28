@@ -111,7 +111,7 @@ function useNav() {
   const settingsBase = inAccounting ? "/dashboard/accounting/settings" : "/dashboard/centre/settings";
   const settings: NavLink[] = SETTINGS_PAGES.filter((p) => {
     const needed = SETTINGS_REQUIRES[p.slug];
-    return !needed || needed.some((perm) => permissions.includes(perm));
+    return !needed || needed.some((perm) => (permissions as readonly string[]).includes(perm));
   }).map((p) => ({ href: `${settingsBase}/${p.slug}`, label: p.label }));
   const communication: NavLink | null =
     !inAccounting && canSeeLink("/dashboard/centre/communication", permissions)
