@@ -14,6 +14,8 @@ import { hasActiveAccess } from "@/lib/billing/access";
 import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
 import { db } from "@/lib/db";
 import { VerifyEmailGate } from "./VerifyEmailGate";
+import { DeletedSchoolScreen } from "./DeletedSchoolScreen";
+import { purgeDateFor } from "@/lib/orgDeletion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function DashboardLayout({
@@ -45,6 +47,9 @@ export default async function DashboardLayout({
     select: { email: true, emailVerified: true },
   });
   const emailVerified = Boolean(currentUser?.emailVerified);
+  // School in the 30-day trash: nothing is usable except the restore screen.
+  const isDeleted = Boolean(org.deletedAt);
+  const showApp = emailVerified && !isDeleted;
 
   return (
     <OrgProvider
@@ -100,7 +105,7 @@ export default async function DashboardLayout({
               <MobileMenu isPlatformAdmin={isPlatformAdmin} />
             </div>
           </div>
-          {emailVerified && (
+          {showApp && (
             <div className="hidden border-t border-border md:block">
               <div className="mx-auto max-w-6xl px-4 sm:px-6">
                 <NavBar />
@@ -109,10 +114,21 @@ export default async function DashboardLayout({
           )}
         </header>
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          {emailVerified ? children : <VerifyEmailGate email={currentUser?.email ?? ""} />}
+          {isDeleted && org.deletedAt ? (
+            <DeletedSchoolScreen
+              organizationId={membership.organizationId}
+              schoolName={org.name}
+              purgeAfter={purgeDateFor(org.deletedAt).toISOString()}
+              canRestore={membership.role === "ADMIN"}
+            />
+          ) : emailVerified ? (
+            children
+          ) : (
+            <VerifyEmailGate email={currentUser?.email ?? ""} />
+          )}
         </div>
         <ErrorCatcher />
-        {emailVerified && <TourOverlay />}
+        {showApp && <TourOverlay />}
       </div>
       </TourProvider>
     </OrgProvider>

@@ -171,6 +171,11 @@ model Organization {
   applyTokenHash     String?  @unique
   currentPeriodEnd  DateTime?
   trialEndsAt       DateTime?
+  // School deleted by its admin (28 Sept 2026). Set = in the 30-day trash:
+  // nobody can use it, an admin can still restore it, and the daily purge
+  // (src/lib/orgDeletion.ts) permanently removes it once 30 days pass.
+  deletedAt         DateTime?
+  deletedByUserId   String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

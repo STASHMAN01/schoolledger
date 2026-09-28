@@ -56,7 +56,7 @@ export default function StaffPage() {
         description="Everyone with a Crechely login, their role and the class they're assigned to."
         actions={
           canManageTeam ? (
-            <LinkButton href="/dashboard/accounting/settings/team" size="sm" variant="secondary">
+            <LinkButton href="/dashboard/centre/settings/team" size="sm" variant="secondary">
               Manage team
             </LinkButton>
           ) : undefined

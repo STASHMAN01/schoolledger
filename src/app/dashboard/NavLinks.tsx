@@ -43,15 +43,30 @@ const CENTRE_LINKS: NavLink[] = [
   { href: "/dashboard/centre/staff", label: "Staff" },
 ];
 
-const SETTINGS_LINKS: NavLink[] = [
-  { href: "/dashboard/accounting/settings/general", label: "General" },
-  { href: "/dashboard/accounting/settings/payment-types", label: "Payment types" },
-  { href: "/dashboard/accounting/settings/team", label: "Team" },
-  { href: "/dashboard/accounting/settings/activity", label: "Activity log" },
-  { href: "/dashboard/accounting/settings/trash", label: "Trash" },
-  { href: "/dashboard/accounting/settings/billing", label: "Billing" },
-  { href: "/dashboard/accounting/settings/backup", label: "Backup & export" },
+// Settings live in BOTH modes (Dylan, 28 Sept: "settings should exist on
+// both sides"). Same pages either way -- src/app/dashboard/centre/settings/*
+// re-exports the accounting ones -- so these are slugs, prefixed with the
+// current mode's base path in useNav().
+const SETTINGS_PAGES: { slug: string; label: string }[] = [
+  { slug: "general", label: "General" },
+  { slug: "payment-types", label: "Payment types" },
+  { slug: "team", label: "Team" },
+  { slug: "activity", label: "Activity log" },
+  { slug: "trash", label: "Trash" },
+  { slug: "billing", label: "Billing" },
+  { slug: "backup", label: "Backup & export" },
 ];
+
+// Permission(s) each settings page needs (any one is enough), by slug so
+// it applies in both modes.
+const SETTINGS_REQUIRES: Record<string, string[]> = {
+  "payment-types": ["MANAGE_SETTINGS"],
+  team: ["MANAGE_TEAM"],
+  billing: ["MANAGE_TEAM"],
+  trash: ["MANAGE_TEAM"],
+  activity: ["VIEW_ACTIVITY_LOG"],
+  backup: ["EXPORT_DATA"],
+};
 
 // Which permission(s) a nav link needs -- any one of them is enough. A
 // link is hidden when its page would only show an error or "no
@@ -65,12 +80,6 @@ const LINK_REQUIRES: Record<string, string[]> = {
   "/dashboard/centre/attendance": ["MANAGE_ATTENDANCE"],
   "/dashboard/centre/staff": ["MANAGE_CLASSES", "MANAGE_TEAM"],
   "/dashboard/centre/communication": ["MANAGE_CHILDREN"],
-  "/dashboard/accounting/settings/payment-types": ["MANAGE_SETTINGS"],
-  "/dashboard/accounting/settings/team": ["MANAGE_TEAM"],
-  "/dashboard/accounting/settings/billing": ["MANAGE_TEAM"],
-  "/dashboard/accounting/settings/trash": ["MANAGE_TEAM"],
-  "/dashboard/accounting/settings/activity": ["VIEW_ACTIVITY_LOG"],
-  "/dashboard/accounting/settings/backup": ["EXPORT_DATA"],
 };
 
 function canSeeLink(href: string, permissions: readonly string[]): boolean {
@@ -99,7 +108,11 @@ function useNav() {
   const links = (inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS).filter((l) =>
     canSeeLink(l.href, permissions)
   );
-  const settings = inAccounting ? SETTINGS_LINKS.filter((l) => canSeeLink(l.href, permissions)) : [];
+  const settingsBase = inAccounting ? "/dashboard/accounting/settings" : "/dashboard/centre/settings";
+  const settings: NavLink[] = SETTINGS_PAGES.filter((p) => {
+    const needed = SETTINGS_REQUIRES[p.slug];
+    return !needed || needed.some((perm) => permissions.includes(perm));
+  }).map((p) => ({ href: `${settingsBase}/${p.slug}`, label: p.label }));
   const communication: NavLink | null =
     !inAccounting && canSeeLink("/dashboard/centre/communication", permissions)
       ? { href: "/dashboard/centre/communication", label: "Communication" }
@@ -107,7 +120,7 @@ function useNav() {
   // Replays that mode's guided walkthrough -- the home page's mount effect
   // watches for ?tour=1 (see CentreManagementHomePage/AccountingHomePage).
   const tourHref = inAccounting ? "/dashboard/accounting?tour=1" : "/dashboard/centre?tour=1";
-  return { pathname, links, settings, communication, tourHref };
+  return { pathname, links, settings, settingsBase, communication, tourHref };
 }
 
 const tabClass = (active: boolean) =>
@@ -119,7 +132,7 @@ const tabClass = (active: boolean) =>
 
 /** Row 2 of the header on tablet/desktop: the mode's main tabs. */
 export function NavBar() {
-  const { pathname, links, settings } = useNav();
+  const { pathname, links, settings, settingsBase } = useNav();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -161,7 +174,7 @@ export function NavBar() {
             data-tour="nav-settings"
             onClick={() => setSettingsOpen((v) => !v)}
             aria-expanded={settingsOpen}
-            className={`${tabClass(pathname.startsWith("/dashboard/accounting/settings"))} flex items-center gap-1`}
+            className={`${tabClass(pathname.startsWith(settingsBase))} flex items-center gap-1`}
           >
             Settings
             <svg

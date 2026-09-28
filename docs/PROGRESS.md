@@ -938,3 +938,11 @@ device shell has no GitHub credentials) -- Dylan still needs to `git push origin
 that, a live click-through: log in as the platform admin and confirm the `/platform` landing,
 and grant one test org "Lifetime" from Schools and confirm it shows correctly and isn't counted
 in MRR/ARR.
+
+## 28 Sept 2026 — Email fix, Settings in both modes, delete school (30-day trash)
+
+- **Email outage found and fixed (config, not code).** Every outgoing email (verification, password reset, reminders, parent form links) had been failing since the Zoho password changed on 24 Sept; Vercel still had the old one (`535 Authentication Failed`). Dylan updated `SMTP_PASS` and redeployed; confirmed sending again. `sendMail()` now returns `{sent, error}` instead of throwing, and verification sends are recorded in AuditLog (`email.verificationSent` / `email.verificationSendFailed`) so failures are visible without Vercel log access.
+- **Settings in both modes.** Centre Management now has the same Settings menu (`/dashboard/centre/settings/*` re-exports the accounting pages). The Activity log shows the current mode's activity.
+- **Delete school.** Admin-only, Settings → General → Delete school (type the name + password). Sets `Organization.deletedAt`; everyone is locked out (`requireMembership` + dashboard gate), an admin can restore from the dashboard for 30 days, then the daily Vercel cron `/api/cron/purge-deleted-schools` (needs `CRON_SECRET`) removes it and any logins left with no school (never platform admins). Blocked while a paid Paystack subscription is active. Deleted schools are excluded from platform stats and flagged in the schools list.
+- **Data cleanup (Dylan-approved, run by Dylan).** Permanently deleted 8 test schools and 6 test-only logins; only DEES DUCKLING CENTRE (lifetime) remains. Its admin seat moved from the lost dylanmaps@gmail.com login to dylanmaps3@gmail.com.
+- **Migration:** `organizations.deletedAt TIMESTAMP(3)`, `organizations.deletedByUserId TEXT` (additive, nullable).

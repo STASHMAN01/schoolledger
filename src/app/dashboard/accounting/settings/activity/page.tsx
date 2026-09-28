@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useOrg } from "../../../OrgContext";
-import { ACCOUNTING_ENTITY_TYPES, PRIVACY_ACTIONS } from "@/lib/activityArea";
+import { ACCOUNTING_ENTITY_TYPES, CENTRE_ENTITY_TYPES, PRIVACY_ACTIONS } from "@/lib/activityArea";
 import { describeAuditAction } from "@/lib/auditLabel";
 import { Badge, Button, Card, EmptyState, PageHeader, Select } from "@/components/ui";
 
@@ -111,6 +112,10 @@ function ActivityRow({ entry }: { entry: AuditEntry }) {
 export default function ActivityLogPage() {
   const { organizationId, permissions } = useOrg();
   const canSeePrivacy = permissions.includes("MANAGE_TEAM");
+  // This page is shared by both modes (centre/settings/activity re-exports
+  // it); each mode's log shows that mode's own changes.
+  const inCentre = usePathname().startsWith("/dashboard/centre");
+  const entityTypes = (inCentre ? CENTRE_ENTITY_TYPES : ACCOUNTING_ENTITY_TYPES).join(",");
   // "activity" = changes (Accounting); "privacy" = who viewed children's
   // records (admin only, POPIA).
   const [view, setView] = useState<"activity" | "privacy">("activity");
@@ -131,7 +136,7 @@ export default function ActivityLogPage() {
     try {
       const params = new URLSearchParams();
       if (view === "privacy") params.set("privacy", "1");
-      else params.set("entityTypes", ACCOUNTING_ENTITY_TYPES.join(","));
+      else params.set("entityTypes", entityTypes);
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`
@@ -149,7 +154,7 @@ export default function ActivityLogPage() {
     } finally {
       setLoading(false);
     }
-  }, [organizationId, userFilter, view]);
+  }, [organizationId, userFilter, view, entityTypes]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load + reload when the user filter changes
@@ -162,7 +167,7 @@ export default function ActivityLogPage() {
     try {
       const params = new URLSearchParams({ cursor });
       if (view === "privacy") params.set("privacy", "1");
-      else params.set("entityTypes", ACCOUNTING_ENTITY_TYPES.join(","));
+      else params.set("entityTypes", entityTypes);
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(
         `/api/organizations/${organizationId}/audit?${params.toString()}`

@@ -10,9 +10,14 @@ import { db } from "@/lib/db";
  * every API call.
  */
 export async function getPrimaryMembership(userId: string) {
-  return db.membership.findFirst({
+  // Prefer the oldest school that ISN'T in the 30-day trash (deletedAt),
+  // so someone who also belongs to another school lands there. Only when
+  // every school they belong to is deleted do they get the deleted one
+  // back (the dashboard then shows the "scheduled for deletion" screen).
+  const memberships = await db.membership.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },
     include: { organization: true, permissionOverrides: true },
   });
+  return memberships.find((m) => !m.organization.deletedAt) ?? memberships[0] ?? null;
 }

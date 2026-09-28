@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requirePlatformAdmin } from "@/lib/platformAdmin";
 import { handleApiError } from "@/lib/apiError";
 import { planForOrg, isPaying, isTrialing, countryName } from "@/lib/platformStats";
+import { purgeDateFor } from "@/lib/orgDeletion";
 
 // Org list for the /platform/organizations table. Intentionally selects
 // only billing/identity fields plus cheap _count rollups — never a school's
@@ -23,6 +24,7 @@ export async function GET() {
         trialEndsAt: true,
         currentPeriodEnd: true,
         createdAt: true,
+        deletedAt: true,
         _count: { select: { memberships: true, children: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -49,6 +51,8 @@ export async function GET() {
         memberCount: org._count.memberships,
         childrenCount: org._count.children,
         hasPaystackCustomer: Boolean(org.paystackCustomerCode),
+        // In the 30-day trash; permanently removed on this date.
+        purgeAfter: org.deletedAt ? purgeDateFor(org.deletedAt) : null,
       })),
     });
   } catch (err) {

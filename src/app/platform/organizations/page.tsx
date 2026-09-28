@@ -19,6 +19,7 @@ type Org = {
   memberCount: number;
   childrenCount: number;
   hasPaystackCustomer: boolean;
+  purgeAfter: string | null;
 };
 
 const planLabel: Record<Org["plan"], string> = {
@@ -40,6 +41,13 @@ const MANUAL_STATUSES = [
 ] as const;
 
 function statusBadge(org: Org) {
+  if (org.purgeAfter) {
+    return (
+      <Badge variant="danger">
+        Deleted · removed {new Date(org.purgeAfter).toLocaleDateString()}
+      </Badge>
+    );
+  }
   if (org.plan === "lifetime") return <Badge variant="success">Lifetime</Badge>;
   if (org.isPaying) return <Badge variant="success">Paying · {planLabel[org.plan]}</Badge>;
   if (org.isTrialing) return <Badge variant="accent">Trialing</Badge>;

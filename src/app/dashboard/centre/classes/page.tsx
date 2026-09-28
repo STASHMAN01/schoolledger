@@ -207,7 +207,7 @@ export default function CentreClassesPage() {
                   {c.teachers.length > 0 ? (
                     <p className="text-foreground">{c.teachers.map((t) => t.name).join(", ")}</p>
                   ) : canAssign ? (
-                    <Link href="/dashboard/accounting/settings/team" className="text-danger underline">
+                    <Link href="/dashboard/centre/settings/team" className="text-danger underline">
                       None — assign one
                     </Link>
                   ) : (

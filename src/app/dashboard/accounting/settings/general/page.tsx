@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useOrg } from "../../../OrgContext";
+import { DeleteSchoolCard } from "./DeleteSchoolCard";
 import { Button, Card, Disclosure, Input, Label } from "@/components/ui";
 
 type Profile = {
@@ -214,7 +215,7 @@ function ImageUploadField({
 }
 
 export default function GeneralSettingsPage() {
-  const { organizationId, permissions } = useOrg();
+  const { organizationId, organizationName, permissions, role } = useOrg();
   const isAdmin = permissions.includes("MANAGE_SETTINGS");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -532,6 +533,10 @@ export default function GeneralSettingsPage() {
           </div>
         )}
       </form>
+
+      {role === "ADMIN" && (
+        <DeleteSchoolCard organizationId={organizationId} schoolName={organizationName} />
+      )}
     </div>
   );
 }

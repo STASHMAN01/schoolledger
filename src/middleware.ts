@@ -49,6 +49,9 @@ const PUBLIC_PATHS = [
   // 23 Sept; it only "worked" in testing because the tester was logged in).
   "/apply",
   "/api/apply",
+  // Vercel Cron (e.g. the daily purge of deleted schools). No session --
+  // each cron route checks the CRON_SECRET bearer token itself.
+  "/api/cron",
 ];
 
 function isPublicPath(pathname: string) {

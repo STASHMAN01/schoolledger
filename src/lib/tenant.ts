@@ -42,6 +42,9 @@ export async function requireMembership(
     // which is what actually enforces "no subscription, no access" rather
     // than that being a UI-only suggestion.
     skipAccessCheck?: boolean;
+    // Only the restore route passes this: a school in the 30-day trash is
+    // otherwise completely locked, for every member.
+    allowDeletedOrganization?: boolean;
   }
 ) {
   const session = await auth();
@@ -62,6 +65,19 @@ export async function requireMembership(
   }
 
   const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides);
+
+  if (!options?.allowDeletedOrganization) {
+    const org = await db.organization.findUnique({
+      where: { id: organizationId },
+      select: { deletedAt: true },
+    });
+    if (org?.deletedAt) {
+      throw new TenantAccessError(
+        "This school has been deleted. An admin can restore it within 30 days.",
+        403
+      );
+    }
+  }
 
   // Defense in depth for the same gate the /dashboard layout enforces in
   // the UI (VerifyEmailGate): belt-and-suspenders against any request that

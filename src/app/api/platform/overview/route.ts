@@ -14,7 +14,9 @@ export async function GET() {
   try {
     await requirePlatformAdmin();
 
+    // Schools in the 30-day trash aren't customers any more.
     const orgs = await db.organization.findMany({
+      where: { deletedAt: null },
       select: {
         subscriptionStatus: true,
         trialEndsAt: true,
