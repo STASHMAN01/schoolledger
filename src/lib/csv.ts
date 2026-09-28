@@ -5,14 +5,33 @@
 // uploaded file) and on the server (payments export already had its own
 // copy of the escaping half of this — kept here so there's one version).
 
-export function parseCsv(text: string): string[][] {
+// Which character separates the columns. Excel doesn't always use commas:
+// on South African (and most European) regional settings it saves "CSV" with
+// semicolons, and "Text (Tab delimited)" or a copy-paste uses tabs. Decided
+// from the header row -- whichever of , ; or tab appears most there (outside
+// quotes) wins, with comma as the default.
+export function detectDelimiter(text: string): string {
+  const firstLine = text.replace(/^\uFEFF/, "").split(/\r\n|\n|\r/, 1)[0] ?? "";
+  const counts: Record<string, number> = { ",": 0, ";": 0, "\t": 0 };
+  let inQuotes = false;
+  for (const ch of firstLine) {
+    if (ch === '"') inQuotes = !inQuotes;
+    else if (!inQuotes && ch in counts) counts[ch]++;
+  }
+  let best = ",";
+  for (const d of [";", "\t"]) if (counts[d] > counts[best]) best = d;
+  return best;
+}
+
+export function parseCsv(text: string, delimiter: string = detectDelimiter(text)): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
   let inQuotes = false;
   // Normalize line endings up front so \r\n and \r don't leave stray \r
   // characters embedded in field values.
-  const input = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  // Also drop the byte-order mark Excel's "CSV UTF-8" puts at the start.
+  const input = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
   for (let i = 0; i < input.length; i++) {
     const ch = input[i];
@@ -31,7 +50,7 @@ export function parseCsv(text: string): string[][] {
     }
     if (ch === '"') {
       inQuotes = true;
-    } else if (ch === ",") {
+    } else if (ch === delimiter) {
       row.push(field);
       field = "";
     } else if (ch === "\n") {

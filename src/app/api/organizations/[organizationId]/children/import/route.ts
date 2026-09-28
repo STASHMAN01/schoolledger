@@ -6,29 +6,9 @@ import { childImportSchema, childImportRowSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
+import { FIELD_ALIASES } from "@/lib/childImport";
 
 type Params = { params: Promise<{ organizationId: string }> };
-
-// Every possible header spelling this accepts for a given field, matched
-// case-insensitively (csvRowsToRecords on the client already lowercases
-// and trims headers before this ever sees them). Deliberately generous —
-// a school pasting from whatever spreadsheet they already had shouldn't
-// have to rename their columns to match this app exactly.
-const FIELD_ALIASES: Record<string, string[]> = {
-  firstName: ["child first name", "childfirstname", "first name", "firstname", "child name"],
-  lastName: ["child last name", "childlastname", "last name", "lastname", "surname", "child surname"],
-  parentName: ["parent name", "parentname", "parent full name"],
-  parentFirstName: ["parent first name", "parentfirstname"],
-  parentLastName: ["parent last name", "parentlastname", "parent surname"],
-  parentPhone: ["parent phone", "phone", "parent contact", "contact", "parent contact details", "cell", "mobile"],
-  parentEmail: ["parent email", "email"],
-  categoryName: ["category", "class", "grade"],
-  enrollmentDate: ["enrollment date", "enrollmentdate", "start date"],
-  childIdNumber: ["child id", "childid", "child id number", "child's id"],
-  parentIdNumber: ["parent id", "parentid", "parent id number", "parent's id"],
-  dateOfBirth: ["date of birth", "dateofbirth", "dob", "birth date", "birthdate", "birthday"],
-  gender: ["gender", "sex"],
-};
 
 function pick(row: Record<string, string>, field: keyof typeof FIELD_ALIASES): string {
   for (const alias of FIELD_ALIASES[field]) {

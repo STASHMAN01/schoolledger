@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { parseCsv, csvRowsToRecords, toCsv } from "@/lib/csv";
 import { todayLocal } from "@/lib/date";
+import { hasRequiredColumns } from "@/lib/childImport";
 
 // Excel support (Dylan 23 Sept). The reader is loaded only when someone
 // actually picks an .xlsx file. Cells become plain text in the same shape
@@ -107,7 +108,18 @@ export function ImportChildrenCsv({
     try {
       table = /\.xlsx$/i.test(file.name) ? await readExcel(file) : parseCsv(await file.text());
     } catch {
-      setError("That file couldn't be read. Save it as .xlsx or .csv and try again.");
+      setError(
+        /\.xls$/i.test(file.name)
+          ? "That's an older Excel file (.xls). In Excel choose File → Save As → Excel Workbook (.xlsx), then upload that."
+          : "That file couldn't be read. Save it as .xlsx or .csv and try again."
+      );
+      setRows(null);
+      return;
+    }
+    if (table.length > 0 && !hasRequiredColumns(table[0])) {
+      setError(
+        "We couldn't find the child's first name and last name columns. Check the first row has headings like \"Child First Name\" and \"Child Last Name\" (download the template below to see them all)."
+      );
       setRows(null);
       return;
     }
@@ -206,7 +218,7 @@ export function ImportChildrenCsv({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={handleFile}
             className="text-sm text-foreground file:mr-3 file:rounded-lg file:border file:border-border-strong file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
           />
