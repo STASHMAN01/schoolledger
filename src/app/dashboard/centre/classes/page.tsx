@@ -9,6 +9,8 @@ import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, Input, Label, PageHeader } from "@/components/ui";
 import { ageGroupLabel, monthsToYears as years } from "@/lib/ageGroup";
+import { useConfirmDialog } from "@/components/useConfirmDialog";
+import { DeletionControl, type DeletionRequestInfo } from "@/components/DeletionControl";
 
 type ClassRow = {
   id: string;
@@ -18,6 +20,7 @@ type ClassRow = {
   ageMaxMonths: number | null;
   childCount: number;
   teachers: { id: string; name: string }[];
+  deletionRequest: DeletionRequestInfo | null;
 };
 
 // "2.5" years -> 30 months; blank -> null.
@@ -37,6 +40,7 @@ export default function CentreClassesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", minYears: "", maxYears: "" });
   const [saving, setSaving] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -162,6 +166,7 @@ export default function CentreClassesPage() {
 
   return (
     <div className="animate-in max-w-4xl">
+      {confirmDialog}
       <PageHeader
         title="Classes"
         description="Each class with its teacher, age group and number of children."
@@ -223,9 +228,25 @@ export default function CentreClassesPage() {
                   <span className="text-xs text-muted-foreground">children</span>
                 </Link>
                 {canManage && (
-                  <Button size="sm" variant="secondary" onClick={() => startEdit(c)}>
-                    Edit
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button size="sm" variant="secondary" onClick={() => startEdit(c)}>
+                      Edit
+                    </Button>
+                    {/* Same request-with-reason + admin-approval flow as
+                        Accounting > Classes; a deleted class goes to
+                        Settings > Trash and can be restored for 30 days. */}
+                    <DeletionControl
+                      organizationId={organizationId}
+                      targetType="CATEGORY"
+                      targetId={c.id}
+                      targetLabel={c.name}
+                      deletionRequest={c.deletionRequest}
+                      canRequest={canManage}
+                      isAdmin={permissions.includes("APPROVE_DELETION")}
+                      onChanged={load}
+                      confirm={confirm}
+                    />
+                  </div>
                 )}
               </div>
             )
