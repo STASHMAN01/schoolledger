@@ -11,6 +11,7 @@ import {
 } from "@/lib/validation";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
 import { billingFieldsFromGuardian } from "@/lib/billingContact";
+import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
 import { z } from "zod";
 
 type Params = { params: Promise<{ organizationId: string; submissionId: string }> };
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const submission = await db.parentSubmission.findFirst({
       where: { id: submissionId, organizationId },
-      include: { link: { include: { child: true } } },
+      include: { link: { include: { child: { include: { guardians: true } } } } },
     });
 
     if (!submission) {
@@ -84,6 +85,26 @@ export async function POST(req: NextRequest, { params }: Params) {
       billingData = fields;
     }
 
+    // The emergency contact must be someone other than every parent /
+    // guardian the child will have after approval (on file + submitted).
+    const ec = {
+      name: parsed.child.emergencyContactName,
+      relationship: parsed.child.emergencyContactRelationship,
+      phone: parsed.child.emergencyContactPhone,
+    };
+    const ecProblem = emergencyContactProblem(ec, [
+      { name: child.parentName, phone: child.parentPhone },
+      ...child.guardians,
+      ...parsed.guardians,
+    ]);
+    if (ecProblem) {
+      return NextResponse.json(
+        { error: `${ecProblem} Reject this submission and ask the parent to send the form again.` },
+        { status: 400 }
+      );
+    }
+    const ecGiven = Boolean(ec.name?.trim());
+
     await db.$transaction(async (tx) => {
       await tx.child.update({
         where: { id: child.id },
@@ -94,6 +115,15 @@ export async function POST(req: NextRequest, { params }: Params) {
           photoImage: photoConsentGiven ? parsed.child.photoImage ?? undefined : undefined,
           photoConsentGiven: photoConsentGiven || undefined,
           photoConsentAt: photoConsentGiven ? new Date() : undefined,
+          // Only what the parent actually filled in replaces what's on file.
+          allergies: parsed.child.allergies?.trim() ? parsed.child.allergies.trim() : undefined,
+          ...(ecGiven
+            ? {
+                emergencyContactName: ec.name?.trim() || null,
+                emergencyContactRelationship: ec.relationship?.trim() || null,
+                emergencyContactPhone: storedEmergencyPhone(ec.phone),
+              }
+            : {}),
           ...(billingData ?? {}),
         },
       });
@@ -164,6 +194,21 @@ async function approveNewApplicant(
   const photoConsentGiven = parsed.child.photoConsentGiven === true;
   const primary = parsed.guardians[0];
 
+  const ecProblem = emergencyContactProblem(
+    {
+      name: parsed.child.emergencyContactName,
+      relationship: parsed.child.emergencyContactRelationship,
+      phone: parsed.child.emergencyContactPhone,
+    },
+    parsed.guardians
+  );
+  if (ecProblem) {
+    return NextResponse.json(
+      { error: `${ecProblem} Reject this submission and ask the parent to apply again.` },
+      { status: 400 }
+    );
+  }
+
   const child = await db.$transaction(async (tx) => {
     const created = await tx.child.create({
       data: {
@@ -182,6 +227,10 @@ async function approveNewApplicant(
         photoImage: photoConsentGiven ? parsed.child.photoImage ?? null : null,
         photoConsentGiven,
         photoConsentAt: photoConsentGiven ? new Date() : null,
+        allergies: parsed.child.allergies?.trim() || null,
+        emergencyContactName: parsed.child.emergencyContactName?.trim() || null,
+        emergencyContactRelationship: parsed.child.emergencyContactRelationship?.trim() || null,
+        emergencyContactPhone: storedEmergencyPhone(parsed.child.emergencyContactPhone),
       },
     });
 

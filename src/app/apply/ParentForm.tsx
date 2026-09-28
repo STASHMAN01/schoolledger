@@ -15,7 +15,8 @@
 // 2026-09-21) -- see the ParentSubmission model comment in schema.prisma.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Card, Input, Label, Select } from "@/components/ui";
+import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
+import { emergencyContactProblem } from "@/lib/emergencyContact";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { Logo } from "@/components/Logo";
 
@@ -62,6 +63,10 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
   const [childPhoto, setChildPhoto] = useState<string | null>(null);
   const [childIdPhoto, setChildIdPhoto] = useState<string | null>(null);
   const [guardians, setGuardians] = useState<GuardianDraft[]>([blankGuardian()]);
+  const [allergies, setAllergies] = useState("");
+  const [ecName, setEcName] = useState("");
+  const [ecRelationship, setEcRelationship] = useState("");
+  const [ecPhone, setEcPhone] = useState("");
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -116,6 +121,15 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
       return;
     }
 
+    const ecProblem = emergencyContactProblem(
+      { name: ecName, relationship: ecRelationship, phone: ecPhone },
+      guardians,
+    );
+    if (ecProblem) {
+      setSubmitError(ecProblem);
+      return;
+    }
+
     const attachments: { kind: "CHILD_ID" | "GUARDIAN_ID"; guardianIndex?: number; label: string; image: string }[] = [];
     if (childIdPhoto) {
       attachments.push({ kind: "CHILD_ID", label: `${childName}'s ID document`, image: childIdPhoto });
@@ -145,6 +159,10 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
         childIdNumber: childIdNumber || undefined,
         photoImage: photoConsentGiven ? childPhoto || undefined : undefined,
         photoConsentGiven,
+        allergies: allergies.trim() || undefined,
+        emergencyContactName: ecName.trim() || undefined,
+        emergencyContactRelationship: ecRelationship.trim() || undefined,
+        emergencyContactPhone: ecPhone.trim() || undefined,
       },
       guardians: guardians.map((g) => ({
         relationship: g.relationship,
@@ -424,6 +442,45 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
                 Add another parent/guardian
               </Button>
             )}
+
+            <div className="flex flex-col gap-4 border-t border-border pt-6">
+              <h2 className="font-display text-sm font-semibold text-foreground">
+                Allergies &amp; emergency contact
+              </h2>
+              <div>
+                <Label htmlFor="allergies">Allergies or medical conditions (optional)</Label>
+                <Textarea
+                  id="allergies"
+                  rows={2}
+                  placeholder="e.g. Peanuts, bee stings, asthma pump in bag"
+                  value={allergies}
+                  onChange={(e) => setAllergies(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Emergency contact (optional): someone other than the parents/guardians above, for
+                when you can&apos;t be reached. If you add one, give a name and phone number.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="ecName">Name</Label>
+                  <Input id="ecName" value={ecName} onChange={(e) => setEcName(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="ecRelationship">Relationship to child</Label>
+                  <Input
+                    id="ecRelationship"
+                    placeholder="Aunt, Neighbour, Grandfather…"
+                    value={ecRelationship}
+                    onChange={(e) => setEcRelationship(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="ecPhone">Phone</Label>
+                <Input id="ecPhone" type="tel" value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} />
+              </div>
+            </div>
 
             {submitError && <p className="text-sm text-danger">{submitError}</p>}
 

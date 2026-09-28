@@ -962,3 +962,9 @@ in MRR/ARR.
 - **Allergies + emergency contact** (optional) on Child: add form, Edit details, profile card (allergies highlighted), Excel import/template, and prefilled on the Medical & allergy and Emergency contact printable forms. Rule (lib/emergencyContact.ts, same in UI, API and import): name + phone required once any field is filled; must not be a parent/guardian by name or phone.
 - **Migration:** children.allergies, emergencyContactName, emergencyContactRelationship, emergencyContactPhone (all nullable, additive).
 - Not yet: the parents' online application form doesn't ask for allergies / emergency contact.
+
+## 28 Sept 2026 — Allergies & emergency contact on parent forms
+- Both public parent forms (/apply/[token] update link, /apply/school/[token] new family) now ask for allergies and an optional emergency contact (name, relationship, phone).
+- Same rule as the app and the import: the emergency contact must be someone other than the parents/guardians (name and phone checked), enforced in the browser, on submit, and again on approval.
+- Staff see Allergies and Emergency contact on the pending-review page; approval saves them onto the child (existing child: only filled-in values overwrite).
+- No database migration needed (Child columns already added in 0e6c941).

@@ -4,6 +4,7 @@ import { handleApiError } from "@/lib/apiError";
 import { hashInviteToken } from "@/lib/inviteToken";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { newApplicantSchema } from "@/lib/validation";
+import { emergencyContactProblem } from "@/lib/emergencyContact";
 import { logAudit } from "@/lib/audit";
 
 type Params = { params: Promise<{ token: string }> };
@@ -67,6 +68,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const body = newApplicantSchema.parse(await req.json());
+
+    // Emergency contact must be someone other than the parents/guardians.
+    const ecProblem = emergencyContactProblem(
+      {
+        name: body.child.emergencyContactName,
+        relationship: body.child.emergencyContactRelationship,
+        phone: body.child.emergencyContactPhone,
+      },
+      body.guardians
+    );
+    if (ecProblem) {
+      return NextResponse.json({ error: ecProblem }, { status: 400 });
+    }
 
     for (const a of body.attachments ?? []) {
       if (a.kind === "GUARDIAN_ID" && (a.guardianIndex === undefined || !body.guardians[a.guardianIndex])) {

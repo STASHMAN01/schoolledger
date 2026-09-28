@@ -229,6 +229,19 @@ export const childProfileSchema = z.object({
   gender: z.preprocess(emptyToUndefined, z.enum(["MALE", "FEMALE", "OTHER"]).optional().nullable()),
 });
 
+// Allergies + emergency contact (Dylan, 28 Sept 2026). "" clears a field
+// (null); leaving it out changes nothing. The "must be someone other than
+// the parents" rule is cross-field, so it lives in lib/emergencyContact.ts.
+const optionalClearableText = (max: number) =>
+  z.preprocess((v) => (v === "" ? null : v), z.string().trim().max(max).nullable().optional());
+
+export const childCareSchema = z.object({
+  allergies: optionalClearableText(2000),
+  emergencyContactName: optionalClearableText(200),
+  emergencyContactRelationship: optionalClearableText(100),
+  emergencyContactPhone: optionalClearableText(40),
+});
+
 // A child's parent/guardian, mirroring the paper enrolment form. See the
 // Guardian model comment in schema.prisma for why this is a separate
 // table from Child.parentName/parentPhone/parentEmail.
@@ -256,7 +269,7 @@ export const guardianUpdateSchema = guardianSchema.partial();
 // it should be validated by the same rules that write will use.
 export const parentSubmissionChildSchema = childProfileSchema.extend({
   childIdNumber: z.preprocess(emptyToUndefined, z.string().trim().max(64).optional()),
-});
+}).merge(childCareSchema);
 
 export const parentSubmissionAttachmentSchema = z.object({
   kind: z.enum(["CHILD_ID", "GUARDIAN_ID"]),
@@ -409,19 +422,6 @@ export const testimonialSubmissionSchema = z.object({
 // gender and their first parent/guardian, saved together. The "core"
 // details are enforced by the form; the API also accepts the older
 // name-only shape (Accounting) -- such a child is flagged incomplete.
-// Allergies + emergency contact (Dylan, 28 Sept 2026). "" clears a field
-// (null); leaving it out changes nothing. The "must be someone other than
-// the parents" rule is cross-field, so it lives in lib/emergencyContact.ts.
-const optionalClearableText = (max: number) =>
-  z.preprocess((v) => (v === "" ? null : v), z.string().trim().max(max).nullable().optional());
-
-export const childCareSchema = z.object({
-  allergies: optionalClearableText(2000),
-  emergencyContactName: optionalClearableText(200),
-  emergencyContactRelationship: optionalClearableText(100),
-  emergencyContactPhone: optionalClearableText(40),
-});
-
 export const childCreateSchema = childSchema.extend({
   dateOfBirth: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
   gender: z.preprocess(emptyToUndefined, z.enum(["MALE", "FEMALE", "OTHER"]).optional()),

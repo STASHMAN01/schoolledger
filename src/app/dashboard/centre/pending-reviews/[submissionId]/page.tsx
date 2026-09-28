@@ -36,6 +36,10 @@ type SubmissionDetail = {
       childIdNumber?: string;
       photoImage?: string | null;
       photoConsentGiven?: boolean;
+      allergies?: string | null;
+      emergencyContactName?: string | null;
+      emergencyContactRelationship?: string | null;
+      emergencyContactPhone?: string | null;
     };
     guardians: SubmittedGuardian[];
   };
@@ -50,6 +54,10 @@ type CurrentChild = {
   gender: string | null;
   childIdNumber: string | null;
   parentName?: string;
+  allergies?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactRelationship?: string | null;
+  emergencyContactPhone?: string | null;
 };
 
 function fmt(v: string | null | undefined) {
@@ -205,6 +213,28 @@ export default function ReviewSubmissionPage() {
               <td className="py-2 text-muted-foreground">Child ID number</td>
               <td className="py-2">{fmt(onFile?.childIdNumber)}</td>
               <td className="py-2 font-medium text-foreground">{fmt(c.childIdNumber)}</td>
+            </tr>
+            <tr>
+              <td className="py-2 text-muted-foreground">Allergies</td>
+              <td className="py-2">{fmt(onFile?.allergies)}</td>
+              <td className={`py-2 font-medium ${c.allergies ? "text-danger" : "text-foreground"}`}>{fmt(c.allergies)}</td>
+            </tr>
+            <tr>
+              <td className="py-2 text-muted-foreground">Emergency contact</td>
+              <td className="py-2">
+                {onFile?.emergencyContactName
+                  ? [onFile.emergencyContactName, onFile.emergencyContactRelationship, onFile.emergencyContactPhone]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : "—"}
+              </td>
+              <td className="py-2 font-medium text-foreground">
+                {c.emergencyContactName
+                  ? [c.emergencyContactName, c.emergencyContactRelationship, c.emergencyContactPhone]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : "—"}
+              </td>
             </tr>
             <tr>
               <td className="py-2 text-muted-foreground">Photo consent</td>

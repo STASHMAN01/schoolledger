@@ -97,6 +97,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
           dateOfBirth: child.dateOfBirth,
           gender: child.gender,
           childIdNumber: maskIdNumber(child.childIdNumber),
+          allergies: child.allergies,
+          emergencyContactName: child.emergencyContactName,
+          emergencyContactRelationship: child.emergencyContactRelationship,
+          emergencyContactPhone: child.emergencyContactPhone,
           // Who fees & reminders currently go to, for the "also update the
           // billing contact" tick box on the review page.
           parentName: child.parentName,

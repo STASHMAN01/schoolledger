@@ -4,6 +4,7 @@ import { handleApiError } from "@/lib/apiError";
 import { hashInviteToken as hashFormToken } from "@/lib/inviteToken";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { parentSubmissionSchema } from "@/lib/validation";
+import { emergencyContactProblem } from "@/lib/emergencyContact";
 import { logAudit } from "@/lib/audit";
 
 type Params = { params: Promise<{ token: string }> };
@@ -84,6 +85,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const body = parentSubmissionSchema.parse(await req.json());
+
+    // Emergency contact must be someone other than the parents/guardians.
+    const ecProblem = emergencyContactProblem(
+      {
+        name: body.child.emergencyContactName,
+        relationship: body.child.emergencyContactRelationship,
+        phone: body.child.emergencyContactPhone,
+      },
+      body.guardians
+    );
+    if (ecProblem) {
+      return NextResponse.json({ error: ecProblem }, { status: 400 });
+    }
 
     // Guardian ID-photo attachments must reference a guardian actually
     // present in this same submission -- reject anything else rather
