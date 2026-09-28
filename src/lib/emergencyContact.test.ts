@@ -42,3 +42,20 @@ describe("emergency contact rule", () => {
     expect(storedEmergencyPhone("ext 204")).toBe("ext 204");
   });
 });
+
+describe("emergency contact vs a parent's extra numbers", () => {
+  it("rejects a number that matches a parent's second or third phone", () => {
+    expect(
+      emergencyContactProblem({ name: "Aunt Mary", phone: "0831112222" }, [
+        { firstName: "Thandi", lastName: "Mokoena", phone: "0821234567", extraPhones: ["+27831112222"] },
+      ])
+    ).toMatch(/same as a parent/);
+  });
+  it("accepts a number that matches none of them", () => {
+    expect(
+      emergencyContactProblem({ name: "Aunt Mary", phone: "0849998888" }, [
+        { firstName: "Thandi", lastName: "Mokoena", phone: "0821234567", extraPhones: ["0831112222"] },
+      ])
+    ).toBeNull();
+  });
+});

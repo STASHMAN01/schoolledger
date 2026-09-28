@@ -19,7 +19,7 @@ describe("reading a school's own spreadsheet", () => {
     expect(r.lastName).toBe("Doe");
     expect(r.idNumber).toBe("12345");
     expect(r.parents).toEqual([
-      { firstName: "mary", lastName: "doe", idNumber: "54321", phone: "", email: "", occupation: "nurse", relationship: "" },
+      { firstName: "mary", lastName: "doe", idNumber: "54321", phone: "", extraPhones: [], email: "", occupation: "nurse", relationship: "" },
     ]);
   });
 
@@ -96,5 +96,25 @@ describe("headings", () => {
     expect(hasRequiredColumns(["childs name", "childs surname"])).toBe(true);
     expect(hasRequiredColumns(["Child First Name", "Child Last Name"])).toBe(true);
     expect(hasRequiredColumns(["Kid", "Family"])).toBe(false);
+  });
+});
+
+describe("more than one phone per parent", () => {
+  it("reads Parent 1 Phone 2 / Phone 3 as extra numbers", () => {
+    const row = readImportRow({
+      "Childs Name": "Lwazi",
+      "Childs Surname": "Dube",
+      "Parent 1 Name": "Sipho",
+      "Parent 1 Surname": "Dube",
+      "Parent 1 Phone": "0821234567",
+      "Parent 1 Phone 2": "0831234567",
+      "Parent 1 Phone 3": "",
+      "Parent 2 Name": "Nomsa",
+      "Parent 2 Surname": "Dube",
+      "Parent 2 Alternative Number": "0841234567",
+    });
+    expect(row.parents[0].phone).toBe("0821234567");
+    expect(row.parents[0].extraPhones).toEqual(["0831234567"]);
+    expect(row.parents[1].extraPhones).toEqual(["0841234567"]);
   });
 });

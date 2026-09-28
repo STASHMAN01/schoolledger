@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
 import { emergencyContactProblem } from "@/lib/emergencyContact";
+import { ExtraPhonesField, cleanExtraPhones } from "@/components/ExtraPhonesField";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { Logo } from "@/components/Logo";
 
@@ -27,6 +28,7 @@ type GuardianDraft = {
   idNumber: string;
   occupation: string;
   phone: string;
+  extraPhones: string[];
   email: string;
   photoImage: string | null;
   idPhoto: string | null;
@@ -40,6 +42,7 @@ function blankGuardian(): GuardianDraft {
     idNumber: "",
     occupation: "",
     phone: "",
+    extraPhones: [],
     email: "",
     photoImage: null,
     idPhoto: null,
@@ -171,6 +174,7 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
         idNumber: g.idNumber || undefined,
         occupation: g.occupation || undefined,
         phone: g.phone || undefined,
+        extraPhones: cleanExtraPhones(g.extraPhones),
         email: g.email || undefined,
         photoImage: photoConsentGiven ? g.photoImage || undefined : undefined,
       })),
@@ -404,6 +408,11 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
                       onChange={(e) => updateGuardian(i, { phone: e.target.value })}
                     />
                   </div>
+                  <ExtraPhonesField
+                    idPrefix={`phone-${i}-x`}
+                    values={g.extraPhones}
+                    onChange={(v) => updateGuardian(i, { extraPhones: v })}
+                  />
                   <div>
                     <Label htmlFor={`email-${i}`}>Email</Label>
                     <Input

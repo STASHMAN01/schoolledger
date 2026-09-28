@@ -14,6 +14,7 @@ type SubmittedGuardian = {
   idNumber?: string;
   occupation?: string;
   phone?: string;
+  extraPhones?: string[];
   email?: string;
   photoImage?: string | null;
 };
@@ -273,7 +274,11 @@ export default function ReviewSubmissionPage() {
                   {g.firstName} {g.lastName} <Badge variant="neutral">{g.relationship}</Badge>
                 </p>
                 {g.occupation && <p className="text-sm text-muted-foreground">{g.occupation}</p>}
-                {g.phone && <p className="text-sm text-muted-foreground">{g.phone}</p>}
+                {[g.phone, ...(g.extraPhones ?? [])].filter(Boolean).length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {[g.phone, ...(g.extraPhones ?? [])].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 {g.email && <p className="text-sm text-muted-foreground">{g.email}</p>}
                 {g.idNumber && <p className="text-sm text-muted-foreground">ID: {g.idNumber}</p>}
               </div>

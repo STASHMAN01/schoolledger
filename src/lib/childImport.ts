@@ -39,6 +39,8 @@ const PARENT_FIELDS = {
   fullName: ["fullname"],
   idNumber: ["id", "idno", "idnumber"],
   phone: ["phone", "cell", "cellphone", "mobile", "contact", "contactnumber", "cellnumber", "number", "tel", "telephone"],
+  phone2: ["phone2", "cell2", "number2", "contact2", "altphone", "alternativephone", "alternativenumber", "otherphone", "othernumber", "secondphone", "worknumber", "workphone"],
+  phone3: ["phone3", "cell3", "number3", "contact3", "thirdphone"],
   email: ["email", "emailaddress"],
   occupation: ["occupation", "job", "profession"],
   relationship: ["relationship", "relation", "relationshiptochild"],
@@ -57,6 +59,8 @@ export type ImportedParent = {
   lastName: string;
   idNumber: string;
   phone: string;
+  // Up to two more numbers ("Parent 1 Phone 2", "Parent 1 Phone 3").
+  extraPhones: string[];
   email: string;
   occupation: string;
   relationship: string;
@@ -134,6 +138,7 @@ function readParent(m: Compacted, n: 1 | 2): ImportedParent | null {
     lastName,
     idNumber: fixIdNumber(get("idNumber")),
     phone: get("phone"),
+    extraPhones: [get("phone2"), get("phone3")].filter(Boolean),
     email: get("email"),
     occupation: get("occupation"),
     relationship: get("relationship"),

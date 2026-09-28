@@ -134,6 +134,10 @@ export async function POST(req: NextRequest, { params }: Params) {
                 idNumber: p.idNumber ? p.idNumber.slice(0, 64) : null,
                 occupation: p.occupation ? p.occupation.slice(0, 120) : null,
                 phone: typeof phone === "string" && phone ? phone.slice(0, 40) : null,
+                extraPhones: p.extraPhones.map((x) => {
+                  const n = normalizePhone(x);
+                  return (typeof n === "string" && n ? n : x).slice(0, 40);
+                }),
                 email: p.email ? p.email.slice(0, 200) : null,
               },
             });

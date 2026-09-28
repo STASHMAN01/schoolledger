@@ -5,6 +5,7 @@
 // more guardians -- Phase 2 Session 1 per docs/PLAN.md. No money anywhere
 // on this page; billing fields (fee override, exit date, category/class
 // reassignment) stay on the Accounting-side child page.
+import { ExtraPhonesField, cleanExtraPhones } from "@/components/ExtraPhonesField";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useOrg, useHasPermission } from "../../../OrgContext";
@@ -31,6 +32,7 @@ type Guardian = {
   idNumber: string | null;
   occupation: string | null;
   phone: string | null;
+  extraPhones: string[];
   email: string | null;
   photoImage: string | null;
 };
@@ -130,6 +132,7 @@ function GuardianCard({
   const [relationship, setRelationship] = useState(guardian.relationship);
   const [occupation, setOccupation] = useState(guardian.occupation ?? "");
   const [phone, setPhone] = useState(guardian.phone ?? "");
+  const [extraPhones, setExtraPhones] = useState<string[]>(guardian.extraPhones ?? []);
   const [email, setEmail] = useState(guardian.email ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -157,7 +160,8 @@ function GuardianCard({
               </div>
               <Input value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="Relationship (e.g. Mother)" />
               <Input value={occupation} onChange={(e) => setOccupation(e.target.value)} placeholder="Occupation" />
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Main phone" />
+              <ExtraPhonesField idPrefix={`g-${guardian.id}-x`} values={extraPhones} onChange={setExtraPhones} />
               <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
               <div className="flex gap-2">
                 <Button
@@ -165,7 +169,15 @@ function GuardianCard({
                   disabled={saving}
                   onClick={async () => {
                     setSaving(true);
-                    const ok = await onUpdate(guardian.id, { firstName, lastName, relationship, occupation, phone, email });
+                    const ok = await onUpdate(guardian.id, {
+                      firstName,
+                      lastName,
+                      relationship,
+                      occupation,
+                      phone,
+                      extraPhones: cleanExtraPhones(extraPhones),
+                      email,
+                    });
                     setSaving(false);
                     // Stay in edit mode on failure so nothing typed is lost.
                     if (ok) setEditing(false);
@@ -189,6 +201,11 @@ function GuardianCard({
                 <p className="text-sm text-muted-foreground">{guardian.occupation}</p>
               )}
               {guardian.phone && <p className="text-sm text-muted-foreground">{guardian.phone}</p>}
+              {(guardian.extraPhones ?? []).map((p) => (
+                <p key={p} className="text-sm text-muted-foreground">
+                  {p}
+                </p>
+              ))}
               {guardian.email && <p className="text-sm text-muted-foreground">{guardian.email}</p>}
               <div className="mt-1">
                 <RevealableId

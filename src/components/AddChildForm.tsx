@@ -13,6 +13,7 @@ import { useState } from "react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { todayLocal } from "@/lib/date";
 import { emergencyContactProblem } from "@/lib/emergencyContact";
+import { ExtraPhonesField, cleanExtraPhones } from "@/components/ExtraPhonesField";
 
 type ClassOption = { id: string; name: string };
 
@@ -43,6 +44,7 @@ export function AddChildForm({
     gFirstName: "",
     gLastName: "",
     gPhone: "",
+    gExtraPhones: [] as string[],
     gEmail: "",
     gIdNumber: "",
     gOccupation: "",
@@ -50,6 +52,7 @@ export function AddChildForm({
     g2FirstName: "",
     g2LastName: "",
     g2Phone: "",
+    g2ExtraPhones: [] as string[],
     g2Email: "",
     g2IdNumber: "",
     g2Occupation: "",
@@ -80,7 +83,8 @@ export function AddChildForm({
       [f.gPhone, "the parent/guardian's phone number"],
     ];
     const hasSecond =
-      showSecond && [f.g2FirstName, f.g2LastName, f.g2Phone, f.g2Email, f.g2IdNumber, f.g2Occupation].some((v) => v.trim());
+      showSecond &&
+      [f.g2FirstName, f.g2LastName, f.g2Phone, f.g2Email, f.g2IdNumber, f.g2Occupation, ...f.g2ExtraPhones].some((v) => v.trim());
     if (hasSecond) {
       required.push(
         [f.g2Relationship, "the second parent/guardian's relationship to the child"],
@@ -97,8 +101,8 @@ export function AddChildForm({
     const ecProblem = emergencyContactProblem(
       { name: f.ecName, relationship: f.ecRelationship, phone: f.ecPhone },
       [
-        { firstName: f.gFirstName, lastName: f.gLastName, phone: f.gPhone },
-        ...(hasSecond ? [{ firstName: f.g2FirstName, lastName: f.g2LastName, phone: f.g2Phone }] : []),
+        { firstName: f.gFirstName, lastName: f.gLastName, phone: f.gPhone, extraPhones: f.gExtraPhones },
+        ...(hasSecond ? [{ firstName: f.g2FirstName, lastName: f.g2LastName, phone: f.g2Phone, extraPhones: f.g2ExtraPhones }] : []),
       ]
     );
     if (ecProblem) {
@@ -140,6 +144,7 @@ export function AddChildForm({
               firstName: f.gFirstName,
               lastName: f.gLastName,
               phone: f.gPhone,
+              extraPhones: cleanExtraPhones(f.gExtraPhones),
               email: f.gEmail || undefined,
               idNumber: f.gIdNumber || undefined,
               occupation: f.gOccupation || undefined,
@@ -151,6 +156,7 @@ export function AddChildForm({
                     firstName: f.g2FirstName,
                     lastName: f.g2LastName,
                     phone: f.g2Phone || undefined,
+                    extraPhones: cleanExtraPhones(f.g2ExtraPhones),
                     email: f.g2Email || undefined,
                     idNumber: f.g2IdNumber || undefined,
                     occupation: f.g2Occupation || undefined,
@@ -274,6 +280,7 @@ export function AddChildForm({
               onChange={(e) => set({ gPhone: e.target.value })}
             />
           </Field>
+          <ExtraPhonesField idPrefix="ac-gphone-x" values={f.gExtraPhones} onChange={(v) => set({ gExtraPhones: v })} />
           <Field label="Email" id="ac-gemail">
             <Input id="ac-gemail" type="email" value={f.gEmail} onChange={(e) => set({ gEmail: e.target.value })} />
           </Field>
@@ -306,7 +313,7 @@ export function AddChildForm({
                 type="button"
                 onClick={() => {
                   setShowSecond(false);
-                  set({ g2FirstName: "", g2LastName: "", g2Phone: "", g2Email: "", g2IdNumber: "", g2Occupation: "" });
+                  set({ g2FirstName: "", g2LastName: "", g2Phone: "", g2ExtraPhones: [], g2Email: "", g2IdNumber: "", g2Occupation: "" });
                 }}
                 className="min-h-11 px-2 text-sm text-muted-foreground underline hover:text-foreground"
               >
@@ -329,6 +336,7 @@ export function AddChildForm({
                 onChange={(e) => set({ g2Phone: e.target.value })}
               />
             </Field>
+            <ExtraPhonesField idPrefix="ac-g2phone-x" values={f.g2ExtraPhones} onChange={(v) => set({ g2ExtraPhones: v })} />
             <Field label="Email" id="ac-g2email">
               <Input id="ac-g2email" type="email" value={f.g2Email} onChange={(e) => set({ g2Email: e.target.value })} />
             </Field>

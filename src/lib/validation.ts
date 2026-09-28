@@ -255,6 +255,11 @@ export const guardianSchema = z.object({
   // contact field for the centre-management profile, not a number the
   // billing/reminders system will text or call programmatically.
   phone: z.preprocess(emptyToUndefined, z.string().trim().max(40).optional()),
+  // Up to two more numbers (three in total). Blank entries are dropped.
+  extraPhones: z.preprocess(
+    (v) => (Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x.trim() : x)).filter((x) => x !== "") : v),
+    z.array(z.string().max(40)).max(2, "A parent/guardian can have at most 3 phone numbers.").optional()
+  ),
   email: z.preprocess(emptyToUndefined, emailSchema.optional()),
   photoImage: z.preprocess(emptyStringToUndefined, imageDataUrlSchema.optional().nullable()),
 });

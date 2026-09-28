@@ -17,6 +17,7 @@ export type PersonOnFile = {
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
+  extraPhones?: string[] | null;
 };
 
 function nameKey(s: string | null | undefined): string {
@@ -46,9 +47,11 @@ export function emergencyContactProblem(ec: EmergencyContactInput, people: Perso
     if (full && full === ecName) {
       return "The emergency contact must be someone other than the parents or guardians. Add a different person.";
     }
-    const pPhone = phoneKey(p.phone);
-    if (ecPhone && pPhone && ecPhone === pPhone) {
-      return "The emergency contact's phone number is the same as a parent's. Add a different person's number.";
+    for (const raw of [p.phone, ...(p.extraPhones ?? [])]) {
+      const pPhone = phoneKey(raw);
+      if (ecPhone && pPhone && ecPhone === pPhone) {
+        return "The emergency contact's phone number is the same as a parent's. Add a different person's number.";
+      }
     }
   }
   return null;

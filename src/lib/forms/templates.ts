@@ -9,6 +9,7 @@ type TemplateGuardian = {
   idNumber: string | null;
   occupation: string | null;
   phone: string | null;
+  extraPhones?: string[];
   email: string | null;
 };
 
@@ -73,7 +74,7 @@ function guardianSections(guardians: TemplateGuardian[]) {
       { label: "Full name", value: `${g.firstName} ${g.lastName}`.trim() || null },
       { label: "ID number", value: g.idNumber },
       { label: "Occupation", value: g.occupation },
-      { label: "Phone", value: g.phone },
+      { label: "Phone", value: [g.phone, ...(g.extraPhones ?? [])].filter(Boolean).join(" / ") || null },
       { label: "Email", value: g.email },
     ],
   }));

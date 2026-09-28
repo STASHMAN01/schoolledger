@@ -443,6 +443,9 @@ model Guardian {
   idNumber       String?
   occupation     String?
   phone          String?
+  // Up to two more numbers for this parent (Dylan, 28 Sept 2026). `phone`
+  // stays the main one (fees, reminders); these are extra "also try" numbers.
+  extraPhones    String[]  @default([])
   email          String?
   // Same data: URL pattern as Child.photoImage -- only ever written
   // together with the child's photoConsentGiven=true.

@@ -81,6 +81,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         idNumber: body.idNumber === undefined ? undefined : body.idNumber,
         occupation: body.occupation === undefined ? undefined : body.occupation,
         phone: body.phone === undefined ? undefined : body.phone,
+        extraPhones: body.extraPhones === undefined ? undefined : body.extraPhones,
         email: body.email === undefined ? undefined : body.email,
         photoImage: body.photoImage === undefined ? undefined : body.photoImage,
       },

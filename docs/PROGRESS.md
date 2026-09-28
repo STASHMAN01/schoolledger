@@ -968,3 +968,10 @@ in MRR/ARR.
 - Same rule as the app and the import: the emergency contact must be someone other than the parents/guardians (name and phone checked), enforced in the browser, on submit, and again on approval.
 - Staff see Allergies and Emergency contact on the pending-review page; approval saves them onto the child (existing child: only filled-in values overwrite).
 - No database migration needed (Child columns already added in 0e6c941).
+
+## 28 Sept 2026 — Up to 3 phone numbers per parent
+- Guardian gets `extraPhones String[] @default([])` (max 2 extra; `phone` stays the main number used for fees/reminders).
+- "+ Add another phone number" on Add child (both parents), the child profile's guardian edit, and both parent online forms. Shown on the profile, pending review, and printed forms.
+- Import reads "Parent 1 Phone 2 / Phone 3" (and "Alternative Number" etc.).
+- Emergency contact may not match any of a parent's numbers.
+- Migration: `npx prisma db push` (additive column with a default).

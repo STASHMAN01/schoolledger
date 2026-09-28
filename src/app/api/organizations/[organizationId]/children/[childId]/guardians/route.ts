@@ -89,6 +89,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         idNumber: body.idNumber ?? null,
         occupation: body.occupation ?? null,
         phone: body.phone ?? null,
+        extraPhones: body.extraPhones ?? [],
         email: body.email ?? null,
         photoImage: body.photoImage ?? null,
       },

@@ -196,6 +196,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             idNumber: g.idNumber ?? null,
             occupation: g.occupation ?? null,
             phone: g.phone ?? null,
+            extraPhones: g.extraPhones ?? [],
             email: g.email ?? null,
           },
         });
