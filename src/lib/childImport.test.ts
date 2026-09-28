@@ -55,6 +55,16 @@ describe("reading a school's own spreadsheet", () => {
     expect(readImportRow(raw).parents[0]).toMatchObject({ firstName: "Marie du", lastName: "Toit" });
   });
 
+  it("reads allergies and the emergency contact columns", () => {
+    const [raw] = rows([
+      ["Child's Name", "Child's Surname", "Allergies", "Parent 1 Name", "Emergency Contact Name", "Emergency Contact Relationship", "Emergency Contact Phone"],
+      ["Anna", "Botha", "Peanuts", "Marie", "Gogo Botha", "Grandmother", "084 000 0000"],
+    ]);
+    const r = readImportRow(raw);
+    expect(r.allergies).toBe("Peanuts");
+    expect(r.emergencyContact).toEqual({ name: "Gogo Botha", relationship: "Grandmother", phone: "084 000 0000" });
+  });
+
   it("leaves out parent 2 when those columns are empty", () => {
     const [raw] = rows([["Child's Name", "Child's Surname", "Parent 1 Name", "Parent 2 Name"], ["Anna", "Botha", "Marie", ""]]);
     expect(readImportRow(raw).parents).toHaveLength(1);

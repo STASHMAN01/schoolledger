@@ -8,6 +8,7 @@ import { handleApiError } from "@/lib/apiError";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
 import { readImportRow } from "@/lib/childImport";
 import { normalizePhone } from "@/lib/phone";
+import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -76,6 +77,13 @@ export async function POST(req: NextRequest, { params }: Params) {
           gender: row.gender,
         });
 
+        // Emergency contact must be someone other than the row's parents.
+        const ecProblem = emergencyContactProblem(row.emergencyContact, row.parents);
+        if (ecProblem) {
+          errors.push({ row: rowNumber, error: ecProblem });
+          continue;
+        }
+
         let category = defaultCategory;
         if (parsed.categoryName) {
           const match = categoryByName.get(parsed.categoryName.trim().toLowerCase());
@@ -106,6 +114,12 @@ export async function POST(req: NextRequest, { params }: Params) {
               parentIdNumber: parsed.parentIdNumber ?? null,
               dateOfBirth: parsed.dateOfBirth ?? null,
               gender: parsed.gender ?? null,
+              allergies: row.allergies ? row.allergies.slice(0, 2000) : null,
+              emergencyContactName: row.emergencyContact.name ? row.emergencyContact.name.slice(0, 200) : null,
+              emergencyContactRelationship: row.emergencyContact.relationship
+                ? row.emergencyContact.relationship.slice(0, 100)
+                : null,
+              emergencyContactPhone: storedEmergencyPhone(row.emergencyContact.phone)?.slice(0, 40) ?? null,
             },
           });
           for (const p of row.parents) {

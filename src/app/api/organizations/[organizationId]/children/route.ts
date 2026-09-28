@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
 import { serializeChild } from "@/lib/childView";
+import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -115,6 +116,22 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
 
+    // Parent 1 is required by the form; parent 2 is optional. `guardian`
+    // is the older single-parent shape.
+    const guardians = body.guardians ?? (body.guardian ? [body.guardian] : []);
+
+    const ecProblem = emergencyContactProblem(
+      {
+        name: body.emergencyContactName,
+        relationship: body.emergencyContactRelationship,
+        phone: body.emergencyContactPhone,
+      },
+      [{ name: body.parentName, phone: body.parentPhone }, ...guardians]
+    );
+    if (ecProblem) {
+      return NextResponse.json({ error: ecProblem }, { status: 400 });
+    }
+
     if (body.exitDate && body.exitDate < body.enrollmentDate) {
       return NextResponse.json(
         { error: "Exit date cannot be before the enrollment date." },
@@ -160,22 +177,26 @@ export async function POST(req: NextRequest, { params }: Params) {
           gender: body.gender ?? null,
           childIdNumber: body.childIdNumber ?? null,
           parentIdNumber: body.parentIdNumber ?? null,
+          allergies: body.allergies ?? null,
+          emergencyContactName: body.emergencyContactName ?? null,
+          emergencyContactRelationship: body.emergencyContactRelationship ?? null,
+          emergencyContactPhone: storedEmergencyPhone(body.emergencyContactPhone),
         },
       });
 
-      // Centre "Add child" sends the first parent/guardian with the child.
-      if (body.guardian) {
+      // Centre "Add child" sends parent 1 (and optionally parent 2).
+      for (const g of guardians) {
         await tx.guardian.create({
           data: {
             organizationId,
             childId: created.id,
-            relationship: body.guardian.relationship,
-            firstName: body.guardian.firstName,
-            lastName: body.guardian.lastName,
-            idNumber: body.guardian.idNumber ?? null,
-            occupation: body.guardian.occupation ?? null,
-            phone: body.guardian.phone ?? null,
-            email: body.guardian.email ?? null,
+            relationship: g.relationship,
+            firstName: g.firstName,
+            lastName: g.lastName,
+            idNumber: g.idNumber ?? null,
+            occupation: g.occupation ?? null,
+            phone: g.phone ?? null,
+            email: g.email ?? null,
           },
         });
       }

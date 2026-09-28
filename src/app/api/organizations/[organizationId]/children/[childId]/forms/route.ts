@@ -97,6 +97,10 @@ export async function POST(req: NextRequest, { params }: Params) {
         photoConsentGiven: child.photoConsentGiven,
         photoConsentAt: child.photoConsentAt,
         category: { name: child.category.name, monthlyFeeCents: child.category.monthlyFeeCents },
+        allergies: child.allergies,
+        emergencyContactName: child.emergencyContactName,
+        emergencyContactRelationship: child.emergencyContactRelationship,
+        emergencyContactPhone: child.emergencyContactPhone,
       },
       guardians: child.guardians,
     });

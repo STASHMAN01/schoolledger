@@ -385,6 +385,14 @@ model Child {
   // sent for this child (see /dashboard/reminders) — purely informational,
   // lets whoever's doing month-end reminders see who's already been
   // nudged without re-checking the audit log for each child.
+  // Care details (Dylan, 28 Sept 2026). All optional. The emergency
+  // contact is someone OTHER than the parents/guardians on file -- enforced
+  // in src/lib/emergencyContact.ts wherever it's written (add child, edit,
+  // Excel import).
+  allergies                    String?  @db.Text
+  emergencyContactName         String?
+  emergencyContactRelationship String?
+  emergencyContactPhone        String?
   lastReminderSentAt DateTime?
   archived       Boolean   @default(false)
   // See Category.deletedAt — same soft-trash mechanism, gated the same way

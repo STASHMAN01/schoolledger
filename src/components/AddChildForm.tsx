@@ -4,12 +4,15 @@
 // adding a child all the details are required, the same details as when a
 // parent fills in a form"). Agreed rule: the CORE details are required
 // here -- name, date of birth, gender, class, start date and one
-// parent/guardian with a phone number. Everything else (ID numbers,
-// more guardians, photo) is added on the child's profile
-// afterwards; a child missing core details is flagged "incomplete".
+// parent/guardian with a phone number. A second parent/guardian, allergies
+// and an emergency contact are optional here (Dylan, 28 Sept 2026); the
+// emergency contact must be someone other than the parents
+// (lib/emergencyContact.ts). A photo is added on the profile afterwards; a
+// child missing core details is flagged "incomplete".
 import { useState } from "react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { todayLocal } from "@/lib/date";
+import { emergencyContactProblem } from "@/lib/emergencyContact";
 
 type ClassOption = { id: string; name: string };
 
@@ -42,8 +45,21 @@ export function AddChildForm({
     gPhone: "",
     gEmail: "",
     gIdNumber: "",
+    gOccupation: "",
+    g2Relationship: "Father",
+    g2FirstName: "",
+    g2LastName: "",
+    g2Phone: "",
+    g2Email: "",
+    g2IdNumber: "",
+    g2Occupation: "",
+    allergies: "",
+    ecName: "",
+    ecRelationship: "",
+    ecPhone: "",
     feeOverride: "",
   });
+  const [showSecond, setShowSecond] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<typeof f>) => setF((prev) => ({ ...prev, ...patch }));
@@ -63,9 +79,30 @@ export function AddChildForm({
       [f.gLastName, "the parent/guardian's surname"],
       [f.gPhone, "the parent/guardian's phone number"],
     ];
+    const hasSecond =
+      showSecond && [f.g2FirstName, f.g2LastName, f.g2Phone, f.g2Email, f.g2IdNumber, f.g2Occupation].some((v) => v.trim());
+    if (hasSecond) {
+      required.push(
+        [f.g2Relationship, "the second parent/guardian's relationship to the child"],
+        [f.g2FirstName, "the second parent/guardian's first name"],
+        [f.g2LastName, "the second parent/guardian's surname"]
+      );
+    }
     const missing = required.filter(([v]) => !v.trim()).map(([, label]) => label);
     if (missing.length > 0) {
       setError(`Please add ${missing.join(", ")}.`);
+      return;
+    }
+
+    const ecProblem = emergencyContactProblem(
+      { name: f.ecName, relationship: f.ecRelationship, phone: f.ecPhone },
+      [
+        { firstName: f.gFirstName, lastName: f.gLastName, phone: f.gPhone },
+        ...(hasSecond ? [{ firstName: f.g2FirstName, lastName: f.g2LastName, phone: f.g2Phone }] : []),
+      ]
+    );
+    if (ecProblem) {
+      setError(ecProblem);
       return;
     }
 
@@ -97,14 +134,34 @@ export function AddChildForm({
           parentName: `${f.gFirstName.trim()} ${f.gLastName.trim()}`,
           parentPhone: f.gPhone,
           parentEmail: f.gEmail || undefined,
-          guardian: {
-            relationship: f.gRelationship,
-            firstName: f.gFirstName,
-            lastName: f.gLastName,
-            phone: f.gPhone,
-            email: f.gEmail || undefined,
-            idNumber: f.gIdNumber || undefined,
-          },
+          guardians: [
+            {
+              relationship: f.gRelationship,
+              firstName: f.gFirstName,
+              lastName: f.gLastName,
+              phone: f.gPhone,
+              email: f.gEmail || undefined,
+              idNumber: f.gIdNumber || undefined,
+              occupation: f.gOccupation || undefined,
+            },
+            ...(hasSecond
+              ? [
+                  {
+                    relationship: f.g2Relationship,
+                    firstName: f.g2FirstName,
+                    lastName: f.g2LastName,
+                    phone: f.g2Phone || undefined,
+                    email: f.g2Email || undefined,
+                    idNumber: f.g2IdNumber || undefined,
+                    occupation: f.g2Occupation || undefined,
+                  },
+                ]
+              : []),
+          ],
+          allergies: f.allergies.trim() || undefined,
+          emergencyContactName: f.ecName.trim() || undefined,
+          emergencyContactRelationship: f.ecRelationship.trim() || undefined,
+          emergencyContactPhone: f.ecPhone.trim() || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -138,8 +195,8 @@ export function AddChildForm({
           </button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Fields marked * are required. More guardians, ID numbers and a photo can be added on the
-          child&apos;s profile afterwards.
+          Fields marked * are required. A photo, and more guardians, can be added on the child&apos;s
+          profile afterwards.
         </p>
 
         <fieldset className="grid gap-3 sm:grid-cols-2">
@@ -191,7 +248,7 @@ export function AddChildForm({
         </fieldset>
 
         <fieldset className="grid gap-3 sm:grid-cols-2">
-          <legend className="font-display mb-2 text-sm font-semibold text-foreground">Parent / guardian</legend>
+          <legend className="font-display mb-2 text-sm font-semibold text-foreground">Parent / guardian 1</legend>
           <Field label="Relationship *" id="ac-rel">
             <Input
               id="ac-rel"
@@ -222,6 +279,113 @@ export function AddChildForm({
           </Field>
           <Field label="ID number" id="ac-gid">
             <Input id="ac-gid" value={f.gIdNumber} onChange={(e) => set({ gIdNumber: e.target.value })} />
+          </Field>
+          <Field label="Occupation" id="ac-gocc">
+            <Input id="ac-gocc" value={f.gOccupation} onChange={(e) => set({ gOccupation: e.target.value })} />
+          </Field>
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            Statements, fee reminders and absence messages go to this parent/guardian.
+          </p>
+        </fieldset>
+
+        {showSecond ? (
+          <fieldset className="grid gap-3 sm:grid-cols-2">
+            <legend className="font-display mb-2 text-sm font-semibold text-foreground">
+              Parent / guardian 2 <span className="font-normal text-muted-foreground">(optional)</span>
+            </legend>
+            <Field label="Relationship" id="ac-g2rel">
+              <Input
+                id="ac-g2rel"
+                value={f.g2Relationship}
+                placeholder="Father, Mother, Grandparent…"
+                onChange={(e) => set({ g2Relationship: e.target.value })}
+              />
+            </Field>
+            <div className="flex items-end justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSecond(false);
+                  set({ g2FirstName: "", g2LastName: "", g2Phone: "", g2Email: "", g2IdNumber: "", g2Occupation: "" });
+                }}
+                className="min-h-11 px-2 text-sm text-muted-foreground underline hover:text-foreground"
+              >
+                Remove second parent/guardian
+              </button>
+            </div>
+            <Field label="First name" id="ac-g2first">
+              <Input id="ac-g2first" value={f.g2FirstName} onChange={(e) => set({ g2FirstName: e.target.value })} />
+            </Field>
+            <Field label="Surname" id="ac-g2last">
+              <Input id="ac-g2last" value={f.g2LastName} onChange={(e) => set({ g2LastName: e.target.value })} />
+            </Field>
+            <Field label="Phone" id="ac-g2phone">
+              <Input
+                id="ac-g2phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="082 123 4567"
+                value={f.g2Phone}
+                onChange={(e) => set({ g2Phone: e.target.value })}
+              />
+            </Field>
+            <Field label="Email" id="ac-g2email">
+              <Input id="ac-g2email" type="email" value={f.g2Email} onChange={(e) => set({ g2Email: e.target.value })} />
+            </Field>
+            <Field label="ID number" id="ac-g2id">
+              <Input id="ac-g2id" value={f.g2IdNumber} onChange={(e) => set({ g2IdNumber: e.target.value })} />
+            </Field>
+            <Field label="Occupation" id="ac-g2occ">
+              <Input id="ac-g2occ" value={f.g2Occupation} onChange={(e) => set({ g2Occupation: e.target.value })} />
+            </Field>
+          </fieldset>
+        ) : (
+          <div>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowSecond(true)}>
+              + Add a second parent/guardian
+            </Button>
+          </div>
+        )}
+
+        <fieldset className="grid gap-3 sm:grid-cols-2">
+          <legend className="font-display mb-2 text-sm font-semibold text-foreground">
+            Allergies &amp; emergency contact <span className="font-normal text-muted-foreground">(optional)</span>
+          </legend>
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <Label htmlFor="ac-allergies">Allergies</Label>
+            <textarea
+              id="ac-allergies"
+              rows={2}
+              value={f.allergies}
+              placeholder="e.g. peanuts, bee stings. Leave blank if none."
+              onChange={(e) => set({ allergies: e.target.value })}
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            Emergency contact: someone other than the parents/guardians above, to call if they can&apos;t be
+            reached.
+          </p>
+          <Field label="Emergency contact name" id="ac-ecname">
+            <Input id="ac-ecname" value={f.ecName} onChange={(e) => set({ ecName: e.target.value })} />
+          </Field>
+          <Field label="Relationship to child" id="ac-ecrel">
+            <Input
+              id="ac-ecrel"
+              value={f.ecRelationship}
+              placeholder="Grandmother, aunt, neighbour…"
+              onChange={(e) => set({ ecRelationship: e.target.value })}
+            />
+          </Field>
+          <Field label="Emergency contact phone" id="ac-ecphone">
+            <Input
+              id="ac-ecphone"
+              type="tel"
+              inputMode="tel"
+              placeholder="082 123 4567"
+              value={f.ecPhone}
+              onChange={(e) => set({ ecPhone: e.target.value })}
+            />
           </Field>
         </fieldset>
 

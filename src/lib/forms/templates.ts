@@ -27,6 +27,10 @@ type TemplateChild = {
   photoConsentGiven: boolean;
   photoConsentAt: Date | null;
   category: { name: string; monthlyFeeCents: number | null };
+  allergies?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactRelationship?: string | null;
+  emergencyContactPhone?: string | null;
 };
 
 type TemplateInput = {
@@ -162,7 +166,7 @@ export function buildFormSpec(formType: FormType, input: TemplateInput): FormSpe
           {
             heading: "Medical information",
             fields: [
-              { label: "Known allergies", value: null },
+              { label: "Known allergies", value: child.allergies ?? null },
               { label: "Chronic conditions", value: null },
               { label: "Current medication", value: null },
               { label: "Doctor's name", value: null },
@@ -208,6 +212,14 @@ export function buildFormSpec(formType: FormType, input: TemplateInput): FormSpe
         sections: [
           childSection,
           ...guardianSections(guardians),
+          {
+            heading: "Emergency contact (not a parent/guardian)",
+            fields: [
+              { label: "Full name", value: child.emergencyContactName ?? null },
+              { label: "Relationship to child", value: child.emergencyContactRelationship ?? null },
+              { label: "Phone", value: child.emergencyContactPhone ?? null },
+            ],
+          },
           {
             heading: "Additional person authorized to collect",
             fields: [

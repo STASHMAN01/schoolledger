@@ -23,6 +23,10 @@ export type EditableChild = {
   feeOverrideCents?: number | null;
   childIdNumber?: string | null;
   parentIdNumber?: string | null;
+  allergies?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactRelationship?: string | null;
+  emergencyContactPhone?: string | null;
 };
 
 type Preview = {
@@ -71,6 +75,10 @@ export function EditChildDetails({
       fee: c.feeOverrideCents != null ? String(c.feeOverrideCents / 100) : "",
       childIdNumber: "",
       parentIdNumber: "",
+      allergies: c.allergies ?? "",
+      ecName: c.emergencyContactName ?? "",
+      ecRelationship: c.emergencyContactRelationship ?? "",
+      ecPhone: c.emergencyContactPhone ?? "",
     };
   }
 
@@ -118,6 +126,16 @@ export function EditChildDetails({
         next = Math.round(rand * 100);
       }
       if (next !== current) p.feeOverrideCents = next;
+    }
+    // Care details: "" clears a field on the server.
+    const care: [string, string, string | null | undefined][] = [
+      ["allergies", f.allergies, child.allergies],
+      ["emergencyContactName", f.ecName, child.emergencyContactName],
+      ["emergencyContactRelationship", f.ecRelationship, child.emergencyContactRelationship],
+      ["emergencyContactPhone", f.ecPhone, child.emergencyContactPhone],
+    ];
+    for (const [key, next, current] of care) {
+      if (next.trim() !== (current ?? "")) p[key] = next.trim();
     }
     if (f.childIdNumber.trim()) p.childIdNumber = f.childIdNumber.trim();
     if (f.parentIdNumber.trim()) p.parentIdNumber = f.parentIdNumber.trim();
@@ -328,7 +346,36 @@ export function EditChildDetails({
               />
             </Field>
           </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1 sm:col-span-2">
+              <Label htmlFor="ed-allergies">Allergies</Label>
+              <textarea
+                id="ed-allergies"
+                rows={2}
+                value={f.allergies}
+                placeholder="Leave blank if none."
+                onChange={(e) => set({ allergies: e.target.value })}
+                className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+              />
+            </div>
+            <Field label="Emergency contact name" id="ed-ecname">
+              <Input id="ed-ecname" value={f.ecName} onChange={(e) => set({ ecName: e.target.value })} />
+            </Field>
+            <Field label="Emergency contact relationship" id="ed-ecrel">
+              <Input id="ed-ecrel" value={f.ecRelationship} onChange={(e) => set({ ecRelationship: e.target.value })} />
+            </Field>
+            <Field label="Emergency contact phone" id="ed-ecphone">
+              <Input
+                id="ed-ecphone"
+                type="tel"
+                inputMode="tel"
+                value={f.ecPhone}
+                onChange={(e) => set({ ecPhone: e.target.value })}
+              />
+            </Field>
+          </div>
           <p className="text-xs text-muted-foreground">
+            The emergency contact must be someone other than the child&apos;s parents/guardians.
             Leave the ID fields blank to keep what&apos;s on file, or type a new number to replace it. Changes show
             on both Centre Management and Accounting. Parent contact details are edited under the guardians on the
             child&apos;s Centre profile.

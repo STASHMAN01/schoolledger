@@ -62,6 +62,10 @@ type ChildProfile = {
   parentName: string;
   parentPhone: string | null;
   parentEmail: string | null;
+  allergies: string | null;
+  emergencyContactName: string | null;
+  emergencyContactRelationship: string | null;
+  emergencyContactPhone: string | null;
   guardians: Guardian[];
 };
 
@@ -499,6 +503,44 @@ export default function ChildProfilePage() {
       )}
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+
+      {/* Allergies + emergency contact (Dylan, 28 Sept 2026): what staff need
+          in a hurry, so it sits above everything else. Edited via "Edit
+          details". */}
+      <Card as="div" className="mb-6 grid gap-4 p-5 sm:grid-cols-2">
+        <div>
+          <h2 className="font-display mb-2 text-sm font-semibold text-foreground">Allergies</h2>
+          {child.allergies ? (
+            <p className="whitespace-pre-line rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm font-medium text-danger">
+              {child.allergies}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">None recorded.</p>
+          )}
+        </div>
+        <div>
+          <h2 className="font-display mb-2 text-sm font-semibold text-foreground">Emergency contact</h2>
+          {child.emergencyContactName ? (
+            <div className="text-sm text-foreground">
+              <p className="font-medium">
+                {child.emergencyContactName}
+                {child.emergencyContactRelationship ? (
+                  <span className="font-normal text-muted-foreground"> · {child.emergencyContactRelationship}</span>
+                ) : null}
+              </p>
+              {child.emergencyContactPhone && (
+                <a href={`tel:${child.emergencyContactPhone}`} className="text-brand underline">
+                  {child.emergencyContactPhone}
+                </a>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              None recorded{canManage ? " — add one with “Edit details”." : "."}
+            </p>
+          )}
+        </div>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card as="div" className="p-5">

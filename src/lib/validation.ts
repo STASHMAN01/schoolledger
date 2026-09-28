@@ -409,8 +409,24 @@ export const testimonialSubmissionSchema = z.object({
 // gender and their first parent/guardian, saved together. The "core"
 // details are enforced by the form; the API also accepts the older
 // name-only shape (Accounting) -- such a child is flagged incomplete.
+// Allergies + emergency contact (Dylan, 28 Sept 2026). "" clears a field
+// (null); leaving it out changes nothing. The "must be someone other than
+// the parents" rule is cross-field, so it lives in lib/emergencyContact.ts.
+const optionalClearableText = (max: number) =>
+  z.preprocess((v) => (v === "" ? null : v), z.string().trim().max(max).nullable().optional());
+
+export const childCareSchema = z.object({
+  allergies: optionalClearableText(2000),
+  emergencyContactName: optionalClearableText(200),
+  emergencyContactRelationship: optionalClearableText(100),
+  emergencyContactPhone: optionalClearableText(40),
+});
+
 export const childCreateSchema = childSchema.extend({
   dateOfBirth: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
   gender: z.preprocess(emptyToUndefined, z.enum(["MALE", "FEMALE", "OTHER"]).optional()),
+  // Older clients send one `guardian`; the add-child form now sends
+  // `guardians` (parent 1 required, parent 2 optional).
   guardian: guardianSchema.optional(),
-});
+  guardians: z.array(guardianSchema).min(1).max(2).optional(),
+}).merge(childCareSchema);

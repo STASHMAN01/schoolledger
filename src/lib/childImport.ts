@@ -26,6 +26,10 @@ const CHILD_FIELDS = {
   gender: ["gender", "sex", "childgender"],
   className: ["class", "category", "grade", "classname", "group"],
   enrollmentDate: ["enrollmentdate", "enrolmentdate", "startdate", "datestarted", "dateofenrolment", "dateofenrollment"],
+  allergies: ["allergies", "allergy", "childallergies", "knownallergies", "allergiesmedicalconditions"],
+  emergencyName: ["emergencycontactname", "emergencycontact", "emergencyname", "emergencycontactfullname"],
+  emergencyRelationship: ["emergencycontactrelationship", "emergencyrelationship", "emergencycontactrelation"],
+  emergencyPhone: ["emergencycontactphone", "emergencyphone", "emergencycontactnumber", "emergencynumber", "emergencycell", "emergencycontactcell"],
 } as const;
 
 // Suffixes after "parent" / "parent1" / "parent2".
@@ -66,6 +70,8 @@ export type ImportedRow = {
   gender: string;
   className: string;
   enrollmentDate: string;
+  allergies: string;
+  emergencyContact: { name: string; relationship: string; phone: string };
   // Parent 1 first; only parents with at least a name are included.
   parents: ImportedParent[];
 };
@@ -145,6 +151,12 @@ export function readImportRow(raw: Record<string, string>): ImportedRow {
     gender: first(m, CHILD_FIELDS.gender),
     className: first(m, CHILD_FIELDS.className),
     enrollmentDate: first(m, CHILD_FIELDS.enrollmentDate),
+    allergies: first(m, CHILD_FIELDS.allergies),
+    emergencyContact: {
+      name: first(m, CHILD_FIELDS.emergencyName),
+      relationship: first(m, CHILD_FIELDS.emergencyRelationship),
+      phone: first(m, CHILD_FIELDS.emergencyPhone),
+    },
     parents,
   };
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
-import { childSchema, childProfileSchema } from "@/lib/validation";
+import { childSchema, childProfileSchema, childCareSchema } from "@/lib/validation";
+import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import {
@@ -92,6 +93,35 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const rawBody = await req.json();
     const body = childSchema.partial().parse(rawBody);
     const profileBody = childProfileSchema.parse(rawBody);
+    const careBody = childCareSchema.parse(rawBody);
+
+    // Emergency contact changed: check the RESULTING contact (new values
+    // over what's on file) against the parents/guardians on file.
+    const ecTouched =
+      careBody.emergencyContactName !== undefined ||
+      careBody.emergencyContactRelationship !== undefined ||
+      careBody.emergencyContactPhone !== undefined;
+    if (ecTouched) {
+      const guardiansOnFile = await db.guardian.findMany({
+        where: { childId, organizationId },
+        select: { firstName: true, lastName: true, phone: true },
+      });
+      const pick = <T,>(next: T | undefined, current: T) => (next === undefined ? current : next);
+      const ecProblem = emergencyContactProblem(
+        {
+          name: pick(careBody.emergencyContactName, existing.emergencyContactName),
+          relationship: pick(careBody.emergencyContactRelationship, existing.emergencyContactRelationship),
+          phone: pick(careBody.emergencyContactPhone, existing.emergencyContactPhone),
+        },
+        [
+          { name: body.parentName ?? existing.parentName, phone: body.parentPhone ?? existing.parentPhone },
+          ...guardiansOnFile,
+        ]
+      );
+      if (ecProblem) {
+        return NextResponse.json({ error: ecProblem }, { status: 400 });
+      }
+    }
 
     // A fee override is money -- only VIEW_MONEY may change it.
     if (body.feeOverrideCents !== undefined && !canViewMoney) {
@@ -204,6 +234,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           // ID numbers: a new value replaces the old one; blank leaves it.
           childIdNumber: body.childIdNumber ?? undefined,
           parentIdNumber: body.parentIdNumber ?? undefined,
+          allergies: careBody.allergies === undefined ? undefined : careBody.allergies,
+          emergencyContactName:
+            careBody.emergencyContactName === undefined ? undefined : careBody.emergencyContactName,
+          emergencyContactRelationship:
+            careBody.emergencyContactRelationship === undefined
+              ? undefined
+              : careBody.emergencyContactRelationship,
+          emergencyContactPhone:
+            careBody.emergencyContactPhone === undefined
+              ? undefined
+              : storedEmergencyPhone(careBody.emergencyContactPhone),
           feeOverrideCents:
             body.feeOverrideCents === undefined ? undefined : body.feeOverrideCents,
           dateOfBirth:

@@ -954,3 +954,11 @@ in MRR/ARR.
 - **Lapsed = read-only, not locked out** (Dylan's call; applies to ended trials too). `requireMembership` allows GET/HEAD and refuses writes with a 402 when there's no active access. The HTTP method reaches it via the `x-crechely-request-method` header that middleware sets on every request (overwriting any client value; missing header = treated as a write). Read-only POSTs opt out with `allowWhenReadOnly`: backup export, reveal ID number, tour-seen. Banner explains read-only; the Accounting home no longer hides its dashboard.
 - **Payment history + receipts.** New `SubscriptionPayment` table (one row per Paystack `charge.success`, idempotent on reference, running `receiptNumber` printed as CRE-000001). Settings → Billing lists them; each has a PDF receipt (`/billing/payments/[id]/receipt`). Seller details live in `src/lib/billing/seller.ts`; setting `vatNumber` switches receipts to a Tax Invoice with the 15% VAT split. Payments made before this deploy aren't in the history.
 - **Migration:** new table `subscription_payments` (additive).
+
+## 28 Sept 2026 (afternoon) — Child import, two parents, allergies + emergency contact
+
+- **Import reads schools' own layouts.** Headings are compared in a compact form ("Child's Name" = "childs name"; "ID No."; "Parent 1/2 …"), separators , ; and tab are detected, Excel's lost leading zeros are restored (12-digit IDs, 9-digit phones). Parent 1 and 2 become guardians (with occupation); parent 1 is the billing contact. Template is now an .xlsx (`public/templates/`).
+- **Add child:** parent/guardian 1 required, parent/guardian 2 optional, occupation on both.
+- **Allergies + emergency contact** (optional) on Child: add form, Edit details, profile card (allergies highlighted), Excel import/template, and prefilled on the Medical & allergy and Emergency contact printable forms. Rule (lib/emergencyContact.ts, same in UI, API and import): name + phone required once any field is filled; must not be a parent/guardian by name or phone.
+- **Migration:** children.allergies, emergencyContactName, emergencyContactRelationship, emergencyContactPhone (all nullable, additive).
+- Not yet: the parents' online application form doesn't ask for allergies / emergency contact.

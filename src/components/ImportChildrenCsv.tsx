@@ -162,7 +162,8 @@ export function ImportChildrenCsv({
         &quot;Child&apos;s Name&quot;, &quot;Surname&quot;, &quot;ID No.&quot;, &quot;DOB&quot; and
         &quot;Parent 1 Name&quot; are recognised. Required: the child&apos;s name and
         surname, and a parent&apos;s name. Parent 1 is used for fees, statements and
-        reminders; Parent 2 is optional. Rows without a class or enrolment date use
+        reminders; Parent 2, allergies and an emergency contact are optional (the
+        emergency contact must be someone other than the parents). Rows without a class or enrolment date use
         the defaults below, and children missing details are imported and marked
         &quot;incomplete&quot; so you can fill them in later.
       </p>
