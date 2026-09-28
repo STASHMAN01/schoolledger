@@ -6,17 +6,10 @@ import { childImportSchema, childImportRowSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
-import { FIELD_ALIASES } from "@/lib/childImport";
+import { readImportRow } from "@/lib/childImport";
+import { normalizePhone } from "@/lib/phone";
 
 type Params = { params: Promise<{ organizationId: string }> };
-
-function pick(row: Record<string, string>, field: keyof typeof FIELD_ALIASES): string {
-  for (const alias of FIELD_ALIASES[field]) {
-    const v = row[alias];
-    if (v && v.trim()) return v.trim();
-  }
-  return "";
-}
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {
@@ -62,28 +55,25 @@ export async function POST(req: NextRequest, { params }: Params) {
       const rowNumber = i + 2; // header is row 1 in the source file
 
       try {
-        const firstName = pick(raw, "firstName");
-        const lastName = pick(raw, "lastName");
-        const parentNameDirect = pick(raw, "parentName");
-        const parentFirstName = pick(raw, "parentFirstName");
-        const parentLastName = pick(raw, "parentLastName");
-        const parentName =
-          parentNameDirect || `${parentFirstName} ${parentLastName}`.trim();
-        const categoryName = pick(raw, "categoryName");
-        const enrollmentDateRaw = pick(raw, "enrollmentDate");
+        // Heading matching (Child's Name, ID No., Parent 1 Name, ...) lives
+        // in src/lib/childImport.ts. Parent 1 becomes the billing contact
+        // (fees, statements, reminders); every parent in the row is also
+        // saved to the child's profile as a guardian.
+        const row = readImportRow(raw);
+        const billingParent = row.parents[0];
 
         const parsed = childImportRowSchema.parse({
-          firstName,
-          lastName,
-          parentName,
-          parentPhone: pick(raw, "parentPhone"),
-          parentEmail: pick(raw, "parentEmail"),
-          categoryName: categoryName || undefined,
-          enrollmentDate: enrollmentDateRaw || undefined,
-          childIdNumber: pick(raw, "childIdNumber"),
-          parentIdNumber: pick(raw, "parentIdNumber"),
-          dateOfBirth: pick(raw, "dateOfBirth"),
-          gender: pick(raw, "gender"),
+          firstName: row.firstName,
+          lastName: row.lastName,
+          parentName: billingParent ? `${billingParent.firstName} ${billingParent.lastName}`.trim() : "",
+          parentPhone: billingParent?.phone ?? "",
+          parentEmail: billingParent?.email ?? "",
+          categoryName: row.className || undefined,
+          enrollmentDate: row.enrollmentDate || undefined,
+          childIdNumber: row.idNumber,
+          parentIdNumber: billingParent?.idNumber ?? "",
+          dateOfBirth: row.dateOfBirth,
+          gender: row.gender,
         });
 
         let category = defaultCategory;
@@ -118,6 +108,22 @@ export async function POST(req: NextRequest, { params }: Params) {
               gender: parsed.gender ?? null,
             },
           });
+          for (const p of row.parents) {
+            const phone = normalizePhone(p.phone);
+            await tx.guardian.create({
+              data: {
+                organizationId,
+                childId: child.id,
+                relationship: (p.relationship || "Parent").slice(0, 100),
+                firstName: p.firstName.slice(0, 100),
+                lastName: p.lastName.slice(0, 100),
+                idNumber: p.idNumber ? p.idNumber.slice(0, 64) : null,
+                occupation: p.occupation ? p.occupation.slice(0, 120) : null,
+                phone: typeof phone === "string" && phone ? phone.slice(0, 40) : null,
+                email: p.email ? p.email.slice(0, 200) : null,
+              },
+            });
+          }
           await generateAnnualPlanForChild(
             tx,
             organizationId,

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
-import { parseCsv, csvRowsToRecords, toCsv } from "@/lib/csv";
+import { parseCsv, csvRowsToRecords } from "@/lib/csv";
 import { todayLocal } from "@/lib/date";
 import { hasRequiredColumns } from "@/lib/childImport";
 
@@ -25,51 +25,14 @@ type Category = { id: string; name: string };
 
 type ImportResult = { created: number; errors: { row: number; error: string }[] };
 
-const TEMPLATE_HEADERS = [
-  "Child First Name",
-  "Child Last Name",
-  "Date of Birth",
-  "Gender",
-  "Parent First Name",
-  "Parent Last Name",
-  "Parent Phone",
-  "Parent Email",
-  "Class",
-  "Enrollment Date",
-  "Parent ID",
-  "Child ID",
-];
-
-function downloadTemplate() {
-  const csv = toCsv([
-    TEMPLATE_HEADERS,
-    // Obviously-fake example row (no real names in templates).
-    [
-      "Example",
-      "Child",
-      "21/03/2022",
-      "Female",
-      "Example",
-      "Parent",
-      "082 000 0000",
-      "parent@example.com",
-      "",
-      "",
-      "",
-      "",
-    ],
-  ]);
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "crechely-children-template.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
+// Excel template in the layout schools already use (Child's Name, ID No.,
+// Parent 1 / Parent 2 columns), with ID and phone columns formatted as text
+// so Excel keeps their leading zeros, plus a "How to fill in" sheet.
+// Generated once and served as a static file from /public/templates.
+const TEMPLATE_URL = "/templates/crechely-children-template.xlsx";
 
 /**
- * Bulk-add children from a CSV export of whatever spreadsheet a school
+ * Bulk-add children from the Excel/CSV list a school
  * already had. Class and Enrollment Date columns are optional per row
  * — most schools' existing lists won't have them in this app's shape, so
  * this picks a default for the whole file and only falls back to a row's
@@ -118,7 +81,7 @@ export function ImportChildrenCsv({
     }
     if (table.length > 0 && !hasRequiredColumns(table[0])) {
       setError(
-        "We couldn't find the child's first name and last name columns. Check the first row has headings like \"Child First Name\" and \"Child Last Name\" (download the template below to see them all)."
+        "We couldn't find the child's first name and last name columns. Check the first row has headings like \"Child's Name\" and \"Child's Surname\" (the Excel template below shows them all)."
       );
       setRows(null);
       return;
@@ -194,23 +157,23 @@ export function ImportChildrenCsv({
       </div>
 
       <p className="mb-3 text-sm text-muted-foreground">
-        Use an Excel (.xlsx) or CSV file with a header row. Required: child
-        first name and surname, and the parent&apos;s name (first and last, or
-        one &quot;Parent Name&quot; column). Also read if present: date of birth
-        (e.g. 21/03/2022), gender, parent phone and email, class, enrolment
-        date and ID numbers. Rows without a class or enrolment date use the
-        defaults below. Children missing a date of birth, gender or parent
-        phone are still imported and marked &quot;incomplete&quot; so you can fill
-        them in later.
+        Upload your class list as an Excel (.xlsx) or CSV file with headings in the
+        first row. Your own spreadsheet usually works as it is: headings like
+        &quot;Child&apos;s Name&quot;, &quot;Surname&quot;, &quot;ID No.&quot;, &quot;DOB&quot; and
+        &quot;Parent 1 Name&quot; are recognised. Required: the child&apos;s name and
+        surname, and a parent&apos;s name. Parent 1 is used for fees, statements and
+        reminders; Parent 2 is optional. Rows without a class or enrolment date use
+        the defaults below, and children missing details are imported and marked
+        &quot;incomplete&quot; so you can fill them in later.
       </p>
 
-      <button
-        type="button"
-        onClick={downloadTemplate}
-        className="mb-4 text-sm text-brand underline hover:brightness-90"
+      <a
+        href={TEMPLATE_URL}
+        download
+        className="mb-4 inline-block text-sm text-brand underline hover:brightness-90"
       >
-        Download the template (CSV — opens in Excel)
-      </button>
+        Download the Excel template
+      </a>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Label className="flex flex-col gap-1">

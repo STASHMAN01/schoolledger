@@ -1,12 +1,15 @@
 // South African numbers are usually typed as 082 123 4567 or 27821234567,
 // but the app stores international format (+27821234567). Converts those
-// two local shapes and strips spaces/dashes/brackets; anything else is
+// two local shapes (plus the 9-digit form Excel leaves after dropping the
+// leading 0) and strips spaces/dashes/brackets; anything else is
 // returned cleaned but otherwise unchanged, for the schema to validate.
 export function normalizePhone(value: unknown): unknown {
   if (typeof value !== "string") return value;
   const s = value.replace(/[\s\-().]/g, "");
   if (!s) return undefined;
   if (/^0\d{9}$/.test(s)) return `+27${s.slice(1)}`;
+  // Excel turns 082 123 4567 into the number 821234567, dropping the 0.
+  if (/^[1-8]\d{8}$/.test(s)) return `+27${s}`;
   if (/^27\d{9}$/.test(s)) return `+${s}`;
   return s;
 }
