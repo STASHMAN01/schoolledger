@@ -60,13 +60,20 @@ export async function reminderSendPreview(organizationId: string) {
 
 export async function sendAllReminders(
   organizationId: string,
-  opts: { userId: string | null; trigger: "manual" | "automatic" }
+  opts: {
+    userId: string | null;
+    trigger: "manual" | "automatic";
+    /** Only these children (the school ticked who to remind). Omit for everyone who owes. */
+    childIds?: string[];
+  }
 ): Promise<SendAllResult> {
   // Full row: the statement PDF needs the school's address and bank details.
   const org = await db.organization.findUnique({ where: { id: organizationId } });
   if (!org) return { sentCount: 0, noEmailCount: 0, skippedRecentCount: 0, failedCount: 0, firstError: null };
 
-  await db.organization.update({ where: { id: organizationId }, data: { lastBulkReminderAt: new Date() } });
+  if (!opts.childIds) {
+    await db.organization.update({ where: { id: organizationId }, data: { lastBulkReminderAt: new Date() } });
+  }
 
   const template = org.reminderMessageTemplate ?? DEFAULT_REMINDER_TEMPLATE;
   const outstanding = await getOutstandingReminders(organizationId);
@@ -75,7 +82,9 @@ export async function sendAllReminders(
   let noEmailCount = 0;
   let skippedRecentCount = 0;
   const targets: typeof outstanding = [];
+  const only = opts.childIds ? new Set(opts.childIds) : null;
   for (const r of outstanding) {
+    if (only && !only.has(r.childId)) continue;
     if (!r.parentEmail) {
       noEmailCount++;
     } else if (
@@ -152,7 +161,7 @@ export async function sendAllReminders(
     userId: opts.userId,
     action: "reminders.sendAllExecuted",
     entityType: "Reminder",
-    metadata: { trigger: opts.trigger, withStatements: org.attachStatementToReminders, ...result },
+    metadata: { trigger: opts.trigger, selected: opts.childIds ? opts.childIds.length : undefined, withStatements: org.attachStatementToReminders, ...result },
   });
 
   return result;

@@ -983,3 +983,4 @@ in MRR/ARR.
 - Automatic reminders: school ticks days of the month (1–28); new daily cron /api/cron/auto-reminders at 05:00 UTC (07:00 SAST) sends for schools with active access, skips parents reminded in the last 2 days, never runs twice a day (lastAutoReminderOn).
 - Migration: Organization.autoRemindersEnabled, autoReminderDays, lastBulkReminderAt, lastAutoReminderOn (npx prisma db push).
 - Statements attached: Organization.attachStatementToReminders (default on). Each reminder email carries that family's PDF statement for the current year; with attachments, Resend sends one at a time (~2/s) instead of batch. Toggle on the Reminders page. Migration: npx prisma db push.
+- Select who to remind: tick children on the Reminders list, then 'Email N selected' (send-all route takes optional childIds; the 15-minute guard only applies to everyone-sends). No migration.

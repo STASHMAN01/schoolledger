@@ -77,6 +77,8 @@ function RemindersPageInner() {
   const [autoSaving, setAutoSaving] = useState(false);
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
   const [sendBusy, setSendBusy] = useState(false);
+  // Children ticked for "Email selected" (only those with a parent email).
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendResult, setSendResult] = useState<string | null>(null);
 
@@ -170,13 +172,16 @@ function RemindersPageInner() {
   const selectedTemplateId =
     REMINDER_TEMPLATES.find((t) => t.body === templateBody)?.id ?? "custom";
 
-  async function sendAll() {
+  async function sendAll(onlySelected = false) {
     if (!preview) return;
-    const n = preview.withEmailCount;
+    const childIds = onlySelected ? Array.from(selected) : undefined;
+    const n = childIds ? childIds.length : preview.withEmailCount;
     const confirmed = await confirm({
       title: `Email ${n} parent${n === 1 ? "" : "s"} now?`,
       description:
-        `Each parent who owes money gets your reminder message by email, from ${preview.from}. ` +
+        (childIds
+          ? `Only the ${n} parent${n === 1 ? "" : "s"} you ticked get${n === 1 ? "s" : ""} your reminder message by email, from ${preview.from}. `
+          : `Each parent who owes money gets your reminder message by email, from ${preview.from}. `) +
         (preview.replyTo ? `If they reply, it goes to ${preview.replyTo}. ` : "") +
         (auto?.attachStatement ? "Each email includes that family's statement as a PDF. " : "") +
         "Check that this month's payments are all recorded first.",
@@ -187,7 +192,11 @@ function RemindersPageInner() {
     setSendError(null);
     setSendResult(null);
     try {
-      const res = await fetch(`/api/organizations/${organizationId}/reminders/send-all`, { method: "POST" });
+      const res = await fetch(`/api/organizations/${organizationId}/reminders/send-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(childIds ? { childIds } : {}),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSendError(data.error ?? "The reminders couldn't be sent. Please try again.");
@@ -199,6 +208,7 @@ function RemindersPageInner() {
           (r.noEmailCount ? ` ${r.noEmailCount} parent${r.noEmailCount === 1 ? " has" : "s have"} no email on file; use WhatsApp below.` : "") +
           (r.failedCount ? ` ${r.failedCount} didn't send${r.firstError ? `: ${r.firstError}` : "."}` : "")
       );
+      if (childIds) setSelected(new Set());
       await Promise.all([load(), loadPreview()]);
     } catch {
       setSendError("The reminders couldn't be sent. Check your connection and try again.");
@@ -429,10 +439,44 @@ function RemindersPageInner() {
                 </p>
               )}
             </div>
-            <Button size="sm" onClick={sendAll} disabled={sendBusy || !preview || preview.withEmailCount === 0}>
-              {sendBusy ? "Sending…" : "Send all reminders"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {selected.size > 0 && (
+                <Button size="sm" onClick={() => sendAll(true)} disabled={sendBusy || !preview}>
+                  {sendBusy ? "Sending…" : `Email ${selected.size} selected`}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant={selected.size > 0 ? "secondary" : "primary"}
+                onClick={() => sendAll(false)}
+                disabled={sendBusy || !preview || preview.withEmailCount === 0}
+              >
+                {sendBusy && selected.size === 0 ? "Sending…" : "Send all reminders"}
+              </Button>
+            </div>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Only want to remind a few? Tick them in the list below, then use Email selected.{" "}
+            {reminders.some((r) => r.parentEmail) && (
+              <>
+                <button
+                  type="button"
+                  className="text-brand underline underline-offset-2"
+                  onClick={() => setSelected(new Set(visibleReminders.filter((r) => r.parentEmail).map((r) => r.childId)))}
+                >
+                  Select all shown
+                </button>
+                {selected.size > 0 && (
+                  <>
+                    {" · "}
+                    <button type="button" className="text-brand underline underline-offset-2" onClick={() => setSelected(new Set())}>
+                      Clear selection
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </p>
           {auto && (
             <label className="mt-3 flex items-center gap-2 text-sm text-foreground">
               <input
@@ -551,7 +595,24 @@ function RemindersPageInner() {
           {visibleReminders.map((r) => (
             <Card key={r.childId} as="div" className="p-4">
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                <div>
+                <div className="flex items-baseline gap-2">
+                  {canHandleSendAll && r.parentEmail && (
+                    <input
+                      id={`sel-${r.childId}`}
+                      type="checkbox"
+                      className="self-center"
+                      aria-label={`Select ${r.childName} to email`}
+                      checked={selected.has(r.childId)}
+                      onChange={(e) =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(r.childId);
+                          else next.delete(r.childId);
+                          return next;
+                        })
+                      }
+                    />
+                  )}
                   <span className="font-medium text-foreground">{r.childName}</span>
                   <span className="ml-2 text-sm text-muted-foreground">{r.categoryName}</span>
                 </div>
