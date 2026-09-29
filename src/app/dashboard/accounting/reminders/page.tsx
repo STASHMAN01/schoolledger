@@ -6,7 +6,6 @@ import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, PageHeader, Textarea } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
-import { REQUIRED_REMINDER_SEND_APPROVALS } from "@/lib/reminderSend";
 import {
   DEFAULT_REMINDER_TEMPLATE,
   REMINDER_TEMPLATES,
@@ -43,13 +42,17 @@ export default function RemindersPage() {
   );
 }
 
-type SendRequest = {
-  id: string;
-  reminderCountAtRequest: number;
-  approvalsCount: number;
-  approvedByMe: boolean;
-  requestedByMe: boolean;
+type SendPreview = {
+  from: string;
+  replyTo: string | null;
+  replyToIsContactEmail: boolean;
+  withEmailCount: number;
+  noEmailCount: number;
+  totalOutstandingCents: number;
 };
+
+type AutoSettings = { enabled: boolean; days: number[]; lastRunOn: string | null };
+const AUTO_DAY_CHOICES = Array.from({ length: 28 }, (_, i) => i + 1);
 
 function RemindersPageInner() {
   const { organizationId, organizationName, permissions, currencyCode } = useOrg();
@@ -68,8 +71,11 @@ function RemindersPageInner() {
   const [editedMessages, setEditedMessages] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [sendRequest, setSendRequest] = useState<SendRequest | null>(null);
-  const [sendRequestLoading, setSendRequestLoading] = useState(true);
+  const [preview, setPreview] = useState<SendPreview | null>(null);
+  const [auto, setAuto] = useState<AutoSettings | null>(null);
+  const [autoDraft, setAutoDraft] = useState<AutoSettings | null>(null);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoMsg, setAutoMsg] = useState<string | null>(null);
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendResult, setSendResult] = useState<string | null>(null);
@@ -94,15 +100,18 @@ function RemindersPageInner() {
     setLoading(false);
   }, [organizationId]);
 
-  const loadSendRequest = useCallback(async () => {
-    setSendRequestLoading(true);
-    try {
-      const res = await fetch(`/api/organizations/${organizationId}/reminders/send-request`);
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) setSendRequest(data.request);
-      else setSendError(data.error ?? "Couldn't check for a pending send request.");
-    } finally {
-      setSendRequestLoading(false);
+  const loadPreview = useCallback(async () => {
+    const res = await fetch(`/api/organizations/${organizationId}/reminders/send-all`);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) setPreview(data.preview);
+  }, [organizationId]);
+
+  const loadAuto = useCallback(async () => {
+    const res = await fetch(`/api/organizations/${organizationId}/reminders/auto`);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setAuto(data);
+      setAutoDraft(data);
     }
   }, [organizationId]);
 
@@ -116,9 +125,10 @@ function RemindersPageInner() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
-    loadSendRequest();
+    loadPreview();
+    loadAuto();
     loadTemplate();
-  }, [load, loadSendRequest, loadTemplate]);
+  }, [load, loadPreview, loadAuto, loadTemplate]);
 
   function applyBuiltInTemplate(id: string) {
     const t = REMINDER_TEMPLATES.find((t) => t.id === id);
@@ -160,86 +170,61 @@ function RemindersPageInner() {
   const selectedTemplateId =
     REMINDER_TEMPLATES.find((t) => t.body === templateBody)?.id ?? "custom";
 
-  async function requestSendAll() {
+  async function sendAll() {
+    if (!preview) return;
+    const n = preview.withEmailCount;
     const confirmed = await confirm({
-      title: "Send all reminders?",
+      title: `Email ${n} parent${n === 1 ? "" : "s"} now?`,
       description:
-        "Are you sure you have recorded everything correctly before sending? This will email every parent with an outstanding balance once a second admin or accountant approves it.",
-      confirmLabel: "Yes, request it",
+        `Each parent who owes money gets your reminder message by email, from ${preview.from}. ` +
+        (preview.replyTo ? `If they reply, it goes to ${preview.replyTo}. ` : "") +
+        "Check that this month's payments are all recorded first.",
+      confirmLabel: `Send ${n} email${n === 1 ? "" : "s"}`,
     });
     if (!confirmed) return;
     setSendBusy(true);
     setSendError(null);
+    setSendResult(null);
     try {
-      const res = await fetch(`/api/organizations/${organizationId}/reminders/send-request`, {
-        method: "POST",
+      const res = await fetch(`/api/organizations/${organizationId}/reminders/send-all`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSendError(data.error ?? "The reminders couldn't be sent. Please try again.");
+        return;
+      }
+      const r = data.result;
+      setSendResult(
+        `Sent ${r.sentCount} reminder email${r.sentCount === 1 ? "" : "s"}.` +
+          (r.noEmailCount ? ` ${r.noEmailCount} parent${r.noEmailCount === 1 ? " has" : "s have"} no email on file; use WhatsApp below.` : "") +
+          (r.failedCount ? ` ${r.failedCount} didn't send${r.firstError ? `: ${r.firstError}` : "."}` : "")
+      );
+      await Promise.all([load(), loadPreview()]);
+    } catch {
+      setSendError("The reminders couldn't be sent. Check your connection and try again.");
+    } finally {
+      setSendBusy(false);
+    }
+  }
+
+  async function saveAuto(next: AutoSettings) {
+    setAutoSaving(true);
+    setAutoMsg(null);
+    try {
+      const res = await fetch(`/api/organizations/${organizationId}/reminders/auto`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next.enabled, days: next.days }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setSendError(data.error ?? "Could not request this.");
+        setAutoMsg(data.error ?? "Couldn't save. Please try again.");
         return;
       }
-      setSendRequest(data.request);
+      setAuto(data);
+      setAutoDraft(data);
+      setAutoMsg(data.enabled ? "Saved. Automatic reminders are on." : "Saved. Automatic reminders are off.");
     } finally {
-      setSendBusy(false);
-    }
-  }
-
-  async function approveSendAll() {
-    if (!sendRequest) return;
-    setSendBusy(true);
-    setSendError(null);
-    try {
-      const res = await fetch(
-        `/api/organizations/${organizationId}/reminders/send-request/${sendRequest.id}/approve`,
-        { method: "POST" }
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setSendError(data.error ?? "Could not approve.");
-        return;
-      }
-      if (data.executed) {
-        setSendResult(
-          `Sent ${data.sentCount} reminder email${data.sentCount === 1 ? "" : "s"}.` +
-            (data.skippedNoEmailCount
-              ? ` ${data.skippedNoEmailCount} skipped (no email on file, or email isn't set up yet).`
-              : "") +
-            (data.failedCount ? ` ${data.failedCount} failed to send.` : "")
-        );
-        setSendRequest(null);
-        await load();
-      } else {
-        setSendRequest((r) => (r ? { ...r, approvalsCount: data.approvalCount, approvedByMe: true } : r));
-      }
-    } finally {
-      setSendBusy(false);
-    }
-  }
-
-  async function cancelSendAll() {
-    if (!sendRequest) return;
-    const confirmed = await confirm({
-      title: "Cancel this request?",
-      description: "No reminder emails will be sent.",
-      confirmLabel: "Cancel request",
-    });
-    if (!confirmed) return;
-    setSendBusy(true);
-    setSendError(null);
-    try {
-      const res = await fetch(
-        `/api/organizations/${organizationId}/reminders/send-request/${sendRequest.id}`,
-        { method: "DELETE" }
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setSendError(data.error ?? "Could not cancel.");
-        return;
-      }
-      setSendRequest(null);
-    } finally {
-      setSendBusy(false);
+      setAutoSaving(false);
     }
   }
 
@@ -325,7 +310,7 @@ function RemindersPageInner() {
     <div className="animate-in">
       <PageHeader
         title="Payment reminders"
-        description="Every child with an outstanding balance, with a ready-to-send message. Nothing is sent automatically — click WhatsApp or Email to open it in your own app with the message pre-filled, edit it first if you like, then mark it as sent so you can see who's already been reminded."
+        description="Every child with an outstanding balance. Email everyone at once with Send all reminders, turn on automatic reminders, or send one at a time on WhatsApp or email with the message pre-filled."
       />
 
       {dialog}
@@ -396,51 +381,103 @@ function RemindersPageInner() {
         </Card>
       )}
 
-      {canHandleSendAll && !sendRequestLoading && (
+      {canHandleSendAll && (
         <Card className="mb-4 p-4">
-          {sendResult ? (
-            <p className="text-sm text-foreground">{sendResult}</p>
-          ) : sendRequest ? (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Send-all requested ({sendRequest.approvalsCount}/{REQUIRED_REMINDER_SEND_APPROVALS}{" "}
-                  approvals)
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Covers {sendRequest.reminderCountAtRequest} outstanding account
-                  {sendRequest.reminderCountAtRequest === 1 ? "" : "s"} as of when it was
-                  requested — the live list is re-checked right before sending.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {!sendRequest.approvedByMe && (
-                  <Button size="sm" onClick={approveSendAll} disabled={sendBusy}>
-                    Approve &amp; send
-                  </Button>
-                )}
-                <Button variant="secondary" size="sm" onClick={cancelSendAll} disabled={sendBusy}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">
-                Email every parent above with an outstanding balance in one go — needs{" "}
-                {REQUIRED_REMINDER_SEND_APPROVALS} approvals from admins or accountants.
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Send all reminders by email</p>
+              <p className="text-xs text-muted-foreground">
+                {preview
+                  ? preview.withEmailCount > 0
+                    ? `${preview.withEmailCount} parent${preview.withEmailCount === 1 ? "" : "s"} with an email owe ${formatCents(preview.totalOutstandingCents, currencyCode)} in total.` +
+                      (preview.noEmailCount ? ` ${preview.noEmailCount} more have no email; use WhatsApp for them below.` : "")
+                    : "No parent who owes money has an email on file. Use WhatsApp below."
+                  : "Checking who owes…"}
               </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={requestSendAll}
-                disabled={sendBusy || reminders.length === 0}
-              >
-                Send all…
-              </Button>
+              {preview && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Parents see it from <span className="font-medium text-foreground">{preview.from}</span>
+                  {preview.replyTo ? (
+                    <>
+                      ; replies go to <span className="font-medium text-foreground">{preview.replyTo}</span>
+                    </>
+                  ) : null}
+                  .{" "}
+                  {!preview.replyToIsContactEmail && (
+                    <a href="settings/general" className="text-brand underline underline-offset-2">
+                      Set your school&apos;s contact email
+                    </a>
+                  )}
+                </p>
+              )}
+            </div>
+            <Button size="sm" onClick={sendAll} disabled={sendBusy || !preview || preview.withEmailCount === 0}>
+              {sendBusy ? "Sending…" : "Send all reminders"}
+            </Button>
+          </div>
+          {sendResult && <p className="mt-2 text-sm text-success">{sendResult}</p>}
+          {sendError && <p className="mt-2 text-xs text-danger">{sendError}</p>}
+        </Card>
+      )}
+
+      {canHandleSendAll && autoDraft && (
+        <Card className="mb-4 p-4">
+          <label className="flex items-start gap-3">
+            <input
+              id="auto-enabled"
+              type="checkbox"
+              className="mt-1"
+              checked={autoDraft.enabled}
+              onChange={(e) => setAutoDraft({ ...autoDraft, enabled: e.target.checked })}
+            />
+            <span>
+              <span className="block text-sm font-medium text-foreground">Automatic reminders</span>
+              <span className="block text-xs text-muted-foreground">
+                On the days you pick, Crechely emails every parent who still owes at 07:00. Anyone
+                reminded in the last 2 days is skipped.
+              </span>
+            </span>
+          </label>
+          {autoDraft.enabled && (
+            <div className="mt-3 flex flex-col gap-2">
+              <p className="text-xs text-muted-foreground">Days of the month</p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Days of the month">
+                {AUTO_DAY_CHOICES.map((d) => {
+                  const on = autoDraft.days.includes(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        setAutoDraft({
+                          ...autoDraft,
+                          days: on ? autoDraft.days.filter((x) => x !== d) : [...autoDraft.days, d].sort((a, b) => a - b),
+                        })
+                      }
+                      className={`transition-standard h-8 w-8 rounded-lg text-xs font-medium tabular-nums ${
+                        on ? "bg-brand text-brand-foreground" : "bg-background text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
-          {sendError && <p className="mt-2 text-xs text-danger">{sendError}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => saveAuto(autoDraft)}
+              disabled={autoSaving || JSON.stringify(autoDraft) === JSON.stringify(auto)}
+            >
+              {autoSaving ? "Saving…" : "Save"}
+            </Button>
+            {autoMsg && <span className="text-xs text-muted-foreground">{autoMsg}</span>}
+            {auto?.lastRunOn && <span className="text-xs text-muted-foreground">Last automatic run: {auto.lastRunOn}</span>}
+          </div>
         </Card>
       )}
 

@@ -11,8 +11,8 @@ type Params = { params: Promise<{ organizationId: string }> };
 // Who currently owes money, with a ready-to-send reminder message per
 // child. Deliberately read-only/on-demand rather than a scheduled job —
 // see PHASES.md for why (no email provider wired up for the per-child
-// WhatsApp/mailto flow; the separate "Send all" 2-approval flow does
-// actually send email, see the send-request routes alongside this one).
+// WhatsApp/mailto flow; "Send all reminders" does actually send email,
+// see the send-all route alongside this one).
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;

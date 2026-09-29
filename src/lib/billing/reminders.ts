@@ -19,10 +19,9 @@ import { DEFAULT_REMINDER_TEMPLATE, renderReminderTemplate } from "./reminderTem
 // whatever they already use — no email provider account, no per-message
 // cost, nothing new to configure before a school can start using this.
 //
-// The "Send all" 2-approval flow (see ReminderSendRequest in
-// prisma/schema.prisma and the send-request API routes) is the one
-// exception — it DOES actually send, via sendMail() in src/lib/mail.ts,
-// but only once two distinct ADMIN/ACCOUNTANT people have approved it.
+// "Send all reminders" (src/lib/reminderSendAll.ts, the send-all route and
+// the auto-reminders cron) is the one
+// exception — it DOES actually send, via src/lib/schoolMail.ts (Resend).
 
 // `template` defaults to the built-in "Friendly" wording when omitted, but
 // every real call site should pass the organization's actual saved

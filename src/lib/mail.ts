@@ -36,6 +36,10 @@ export async function sendMail(opts: {
   subject: string;
   html: string;
   text: string;
+  /** Where replies go (e.g. a school's own address). */
+  replyTo?: string;
+  /** Display name shown instead of "Crechely". */
+  fromName?: string;
 }): Promise<SendMailResult> {
   const transport = getTransport();
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
@@ -67,8 +71,9 @@ export async function sendMail(opts: {
   // reachable.
   try {
     await transport.sendMail({
-      from: `Crechely <${from}>`,
+      from: `${(opts.fromName ?? "Crechely").replace(/["<>\r\n]/g, "")} <${from}>`,
       to: opts.to,
+      ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
       subject: opts.subject,
       html: opts.html,
       text: opts.text,

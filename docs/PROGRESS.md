@@ -975,3 +975,10 @@ in MRR/ARR.
 - Import reads "Parent 1 Phone 2 / Phone 3" (and "Alternative Number" etc.).
 - Emergency contact may not match any of a parent's numbers.
 - Migration: `npx prisma db push` (additive column with a default).
+
+## 29 Sept 2026 — Send all reminders + automatic reminders
+- Removed the two-admin approval for "Send all" (send-request/approve routes and src/lib/reminderSend.ts deleted; ReminderSendRequest tables left unused).
+- "Send all reminders" on Accounting → Reminders emails every parent who owes, immediately, after a confirm showing count, From and Reply-To. 15-minute double-send guard.
+- Emails go through Resend (RESEND_API_KEY) from "<School> <school-slug@mail.crechely.co.za>", Reply-To = school contact email (else first admin's email). Falls back to SMTP without the key.
+- Automatic reminders: school ticks days of the month (1–28); new daily cron /api/cron/auto-reminders at 05:00 UTC (07:00 SAST) sends for schools with active access, skips parents reminded in the last 2 days, never runs twice a day (lastAutoReminderOn).
+- Migration: Organization.autoRemindersEnabled, autoReminderDays, lastBulkReminderAt, lastAutoReminderOn (npx prisma db push).

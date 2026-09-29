@@ -184,10 +184,13 @@ export function describeAuditAction(row: AuditRow): string {
       return `approved sending reminders to everyone owing`;
     case "reminders.sendAllExecuted": {
       const sent = typeof m.sentCount === "number" ? m.sentCount : 0;
-      return `sent ${sent} reminder email${sent === 1 ? "" : "s"} to everyone owing`;
+      const auto = m.trigger === "automatic" ? "automatically " : "";
+      return `${auto}sent ${sent} reminder email${sent === 1 ? "" : "s"} to everyone owing`;
     }
     case "reminders.sendAllCancelled":
       return "cancelled a request to send reminders to everyone owing";
+    case "reminders.autoSettingsUpdated":
+      return m.enabled ? `turned on automatic reminders (days ${Array.isArray(m.days) ? m.days.join(", ") : ""})` : "turned off automatic reminders";
     case "reminders.templateUpdated":
       return "updated the reminder message template";
     default:

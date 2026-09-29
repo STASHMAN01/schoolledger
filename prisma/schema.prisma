@@ -148,6 +148,18 @@ model Organization {
   // Null means "use the default built-in template" (REMINDER_TEMPLATES[0])
   // rather than duplicating that default text into the database.
   reminderMessageTemplate String? @db.Text
+  // "Send all reminders" and automatic reminders (Dylan, 29 Sept 2026).
+  // Emails go out from "<School> <slug@mail.crechely.co.za>" via Resend with
+  // Reply-To set to the school (contactEmail, else an admin's email).
+  // autoReminderDays: days of the month (1-28) the daily cron emails every
+  // parent with an outstanding balance; empty or disabled = never.
+  autoRemindersEnabled Boolean   @default(false)
+  autoReminderDays     Int[]     @default([])
+  // Last time a bulk send ran (manual or automatic) -- a double-click guard.
+  lastBulkReminderAt   DateTime?
+  // "YYYY-MM-DD" (South African date) of the last automatic run, so a
+  // retried cron never emails parents twice on the same day.
+  lastAutoReminderOn   String?
   paystackCustomerCode     String?  @unique
   paystackSubscriptionCode String?  @unique
   paystackPlanCode         String?

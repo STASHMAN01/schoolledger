@@ -1,5 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/purge-deleted-schools", "schedule": "0 1 * * *" }
+    { "path": "/api/cron/purge-deleted-schools", "schedule": "0 1 * * *" },
+    { "path": "/api/cron/auto-reminders", "schedule": "0 5 * * *" }
   ]
 }
