@@ -9,6 +9,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 
 const autoSchema = z.object({
   enabled: z.boolean(),
+  attachStatement: z.boolean().optional(),
   days: z
     .array(z.number().int().min(1).max(28))
     .max(8, "Pick at most 8 days.")
@@ -21,13 +22,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
     await requireMembership(organizationId, "VIEW_MONEY");
     const org = await db.organization.findUnique({
       where: { id: organizationId },
-      select: { autoRemindersEnabled: true, autoReminderDays: true, lastAutoReminderOn: true },
+      select: { autoRemindersEnabled: true, autoReminderDays: true, lastAutoReminderOn: true, attachStatementToReminders: true },
     });
     if (!org) return NextResponse.json({ error: "Not found." }, { status: 404 });
     return NextResponse.json({
       enabled: org.autoRemindersEnabled,
       days: org.autoReminderDays,
       lastRunOn: org.lastAutoReminderOn,
+      attachStatement: org.attachStatementToReminders,
     });
   } catch (err) {
     return handleApiError(err);
@@ -44,17 +46,26 @@ export async function PUT(req: NextRequest, { params }: Params) {
     }
     const org = await db.organization.update({
       where: { id: organizationId },
-      data: { autoRemindersEnabled: body.enabled, autoReminderDays: body.days },
-      select: { autoRemindersEnabled: true, autoReminderDays: true, lastAutoReminderOn: true },
+      data: {
+        autoRemindersEnabled: body.enabled,
+        autoReminderDays: body.days,
+        ...(body.attachStatement === undefined ? {} : { attachStatementToReminders: body.attachStatement }),
+      },
+      select: { autoRemindersEnabled: true, autoReminderDays: true, lastAutoReminderOn: true, attachStatementToReminders: true },
     });
     await logAudit({
       organizationId,
       userId,
       action: "reminders.autoSettingsUpdated",
       entityType: "Reminder",
-      metadata: { enabled: org.autoRemindersEnabled, days: org.autoReminderDays },
+      metadata: { enabled: org.autoRemindersEnabled, days: org.autoReminderDays, attachStatement: org.attachStatementToReminders },
     });
-    return NextResponse.json({ enabled: org.autoRemindersEnabled, days: org.autoReminderDays, lastRunOn: org.lastAutoReminderOn });
+    return NextResponse.json({
+      enabled: org.autoRemindersEnabled,
+      days: org.autoReminderDays,
+      lastRunOn: org.lastAutoReminderOn,
+      attachStatement: org.attachStatementToReminders,
+    });
   } catch (err) {
     return handleApiError(err);
   }

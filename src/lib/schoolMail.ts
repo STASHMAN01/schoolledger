@@ -12,7 +12,14 @@ import { sendMail } from "@/lib/mail";
 // falls back to the SMTP account in mail.ts (fine for testing, not for
 // volume).
 
-export type SchoolMessage = { to: string; subject: string; html: string; text: string };
+export type SchoolAttachment = { filename: string; content: Uint8Array };
+export type SchoolMessage = {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  attachments?: SchoolAttachment[];
+};
 export type SchoolSender = { schoolName: string; replyTo: string | null };
 export type SchoolSendResult = { index: number; sent: boolean; error?: string };
 
@@ -54,6 +61,11 @@ export async function sendSchoolMessages(
   if (!apiKey) return sendViaSmtp(sender, messages);
 
   const from = schoolFromAddress(sender.schoolName);
+  // Resend's batch endpoint can't carry attachments, so messages with a
+  // statement go one at a time, paced under Resend's per-second rate limit.
+  if (messages.some((m) => m.attachments?.length)) {
+    return sendOneByOne(apiKey, from, sender.replyTo, messages);
+  }
   const results: SchoolSendResult[] = [];
   for (let start = 0; start < messages.length; start += RESEND_BATCH_LIMIT) {
     const chunk = messages.slice(start, start + RESEND_BATCH_LIMIT);
@@ -88,10 +100,63 @@ export async function sendSchoolMessages(
   return results;
 }
 
+const SINGLE_SEND_SPACING_MS = 550;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function sendOneByOne(
+  apiKey: string,
+  from: string,
+  replyTo: string | null,
+  messages: SchoolMessage[]
+): Promise<SchoolSendResult[]> {
+  const results: SchoolSendResult[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    const body = JSON.stringify({
+      from,
+      to: [m.to],
+      subject: m.subject,
+      html: m.html,
+      text: m.text,
+      ...(replyTo ? { reply_to: replyTo } : {}),
+      ...(m.attachments?.length
+        ? { attachments: m.attachments.map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64") })) }
+        : {}),
+    });
+    let outcome: SchoolSendResult = { index: i, sent: false, error: "Not sent." };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body,
+        });
+        if (res.ok) {
+          outcome = { index: i, sent: true };
+          break;
+        }
+        const detail = await res.json().catch(() => ({}));
+        outcome = { index: i, sent: false, error: resendErrorMessage(res.status, detail) };
+        // A per-second rate limit clears quickly; a daily quota doesn't.
+        const isDailyQuota = JSON.stringify(detail).toLowerCase().includes("daily");
+        if (res.status !== 429 || isDailyQuota) break;
+        await sleep(1200);
+      } catch (err) {
+        outcome = { index: i, sent: false, error: err instanceof Error ? err.message : String(err) };
+        break;
+      }
+    }
+    results.push(outcome);
+    if (i < messages.length - 1) await sleep(SINGLE_SEND_SPACING_MS);
+  }
+  return results;
+}
+
 function resendErrorMessage(status: number, detail: unknown): string {
   const message =
     detail && typeof detail === "object" && "message" in detail ? String((detail as { message: unknown }).message) : "";
-  if (status === 429) return "Daily email limit reached. Try again tomorrow.";
+  if (status === 429)
+    return /daily/i.test(message) ? "Daily email limit reached. Try again tomorrow." : "Too many emails at once. Try again in a minute.";
   if (status === 403) return "Email sending isn't set up yet (domain not verified).";
   return message || `Email service error (${status}).`;
 }

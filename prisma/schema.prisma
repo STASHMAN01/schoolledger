@@ -154,6 +154,8 @@ model Organization {
   // autoReminderDays: days of the month (1-28) the daily cron emails every
   // parent with an outstanding balance; empty or disabled = never.
   autoRemindersEnabled Boolean   @default(false)
+  // Attach each family's PDF statement to reminder emails (on by default).
+  attachStatementToReminders Boolean @default(true)
   autoReminderDays     Int[]     @default([])
   // Last time a bulk send ran (manual or automatic) -- a double-click guard.
   lastBulkReminderAt   DateTime?

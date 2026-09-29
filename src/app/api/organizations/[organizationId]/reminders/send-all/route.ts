@@ -5,6 +5,10 @@ import { BULK_SEND_COOLDOWN_MS, reminderSendPreview, sendAllReminders } from "@/
 
 type Params = { params: Promise<{ organizationId: string }> };
 
+// With statements attached, emails go one at a time (about 2 a second), so
+// a large school needs more than the default function time.
+export const maxDuration = 300;
+
 // What "Send all reminders" would do right now: how many parents get an
 // email, how many have no email, and the From / Reply-To they'll see.
 export async function GET(_req: NextRequest, { params }: Params) {

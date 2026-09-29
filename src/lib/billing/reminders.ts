@@ -58,7 +58,10 @@ export function buildReminderEmailHtml(
   },
   template: string = DEFAULT_REMINDER_TEMPLATE
 ): string {
-  const text = buildReminderMessage(input, template);
+  const text = buildReminderMessage(input, template)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
   return `<p>${text.replace(/\n/g, "<br />")}</p>`;
 }
 

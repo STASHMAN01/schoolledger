@@ -40,6 +40,7 @@ export async function sendMail(opts: {
   replyTo?: string;
   /** Display name shown instead of "Crechely". */
   fromName?: string;
+  attachments?: { filename: string; content: Uint8Array }[];
 }): Promise<SendMailResult> {
   const transport = getTransport();
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
@@ -74,6 +75,9 @@ export async function sendMail(opts: {
       from: `${(opts.fromName ?? "Crechely").replace(/["<>\r\n]/g, "")} <${from}>`,
       to: opts.to,
       ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
+      ...(opts.attachments?.length
+        ? { attachments: opts.attachments.map((x) => ({ filename: x.filename, content: Buffer.from(x.content) })) }
+        : {}),
       subject: opts.subject,
       html: opts.html,
       text: opts.text,

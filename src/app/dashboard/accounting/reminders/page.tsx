@@ -51,7 +51,7 @@ type SendPreview = {
   totalOutstandingCents: number;
 };
 
-type AutoSettings = { enabled: boolean; days: number[]; lastRunOn: string | null };
+type AutoSettings = { enabled: boolean; days: number[]; lastRunOn: string | null; attachStatement: boolean };
 const AUTO_DAY_CHOICES = Array.from({ length: 28 }, (_, i) => i + 1);
 
 function RemindersPageInner() {
@@ -178,6 +178,7 @@ function RemindersPageInner() {
       description:
         `Each parent who owes money gets your reminder message by email, from ${preview.from}. ` +
         (preview.replyTo ? `If they reply, it goes to ${preview.replyTo}. ` : "") +
+        (auto?.attachStatement ? "Each email includes that family's statement as a PDF. " : "") +
         "Check that this month's payments are all recorded first.",
       confirmLabel: `Send ${n} email${n === 1 ? "" : "s"}`,
     });
@@ -206,6 +207,23 @@ function RemindersPageInner() {
     }
   }
 
+  async function setAttachStatement(value: boolean) {
+    if (!auto) return;
+    const prev = auto;
+    setAuto({ ...auto, attachStatement: value });
+    setAutoDraft((d) => (d ? { ...d, attachStatement: value } : d));
+    const res = await fetch(`/api/organizations/${organizationId}/reminders/auto`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: prev.enabled, days: prev.days, attachStatement: value }),
+    });
+    if (!res.ok) {
+      setAuto(prev);
+      setAutoDraft((d) => (d ? { ...d, attachStatement: prev.attachStatement } : d));
+      setSendError("Couldn't save that setting. Please try again.");
+    }
+  }
+
   async function saveAuto(next: AutoSettings) {
     setAutoSaving(true);
     setAutoMsg(null);
@@ -213,7 +231,7 @@ function RemindersPageInner() {
       const res = await fetch(`/api/organizations/${organizationId}/reminders/auto`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: next.enabled, days: next.days }),
+        body: JSON.stringify({ enabled: next.enabled, days: next.days, attachStatement: next.attachStatement }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -415,6 +433,23 @@ function RemindersPageInner() {
               {sendBusy ? "Sending…" : "Send all reminders"}
             </Button>
           </div>
+          {auto && (
+            <label className="mt-3 flex items-center gap-2 text-sm text-foreground">
+              <input
+                id="attach-statement"
+                type="checkbox"
+                checked={auto.attachStatement}
+                onChange={(e) => setAttachStatement(e.target.checked)}
+                disabled={sendBusy}
+              />
+              Attach each family&apos;s statement (PDF)
+            </label>
+          )}
+          {sendBusy && auto?.attachStatement && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Sending one by one with statements attached. This can take up to a minute; keep this page open.
+            </p>
+          )}
           {sendResult && <p className="mt-2 text-sm text-success">{sendResult}</p>}
           {sendError && <p className="mt-2 text-xs text-danger">{sendError}</p>}
         </Card>
