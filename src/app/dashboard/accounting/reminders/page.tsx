@@ -172,14 +172,20 @@ function RemindersPageInner() {
   const selectedTemplateId =
     REMINDER_TEMPLATES.find((t) => t.body === templateBody)?.id ?? "custom";
 
-  async function sendAll(onlySelected = false) {
+  async function sendAll(onlySelected: boolean | string[] = false) {
     if (!preview) return;
-    const childIds = onlySelected ? Array.from(selected) : undefined;
+    const childIds = Array.isArray(onlySelected)
+      ? onlySelected
+      : onlySelected
+        ? Array.from(selected)
+        : undefined;
     const n = childIds ? childIds.length : preview.withEmailCount;
     const confirmed = await confirm({
       title: `Email ${n} parent${n === 1 ? "" : "s"} now?`,
       description:
-        (childIds
+        (Array.isArray(onlySelected)
+          ? `This parent gets your reminder message by email, from ${preview.from}. `
+          : childIds
           ? `Only the ${n} parent${n === 1 ? "" : "s"} you ticked get${n === 1 ? "s" : ""} your reminder message by email, from ${preview.from}. `
           : `Each parent who owes money gets your reminder message by email, from ${preview.from}. `) +
         (preview.replyTo ? `If they reply, it goes to ${preview.replyTo}. ` : "") +
@@ -208,7 +214,7 @@ function RemindersPageInner() {
           (r.noEmailCount ? ` ${r.noEmailCount} parent${r.noEmailCount === 1 ? " has" : "s have"} no email on file; use WhatsApp below.` : "") +
           (r.failedCount ? ` ${r.failedCount} didn't send${r.firstError ? `: ${r.firstError}` : "."}` : "")
       );
-      if (childIds) setSelected(new Set());
+      if (childIds && !Array.isArray(onlySelected)) setSelected(new Set());
       await Promise.all([load(), loadPreview()]);
     } catch {
       setSendError("The reminders couldn't be sent. Check your connection and try again.");
@@ -652,13 +658,19 @@ function RemindersPageInner() {
                       WhatsApp
                     </a>
                   )}
+                  {r.parentEmail && canHandleSendAll && (
+                    <Button size="sm" onClick={() => sendAll([r.childId])} disabled={sendBusy || !preview}>
+                      Send email
+                    </Button>
+                  )}
                   {r.parentEmail && (
                     <a
                       href={mailLink(r.parentEmail, messageFor(r))}
                       onClick={() => markSent(r.childId, "email")}
-                      className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-3 py-1.5 font-medium text-brand-foreground hover:bg-brand-hover"
+                      title="Opens your own email program (Outlook, Mail…) with this message typed in. You press send there yourself."
+                      className="transition-standard inline-flex items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-1.5 font-medium text-foreground hover:bg-background"
                     >
-                      Email
+                      Open in my email app
                     </a>
                   )}
                   {r.parentEmail && (
@@ -666,7 +678,7 @@ function RemindersPageInner() {
                       variant="secondary"
                       size="sm"
                       onClick={() => copyEmailAddress(r)}
-                      title="If clicking Email above doesn't open anything, your device likely has no default mail app set — copy the address and paste it into Gmail/webmail instead."
+                      title="Copy the parent's address to paste into Gmail or webmail yourself."
                     >
                       {copiedEmailId === r.childId ? "Copied!" : "Copy email address"}
                     </Button>
