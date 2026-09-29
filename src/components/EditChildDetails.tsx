@@ -24,6 +24,7 @@ export type EditableChild = {
   childIdNumber?: string | null;
   parentIdNumber?: string | null;
   allergies?: string | null;
+  homeAddress?: string | null;
   emergencyContactName?: string | null;
   emergencyContactRelationship?: string | null;
   emergencyContactPhone?: string | null;
@@ -76,6 +77,7 @@ export function EditChildDetails({
       childIdNumber: "",
       parentIdNumber: "",
       allergies: c.allergies ?? "",
+      homeAddress: c.homeAddress ?? "",
       ecName: c.emergencyContactName ?? "",
       ecRelationship: c.emergencyContactRelationship ?? "",
       ecPhone: c.emergencyContactPhone ?? "",
@@ -130,6 +132,7 @@ export function EditChildDetails({
     // Care details: "" clears a field on the server.
     const care: [string, string, string | null | undefined][] = [
       ["allergies", f.allergies, child.allergies],
+      ["homeAddress", f.homeAddress, child.homeAddress],
       ["emergencyContactName", f.ecName, child.emergencyContactName],
       ["emergencyContactRelationship", f.ecRelationship, child.emergencyContactRelationship],
       ["emergencyContactPhone", f.ecPhone, child.emergencyContactPhone],
@@ -347,6 +350,17 @@ export function EditChildDetails({
             </Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="Home address" id="ed-addr">
+                <Input
+                  id="ed-addr"
+                  autoComplete="street-address"
+                  placeholder="Street, suburb, town"
+                  value={f.homeAddress}
+                  onChange={(e) => set({ homeAddress: e.target.value })}
+                />
+              </Field>
+            </div>
             <div className="flex flex-col gap-1 sm:col-span-2">
               <Label htmlFor="ed-allergies">Allergies</Label>
               <textarea

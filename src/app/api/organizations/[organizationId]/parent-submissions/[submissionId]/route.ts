@@ -98,6 +98,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           gender: child.gender,
           childIdNumber: maskIdNumber(child.childIdNumber),
           allergies: child.allergies,
+          homeAddress: child.homeAddress,
           emergencyContactName: child.emergencyContactName,
           emergencyContactRelationship: child.emergencyContactRelationship,
           emergencyContactPhone: child.emergencyContactPhone,

@@ -19,7 +19,7 @@ describe("reading a school's own spreadsheet", () => {
     expect(r.lastName).toBe("Doe");
     expect(r.idNumber).toBe("12345");
     expect(r.parents).toEqual([
-      { firstName: "mary", lastName: "doe", idNumber: "54321", phone: "", extraPhones: [], email: "", occupation: "nurse", relationship: "" },
+      { firstName: "mary", lastName: "doe", idNumber: "54321", phone: "", extraPhones: [], email: "", occupation: "nurse", relationship: "", address: "" },
     ]);
   });
 
@@ -116,5 +116,29 @@ describe("more than one phone per parent", () => {
     expect(row.parents[0].phone).toBe("0821234567");
     expect(row.parents[0].extraPhones).toEqual(["0831234567"]);
     expect(row.parents[1].extraPhones).toEqual(["0841234567"]);
+  });
+});
+
+describe("addresses", () => {
+  it("reads the child's home address and each parent's own address", () => {
+    const row = readImportRow({
+      "Child's Name": "Lwazi",
+      "Child's Surname": "Dube",
+      "Home Address": "12 Jacaranda St, Garsfontein, Pretoria",
+      "Parent 1 Name": "Sipho",
+      "Parent 1 Surname": "Dube",
+      "Parent 2 Name": "Nomsa",
+      "Parent 2 Surname": "Dube",
+      "Parent 2 Address": "5 Oak Ave, Centurion",
+    });
+    expect(row.homeAddress).toBe("12 Jacaranda St, Garsfontein, Pretoria");
+    expect(row.parents[0].address).toBe("");
+    expect(row.parents[1].address).toBe("5 Oak Ave, Centurion");
+  });
+
+  it("takes a plain Address column as the child's home address", () => {
+    const row = readImportRow({ Name: "Mia", Surname: "Nel", Address: "3 Kerk St, Pretoria", "Parent Name": "Ilse Nel" });
+    expect(row.homeAddress).toBe("3 Kerk St, Pretoria");
+    expect(row.parents[0].address).toBe("");
   });
 });

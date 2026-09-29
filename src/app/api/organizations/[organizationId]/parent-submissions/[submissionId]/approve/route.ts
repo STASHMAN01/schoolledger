@@ -117,6 +117,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           photoConsentAt: photoConsentGiven ? new Date() : undefined,
           // Only what the parent actually filled in replaces what's on file.
           allergies: parsed.child.allergies?.trim() ? parsed.child.allergies.trim() : undefined,
+          homeAddress: parsed.child.homeAddress?.trim() ? parsed.child.homeAddress.trim() : undefined,
           ...(ecGiven
             ? {
                 emergencyContactName: ec.name?.trim() || null,
@@ -141,6 +142,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             phone: g.phone ?? null,
             extraPhones: g.extraPhones ?? [],
             email: g.email ?? null,
+            address: g.address ?? null,
             photoImage: photoConsentGiven ? g.photoImage ?? null : null,
           },
         });
@@ -229,6 +231,7 @@ async function approveNewApplicant(
         photoConsentGiven,
         photoConsentAt: photoConsentGiven ? new Date() : null,
         allergies: parsed.child.allergies?.trim() || null,
+        homeAddress: parsed.child.homeAddress?.trim() || null,
         emergencyContactName: parsed.child.emergencyContactName?.trim() || null,
         emergencyContactRelationship: parsed.child.emergencyContactRelationship?.trim() || null,
         emergencyContactPhone: storedEmergencyPhone(parsed.child.emergencyContactPhone),
@@ -257,6 +260,7 @@ async function approveNewApplicant(
           phone: g.phone ?? null,
           extraPhones: g.extraPhones ?? [],
           email: g.email ?? null,
+          address: g.address ?? null,
           photoImage: photoConsentGiven ? g.photoImage ?? null : null,
         },
       });

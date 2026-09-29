@@ -11,6 +11,7 @@ type TemplateGuardian = {
   phone: string | null;
   extraPhones?: string[];
   email: string | null;
+  address?: string | null;
 };
 
 type TemplateChild = {
@@ -29,6 +30,7 @@ type TemplateChild = {
   photoConsentAt: Date | null;
   category: { name: string; monthlyFeeCents: number | null };
   allergies?: string | null;
+  homeAddress?: string | null;
   emergencyContactName?: string | null;
   emergencyContactRelationship?: string | null;
   emergencyContactPhone?: string | null;
@@ -64,6 +66,7 @@ function guardianSections(guardians: TemplateGuardian[]) {
           { label: "ID number", value: null },
           { label: "Phone", value: null },
           { label: "Email", value: null },
+          { label: "Address (if different from the child's)", value: null },
         ],
       },
     ];
@@ -76,6 +79,7 @@ function guardianSections(guardians: TemplateGuardian[]) {
       { label: "Occupation", value: g.occupation },
       { label: "Phone", value: [g.phone, ...(g.extraPhones ?? [])].filter(Boolean).join(" / ") || null },
       { label: "Email", value: g.email },
+      ...(g.address ? [{ label: "Address", value: g.address }] : []),
     ],
   }));
 }
@@ -105,7 +109,7 @@ export function buildFormSpec(formType: FormType, input: TemplateInput): FormSpe
           "Enrolment record for the child and guardian details below. Fields already on file are filled in; anything blank should be completed by hand.",
         sections: [childSection, ...guardianSections(guardians), {
           heading: "Home address",
-          fields: [{ label: "Address", value: null }],
+          fields: [{ label: "Address", value: child.homeAddress ?? null }],
         }],
         signatureLine: true,
       };

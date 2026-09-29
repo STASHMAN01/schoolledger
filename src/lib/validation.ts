@@ -237,6 +237,7 @@ const optionalClearableText = (max: number) =>
 
 export const childCareSchema = z.object({
   allergies: optionalClearableText(2000),
+  homeAddress: optionalClearableText(500),
   emergencyContactName: optionalClearableText(200),
   emergencyContactRelationship: optionalClearableText(100),
   emergencyContactPhone: optionalClearableText(40),
@@ -261,6 +262,8 @@ export const guardianSchema = z.object({
     z.array(z.string().max(40)).max(2, "A parent/guardian can have at most 3 phone numbers.").optional()
   ),
   email: z.preprocess(emptyToUndefined, emailSchema.optional()),
+  // Only when different from the child's home address. "" clears it.
+  address: z.preprocess((v) => (v === "" ? null : v), z.string().trim().max(500).nullable().optional()),
   photoImage: z.preprocess(emptyStringToUndefined, imageDataUrlSchema.optional().nullable()),
 });
 

@@ -83,6 +83,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         phone: body.phone === undefined ? undefined : body.phone,
         extraPhones: body.extraPhones === undefined ? undefined : body.extraPhones,
         email: body.email === undefined ? undefined : body.email,
+        address: body.address === undefined ? undefined : body.address,
         photoImage: body.photoImage === undefined ? undefined : body.photoImage,
       },
     });

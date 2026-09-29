@@ -30,6 +30,7 @@ type GuardianDraft = {
   phone: string;
   extraPhones: string[];
   email: string;
+  address: string;
   photoImage: string | null;
   idPhoto: string | null;
 };
@@ -44,6 +45,7 @@ function blankGuardian(): GuardianDraft {
     phone: "",
     extraPhones: [],
     email: "",
+    address: "",
     photoImage: null,
     idPhoto: null,
   };
@@ -67,6 +69,7 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
   const [childIdPhoto, setChildIdPhoto] = useState<string | null>(null);
   const [guardians, setGuardians] = useState<GuardianDraft[]>([blankGuardian()]);
   const [allergies, setAllergies] = useState("");
+  const [homeAddress, setHomeAddress] = useState("");
   const [ecName, setEcName] = useState("");
   const [ecRelationship, setEcRelationship] = useState("");
   const [ecPhone, setEcPhone] = useState("");
@@ -163,6 +166,7 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
         photoImage: photoConsentGiven ? childPhoto || undefined : undefined,
         photoConsentGiven,
         allergies: allergies.trim() || undefined,
+        homeAddress: homeAddress.trim() || undefined,
         emergencyContactName: ecName.trim() || undefined,
         emergencyContactRelationship: ecRelationship.trim() || undefined,
         emergencyContactPhone: ecPhone.trim() || undefined,
@@ -176,6 +180,7 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
         phone: g.phone || undefined,
         extraPhones: cleanExtraPhones(g.extraPhones),
         email: g.email || undefined,
+        address: g.address.trim() || undefined,
         photoImage: photoConsentGiven ? g.photoImage || undefined : undefined,
       })),
       attachments,
@@ -305,6 +310,16 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
                   onChange={(e) => setChildIdNumber(e.target.value)}
                 />
               </div>
+              <div>
+                <Label htmlFor="homeAddress">Home address</Label>
+                <Input
+                  id="homeAddress"
+                  autoComplete="street-address"
+                  placeholder="Street, suburb, town"
+                  value={homeAddress}
+                  onChange={(e) => setHomeAddress(e.target.value)}
+                />
+              </div>
               <label className="flex items-start gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
@@ -422,6 +437,14 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
                       onChange={(e) => updateGuardian(i, { email: e.target.value })}
                     />
                   </div>
+                </div>
+                <div>
+                  <Label htmlFor={`addr-${i}`}>Address (only if different from the child&apos;s)</Label>
+                  <Input
+                    id={`addr-${i}`}
+                    value={g.address}
+                    onChange={(e) => updateGuardian(i, { address: e.target.value })}
+                  />
                 </div>
                 <ImageUploadField
                   label="Photo (optional)"

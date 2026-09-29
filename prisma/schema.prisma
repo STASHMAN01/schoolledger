@@ -404,6 +404,8 @@ model Child {
   // in src/lib/emergencyContact.ts wherever it's written (add child, edit,
   // Excel import).
   allergies                    String?  @db.Text
+  // Where the child lives (Dylan, 29 Sept 2026). Free text, optional.
+  homeAddress                  String?  @db.Text
   emergencyContactName         String?
   emergencyContactRelationship String?
   emergencyContactPhone        String?
@@ -461,6 +463,8 @@ model Guardian {
   // stays the main one (fees, reminders); these are extra "also try" numbers.
   extraPhones    String[]  @default([])
   email          String?
+  // Only when it differs from the child's homeAddress (Dylan, 29 Sept 2026).
+  address        String?  @db.Text
   // Same data: URL pattern as Child.photoImage -- only ever written
   // together with the child's photoConsentGiven=true.
   photoImage     String?   @db.Text

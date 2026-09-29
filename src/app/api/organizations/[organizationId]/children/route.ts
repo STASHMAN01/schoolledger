@@ -178,6 +178,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           childIdNumber: body.childIdNumber ?? null,
           parentIdNumber: body.parentIdNumber ?? null,
           allergies: body.allergies ?? null,
+          homeAddress: body.homeAddress ?? null,
           emergencyContactName: body.emergencyContactName ?? null,
           emergencyContactRelationship: body.emergencyContactRelationship ?? null,
           emergencyContactPhone: storedEmergencyPhone(body.emergencyContactPhone),
@@ -198,6 +199,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             phone: g.phone ?? null,
             extraPhones: g.extraPhones ?? [],
             email: g.email ?? null,
+            address: g.address ?? null,
           },
         });
       }

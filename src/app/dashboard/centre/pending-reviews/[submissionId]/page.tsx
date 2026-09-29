@@ -16,6 +16,7 @@ type SubmittedGuardian = {
   phone?: string;
   extraPhones?: string[];
   email?: string;
+  address?: string | null;
   photoImage?: string | null;
 };
 
@@ -38,6 +39,7 @@ type SubmissionDetail = {
       photoImage?: string | null;
       photoConsentGiven?: boolean;
       allergies?: string | null;
+      homeAddress?: string | null;
       emergencyContactName?: string | null;
       emergencyContactRelationship?: string | null;
       emergencyContactPhone?: string | null;
@@ -56,6 +58,7 @@ type CurrentChild = {
   childIdNumber: string | null;
   parentName?: string;
   allergies?: string | null;
+  homeAddress?: string | null;
   emergencyContactName?: string | null;
   emergencyContactRelationship?: string | null;
   emergencyContactPhone?: string | null;
@@ -221,6 +224,11 @@ export default function ReviewSubmissionPage() {
               <td className={`py-2 font-medium ${c.allergies ? "text-danger" : "text-foreground"}`}>{fmt(c.allergies)}</td>
             </tr>
             <tr>
+              <td className="py-2 text-muted-foreground">Home address</td>
+              <td className="py-2">{fmt(onFile?.homeAddress)}</td>
+              <td className="py-2 font-medium text-foreground">{fmt(c.homeAddress)}</td>
+            </tr>
+            <tr>
               <td className="py-2 text-muted-foreground">Emergency contact</td>
               <td className="py-2">
                 {onFile?.emergencyContactName
@@ -280,6 +288,7 @@ export default function ReviewSubmissionPage() {
                   </p>
                 )}
                 {g.email && <p className="text-sm text-muted-foreground">{g.email}</p>}
+                {g.address && <p className="text-sm text-muted-foreground">{g.address}</p>}
                 {g.idNumber && <p className="text-sm text-muted-foreground">ID: {g.idNumber}</p>}
               </div>
             </div>

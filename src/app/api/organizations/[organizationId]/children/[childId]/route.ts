@@ -235,6 +235,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           childIdNumber: body.childIdNumber ?? undefined,
           parentIdNumber: body.parentIdNumber ?? undefined,
           allergies: careBody.allergies === undefined ? undefined : careBody.allergies,
+          homeAddress: careBody.homeAddress === undefined ? undefined : careBody.homeAddress,
           emergencyContactName:
             careBody.emergencyContactName === undefined ? undefined : careBody.emergencyContactName,
           emergencyContactRelationship:

@@ -40,6 +40,7 @@ export function AddChildForm({
     categoryId: classes[0]?.id ?? "",
     enrollmentDate: todayLocal(),
     childIdNumber: "",
+    homeAddress: "",
     gRelationship: "Mother",
     gFirstName: "",
     gLastName: "",
@@ -48,6 +49,7 @@ export function AddChildForm({
     gEmail: "",
     gIdNumber: "",
     gOccupation: "",
+    gAddress: "",
     g2Relationship: "Father",
     g2FirstName: "",
     g2LastName: "",
@@ -56,6 +58,7 @@ export function AddChildForm({
     g2Email: "",
     g2IdNumber: "",
     g2Occupation: "",
+    g2Address: "",
     allergies: "",
     ecName: "",
     ecRelationship: "",
@@ -148,6 +151,7 @@ export function AddChildForm({
               email: f.gEmail || undefined,
               idNumber: f.gIdNumber || undefined,
               occupation: f.gOccupation || undefined,
+              address: f.gAddress.trim() || undefined,
             },
             ...(hasSecond
               ? [
@@ -160,11 +164,13 @@ export function AddChildForm({
                     email: f.g2Email || undefined,
                     idNumber: f.g2IdNumber || undefined,
                     occupation: f.g2Occupation || undefined,
+                    address: f.g2Address.trim() || undefined,
                   },
                 ]
               : []),
           ],
           allergies: f.allergies.trim() || undefined,
+          homeAddress: f.homeAddress.trim() || undefined,
           emergencyContactName: f.ecName.trim() || undefined,
           emergencyContactRelationship: f.ecRelationship.trim() || undefined,
           emergencyContactPhone: f.ecPhone.trim() || undefined,
@@ -240,6 +246,17 @@ export function AddChildForm({
           <Field label="Child's ID / birth certificate number" id="ac-cid">
             <Input id="ac-cid" value={f.childIdNumber} onChange={(e) => set({ childIdNumber: e.target.value })} />
           </Field>
+          <div className="sm:col-span-2">
+            <Field label="Home address" id="ac-addr">
+              <Input
+                id="ac-addr"
+                autoComplete="street-address"
+                placeholder="Street, suburb, town"
+                value={f.homeAddress}
+                onChange={(e) => set({ homeAddress: e.target.value })}
+              />
+            </Field>
+          </div>
           {showFee && (
             <Field label="Monthly fee for this child (R) — leave blank to use the class fee" id="ac-fee">
               <Input
@@ -290,6 +307,11 @@ export function AddChildForm({
           <Field label="Occupation" id="ac-gocc">
             <Input id="ac-gocc" value={f.gOccupation} onChange={(e) => set({ gOccupation: e.target.value })} />
           </Field>
+          <div className="sm:col-span-2">
+            <Field label="Address (only if different from the child's)" id="ac-gaddr">
+              <Input id="ac-gaddr" value={f.gAddress} onChange={(e) => set({ gAddress: e.target.value })} />
+            </Field>
+          </div>
           <p className="text-xs text-muted-foreground sm:col-span-2">
             Statements, fee reminders and absence messages go to this parent/guardian.
           </p>
@@ -313,7 +335,7 @@ export function AddChildForm({
                 type="button"
                 onClick={() => {
                   setShowSecond(false);
-                  set({ g2FirstName: "", g2LastName: "", g2Phone: "", g2ExtraPhones: [], g2Email: "", g2IdNumber: "", g2Occupation: "" });
+                  set({ g2FirstName: "", g2LastName: "", g2Phone: "", g2ExtraPhones: [], g2Email: "", g2IdNumber: "", g2Occupation: "", g2Address: "" });
                 }}
                 className="min-h-11 px-2 text-sm text-muted-foreground underline hover:text-foreground"
               >
@@ -346,6 +368,11 @@ export function AddChildForm({
             <Field label="Occupation" id="ac-g2occ">
               <Input id="ac-g2occ" value={f.g2Occupation} onChange={(e) => set({ g2Occupation: e.target.value })} />
             </Field>
+            <div className="sm:col-span-2">
+              <Field label="Address (only if different from the child's)" id="ac-g2addr">
+                <Input id="ac-g2addr" value={f.g2Address} onChange={(e) => set({ g2Address: e.target.value })} />
+              </Field>
+            </div>
           </fieldset>
         ) : (
           <div>

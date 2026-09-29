@@ -115,6 +115,7 @@ export async function POST(req: NextRequest, { params }: Params) {
               dateOfBirth: parsed.dateOfBirth ?? null,
               gender: parsed.gender ?? null,
               allergies: row.allergies ? row.allergies.slice(0, 2000) : null,
+              homeAddress: row.homeAddress ? row.homeAddress.slice(0, 500) : null,
               emergencyContactName: row.emergencyContact.name ? row.emergencyContact.name.slice(0, 200) : null,
               emergencyContactRelationship: row.emergencyContact.relationship
                 ? row.emergencyContact.relationship.slice(0, 100)
@@ -139,6 +140,7 @@ export async function POST(req: NextRequest, { params }: Params) {
                   return (typeof n === "string" && n ? n : x).slice(0, 40);
                 }),
                 email: p.email ? p.email.slice(0, 200) : null,
+                address: p.address ? p.address.slice(0, 500) : null,
               },
             });
           }

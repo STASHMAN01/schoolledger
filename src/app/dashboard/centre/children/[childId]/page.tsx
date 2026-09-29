@@ -34,6 +34,7 @@ type Guardian = {
   phone: string | null;
   extraPhones: string[];
   email: string | null;
+  address: string | null;
   photoImage: string | null;
 };
 
@@ -65,6 +66,7 @@ type ChildProfile = {
   parentPhone: string | null;
   parentEmail: string | null;
   allergies: string | null;
+  homeAddress: string | null;
   emergencyContactName: string | null;
   emergencyContactRelationship: string | null;
   emergencyContactPhone: string | null;
@@ -134,6 +136,7 @@ function GuardianCard({
   const [phone, setPhone] = useState(guardian.phone ?? "");
   const [extraPhones, setExtraPhones] = useState<string[]>(guardian.extraPhones ?? []);
   const [email, setEmail] = useState(guardian.email ?? "");
+  const [address, setAddress] = useState(guardian.address ?? "");
   const [saving, setSaving] = useState(false);
 
   return (
@@ -163,6 +166,11 @@ function GuardianCard({
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Main phone" />
               <ExtraPhonesField idPrefix={`g-${guardian.id}-x`} values={extraPhones} onChange={setExtraPhones} />
               <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Address (only if different from the child's)"
+              />
               <div className="flex gap-2">
                 <Button
                   size="sm"
@@ -177,6 +185,7 @@ function GuardianCard({
                       phone,
                       extraPhones: cleanExtraPhones(extraPhones),
                       email,
+                      address: address.trim(),
                     });
                     setSaving(false);
                     // Stay in edit mode on failure so nothing typed is lost.
@@ -207,6 +216,7 @@ function GuardianCard({
                 </p>
               ))}
               {guardian.email && <p className="text-sm text-muted-foreground">{guardian.email}</p>}
+              {guardian.address && <p className="text-sm text-muted-foreground">{guardian.address}</p>}
               <div className="mt-1">
                 <RevealableId
                   label="ID number"
@@ -554,6 +564,16 @@ export default function ChildProfilePage() {
           ) : (
             <p className="text-sm text-muted-foreground">
               None recorded{canManage ? " — add one with “Edit details”." : "."}
+            </p>
+          )}
+        </div>
+        <div className="sm:col-span-2">
+          <h2 className="font-display mb-2 text-sm font-semibold text-foreground">Home address</h2>
+          {child.homeAddress ? (
+            <p className="whitespace-pre-line text-sm text-foreground">{child.homeAddress}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              None recorded{canManage ? " — add it with “Edit details”." : "."}
             </p>
           )}
         </div>

@@ -27,6 +27,7 @@ const CHILD_FIELDS = {
   className: ["class", "category", "grade", "classname", "group"],
   enrollmentDate: ["enrollmentdate", "enrolmentdate", "startdate", "datestarted", "dateofenrolment", "dateofenrollment"],
   allergies: ["allergies", "allergy", "childallergies", "knownallergies", "allergiesmedicalconditions"],
+  homeAddress: ["homeaddress", "address", "residentialaddress", "physicaladdress", "streetaddress", "childaddress", "childhomeaddress", "addressline1"],
   emergencyName: ["emergencycontactname", "emergencycontact", "emergencyname", "emergencycontactfullname"],
   emergencyRelationship: ["emergencycontactrelationship", "emergencyrelationship", "emergencycontactrelation"],
   emergencyPhone: ["emergencycontactphone", "emergencyphone", "emergencycontactnumber", "emergencynumber", "emergencycell", "emergencycontactcell"],
@@ -44,6 +45,7 @@ const PARENT_FIELDS = {
   email: ["email", "emailaddress"],
   occupation: ["occupation", "job", "profession"],
   relationship: ["relationship", "relation", "relationshiptochild"],
+  address: ["address", "homeaddress", "residentialaddress", "physicaladdress"],
 } as const;
 
 // Un-numbered headings that only ever mean parent 1 (older template and
@@ -64,6 +66,7 @@ export type ImportedParent = {
   email: string;
   occupation: string;
   relationship: string;
+  address: string;
 };
 
 export type ImportedRow = {
@@ -75,6 +78,7 @@ export type ImportedRow = {
   className: string;
   enrollmentDate: string;
   allergies: string;
+  homeAddress: string;
   emergencyContact: { name: string; relationship: string; phone: string };
   // Parent 1 first; only parents with at least a name are included.
   parents: ImportedParent[];
@@ -142,6 +146,7 @@ function readParent(m: Compacted, n: 1 | 2): ImportedParent | null {
     email: get("email"),
     occupation: get("occupation"),
     relationship: get("relationship"),
+    address: get("address"),
   };
 }
 
@@ -157,6 +162,7 @@ export function readImportRow(raw: Record<string, string>): ImportedRow {
     className: first(m, CHILD_FIELDS.className),
     enrollmentDate: first(m, CHILD_FIELDS.enrollmentDate),
     allergies: first(m, CHILD_FIELDS.allergies),
+    homeAddress: first(m, CHILD_FIELDS.homeAddress),
     emergencyContact: {
       name: first(m, CHILD_FIELDS.emergencyName),
       relationship: first(m, CHILD_FIELDS.emergencyRelationship),
