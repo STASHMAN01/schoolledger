@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requirePlatformAdmin } from "@/lib/platformAdmin";
 import { handleApiError } from "@/lib/apiError";
+import { FOUNDING_PRICE_CENTS } from "@/lib/billing/founding";
 import {
   planForOrg,
   isPaying,
@@ -30,6 +31,7 @@ export async function GET() {
 
     let payingMonthly = 0;
     let payingYearly = 0;
+    let payingFounding = 0;
     let lifetime = 0;
     let trialing = 0;
     let pastDue = 0;
@@ -47,13 +49,14 @@ export async function GET() {
         const plan = planForOrg(org);
         if (plan === "monthly") payingMonthly++;
         else if (plan === "yearly") payingYearly++;
+        else if (plan === "founding") payingFounding++;
         else if (plan === "lifetime") lifetime++;
       }
     }
 
     // Lifetime accounts count as paying (they have permanent access) but
     // never contribute to MRR/ARR below — see that comment.
-    const payingTotal = payingMonthly + payingYearly + lifetime;
+    const payingTotal = payingMonthly + payingYearly + payingFounding + lifetime;
 
     // MRR: monthly-plan orgs pay their price every month; yearly-plan orgs
     // pay once a year, so their contribution is divided by 12. Null price
@@ -62,7 +65,9 @@ export async function GET() {
     // so the dashboard doesn't quietly under-report revenue as "0".
     const pricesKnown = priceCents.monthly !== null && priceCents.yearly !== null;
     const mrrCents = pricesKnown
-      ? payingMonthly * (priceCents.monthly ?? 0) + payingYearly * ((priceCents.yearly ?? 0) / 12)
+      ? payingMonthly * (priceCents.monthly ?? 0) +
+        payingYearly * ((priceCents.yearly ?? 0) / 12) +
+        payingFounding * FOUNDING_PRICE_CENTS
       : null;
     const arrCents = mrrCents !== null ? mrrCents * 12 : null;
 
@@ -75,6 +80,7 @@ export async function GET() {
       payingTotal,
       payingMonthly,
       payingYearly,
+      payingFounding,
       lifetime,
       trialing,
       pastDue,

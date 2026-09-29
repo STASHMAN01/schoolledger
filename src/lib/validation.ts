@@ -151,7 +151,7 @@ export const eventSchema = z
   });
 
 export const checkoutSchema = z.object({
-  plan: z.enum(["monthly", "yearly"]),
+  plan: z.enum(["monthly", "yearly", "founding"]),
 });
 
 export const createInviteSchema = z.object({

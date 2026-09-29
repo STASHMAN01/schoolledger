@@ -5,8 +5,14 @@ import { useOrg } from "../../../OrgContext";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { formatDateZA } from "@/lib/date";
 import { formatMoneyCents } from "@/lib/money";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
-type BillingConfig = { monthlyConfigured: boolean; yearlyConfigured: boolean };
+type BillingConfig = {
+  monthlyConfigured: boolean;
+  yearlyConfigured: boolean;
+  foundingConfigured?: boolean;
+  foundingSpotsLeft?: number;
+};
 
 type SubscriptionPayment = {
   id: string;
@@ -24,6 +30,7 @@ type SubscriptionPayment = {
 };
 
 function planLabel(p: Pick<SubscriptionPayment, "planInterval" | "planName">) {
+  if (p.planName && /found/i.test(p.planName)) return "Founding school";
   if (p.planInterval === "annually") return "Yearly";
   if (p.planInterval === "monthly") return "Monthly";
   return p.planName ?? "Subscription";
@@ -38,8 +45,15 @@ function paidWith(p: SubscriptionPayment) {
 }
 
 export default function BillingPage() {
-  const { organizationId, permissions, subscriptionStatus, trialEndsAt, currentPeriodEnd, hasActiveAccess } =
-    useOrg();
+  const {
+    organizationId,
+    organizationName,
+    permissions,
+    subscriptionStatus,
+    trialEndsAt,
+    currentPeriodEnd,
+    hasActiveAccess,
+  } = useOrg();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -72,7 +86,7 @@ export default function BillingPage() {
     load();
   }, [load, canManage]);
 
-  async function checkout(plan: "monthly" | "yearly") {
+  async function checkout(plan: "monthly" | "yearly" | "founding") {
     setLoading(plan);
     setError(null);
     const res = await fetch(`/api/organizations/${organizationId}/billing/checkout`, {
@@ -187,6 +201,54 @@ export default function BillingPage() {
             <p className="mb-3 text-sm text-muted-foreground">
               Subscribing again starts a new billing period from today.
             </p>
+          )}
+          {/* Founding-school offer (Dylan, 29 Sept 2026): R299/month for life
+              for the first 10 schools. Until its Paystack plan is live
+              (PAYSTACK_PLAN_CODE_FOUNDING), the button reserves the price by
+              email instead of opening checkout. */}
+          {(config?.foundingSpotsLeft ?? 1) > 0 && (
+            <Card className="mb-4 max-w-xl border-2 border-brand p-4">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <p className="font-medium text-foreground">Founding school</p>
+                <Badge variant="success">
+                  {config?.foundingSpotsLeft !== undefined && config.foundingSpotsLeft < 10
+                    ? `${config.foundingSpotsLeft} of 10 places left`
+                    : "First 10 schools only"}
+                </Badge>
+              </div>
+              <p className="font-display text-2xl font-semibold text-foreground">
+                R299<span className="text-base font-normal text-muted-foreground">/month</span>{" "}
+                <span className="text-sm font-normal text-muted-foreground line-through">R499</span>
+              </p>
+              <ul className="mb-3 mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                <li>Locked in for life, for as long as you stay subscribed</li>
+                <li>Everything included: fees, statements, reminders, parent forms and attendance</li>
+                <li>Free setup: send us your class list and we load it for you</li>
+                <li>Cancel any time. If you cancel, the founding price is released to another school</li>
+              </ul>
+              {config?.foundingConfigured ? (
+                <Button onClick={() => checkout("founding")} disabled={loading !== null}>
+                  {loading === "founding" ? "Redirecting..." : "Claim founding price"}
+                </Button>
+              ) : (
+                <>
+                  <a
+                    href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+                      `Founding price for ${organizationName || "our school"}`
+                    )}&body=${encodeURIComponent(
+                      `Hi Crechely,\n\nPlease reserve the founding price (R299/month for life) for ${organizationName || "our school"}.\n\nThank you`
+                    )}`}
+                    className="inline-flex min-h-10 items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
+                  >
+                    Reserve my founding price
+                  </a>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Card payments open shortly. Reserve now and we&apos;ll hold R299/month for your school.
+                    Nothing is charged until you choose to pay.
+                  </p>
+                </>
+              )}
+            </Card>
           )}
           <div className="flex flex-wrap gap-3">
             <Card className="p-4">

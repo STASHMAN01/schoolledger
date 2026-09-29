@@ -16,7 +16,7 @@ export type OrgBillingFields = {
   createdAt: Date;
 };
 
-export type Plan = "monthly" | "yearly" | "trial" | "lifetime" | "unknown";
+export type Plan = "monthly" | "yearly" | "founding" | "trial" | "lifetime" | "unknown";
 
 export function planForOrg(org: { paystackPlanCode: string | null; subscriptionStatus: string }): Plan {
   // Checked first: a manually granted lifetime org has no Paystack plan
@@ -27,6 +27,9 @@ export function planForOrg(org: { paystackPlanCode: string | null; subscriptionS
   }
   if (org.paystackPlanCode && org.paystackPlanCode === process.env.PAYSTACK_PLAN_CODE_YEARLY) {
     return "yearly";
+  }
+  if (org.paystackPlanCode && org.paystackPlanCode === process.env.PAYSTACK_PLAN_CODE_FOUNDING) {
+    return "founding";
   }
   if (org.subscriptionStatus === "trialing") return "trial";
   return "unknown";

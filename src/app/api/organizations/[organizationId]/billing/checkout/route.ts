@@ -4,6 +4,7 @@ import { requireMembership } from "@/lib/tenant";
 import { checkoutSchema } from "@/lib/validation";
 import { handleApiError } from "@/lib/apiError";
 import { initializeTransaction } from "@/lib/paystack";
+import { foundingSpotsLeft } from "@/lib/billing/founding";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -29,11 +30,20 @@ export async function POST(req: NextRequest, { params }: Params) {
     const planCode =
       body.plan === "monthly"
         ? process.env.PAYSTACK_PLAN_CODE_MONTHLY
-        : process.env.PAYSTACK_PLAN_CODE_YEARLY;
+        : body.plan === "founding"
+          ? process.env.PAYSTACK_PLAN_CODE_FOUNDING
+          : process.env.PAYSTACK_PLAN_CODE_YEARLY;
     if (!planCode || !process.env.PAYSTACK_SECRET_KEY) {
       return NextResponse.json(
         { error: "Billing is not configured yet." },
         { status: 500 }
+      );
+    }
+
+    if (body.plan === "founding" && (await foundingSpotsLeft()) <= 0) {
+      return NextResponse.json(
+        { error: "All 10 founding places are taken. The monthly and yearly plans are still open." },
+        { status: 409 }
       );
     }
 
