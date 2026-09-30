@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { TRIAL_DAYS } from "@/lib/trial";
 import { db } from "@/lib/db";
 import { requirePlatformAdmin } from "@/lib/platformAdmin";
 import { handleApiError } from "@/lib/apiError";
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const existing = await db.organization.findUnique({
       where: { id: organizationId },
-      select: { id: true, name: true, subscriptionStatus: true },
+      select: { id: true, name: true, subscriptionStatus: true, trialEndsAt: true },
     });
     if (!existing) {
       throw new TenantAccessError("School not found.", 404);
@@ -50,12 +51,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     // their own — clear both so the "Schools" table doesn't show a stale
     // date left over from whatever status the org was in before.
     const clearsDates = subscriptionStatus === "lifetime" || subscriptionStatus === "canceled";
+    // Putting a school (back) on trial with no trial end date on file gives
+    // it a fresh free trial from today, instead of a trial that never ends.
+    const freshTrial =
+      subscriptionStatus === "trialing" && (!existing.trialEndsAt || existing.trialEndsAt < new Date())
+        ? { trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) }
+        : {};
 
     const updated = await db.organization.update({
       where: { id: organizationId },
       data: {
         subscriptionStatus,
         ...(clearsDates ? { trialEndsAt: null, currentPeriodEnd: null } : {}),
+        ...freshTrial,
       },
       select: { id: true, subscriptionStatus: true, trialEndsAt: true, currentPeriodEnd: true },
     });
