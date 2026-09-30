@@ -14,10 +14,12 @@ import { ImageUploadField } from "@/components/ImageUploadField";
 import { FORM_TYPES, FORM_TYPE_LABELS, MONEY_FORM_TYPES, type FormType } from "@/lib/forms/types";
 import { pickBillingGuardianId } from "@/lib/billingContact";
 import { EditChildDetails } from "@/components/EditChildDetails";
+import { ChildDocumentsCard } from "@/components/ChildDocumentsCard";
 import { formatDateZA } from "@/lib/date";
 
 type ParentFormLinkRow = {
   id: string;
+  purpose?: string;
   createdAt: string;
   expiresAt: string;
   createdBy: { name: string } | null;
@@ -256,7 +258,7 @@ function GuardianCard({
 }
 
 export default function ChildProfilePage() {
-  const { organizationId, role, currencyCode } = useOrg();
+  const { organizationId, organizationName, role, currencyCode } = useOrg();
   const canManage = useHasPermission("MANAGE_CHILDREN");
   const params = useParams<{ childId: string }>();
   const childId = params.childId;
@@ -335,6 +337,9 @@ export default function ChildProfilePage() {
   }
 
   function formatLinkStatus(link: ParentFormLinkRow) {
+    if (link.purpose === "documents") {
+      return new Date(link.expiresAt) < new Date() ? "Documents link, expired" : "Documents link, open";
+    }
     if (link.submission) {
       if (link.submission.status === "PENDING") return "Submitted, awaiting review";
       if (link.submission.status === "APPROVED") return "Submitted, approved";
@@ -578,6 +583,19 @@ export default function ChildProfilePage() {
           )}
         </div>
       </Card>
+
+      {/* Documents on file and what's missing (Dylan, 30 Sept 2026). */}
+      <ChildDocumentsCard
+        key={child.guardians.map((g) => g.id).join(",")}
+        organizationId={organizationId}
+        childId={child.id}
+        childFirstName={child.firstName}
+        schoolName={organizationName}
+        guardians={child.guardians}
+        parentPhone={child.parentPhone}
+        parentEmail={child.parentEmail}
+        canManage={canManage}
+      />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card as="div" className="p-5">

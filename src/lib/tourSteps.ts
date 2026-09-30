@@ -38,6 +38,12 @@ export const CENTRE_TOUR_STEPS: TourStep[] = [
       "When a parent fills in an online enrolment or update form, it lands here for you to review and approve before anything changes on the child's real profile.",
   },
   {
+    target: "tile-missing-documents",
+    title: "Missing documents",
+    description:
+      "How many children are still missing a required document, like a birth certificate or clinic card. Tap it to see who, what's missing, and send the parent a link to upload it.",
+  },
+  {
     target: "tile-enrolled",
     title: "Enrolled",
     description: "Every currently enrolled child, with gender and age breakdowns, grouped by class.",

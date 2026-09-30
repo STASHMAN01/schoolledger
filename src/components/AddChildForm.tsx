@@ -9,11 +9,17 @@
 // emergency contact must be someone other than the parents
 // (lib/emergencyContact.ts). A photo is added on the profile afterwards; a
 // child missing core details is flagged "incomplete".
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { todayLocal } from "@/lib/date";
 import { emergencyContactProblem } from "@/lib/emergencyContact";
 import { ExtraPhonesField, cleanExtraPhones } from "@/components/ExtraPhonesField";
+import { FormDocumentSlot } from "@/components/FormDocumentSlot";
+import { DOCUMENT_TYPES, normaliseRequired } from "@/lib/documents";
+
+// Documents picked on the form, uploaded right after the child is created.
+type PickedDoc = { type: string; guardianIndex?: number; dataUrl: string; fileName: string };
+const docKey = (type: string, guardianIndex?: number) => `${type}:${guardianIndex ?? ""}`;
 
 type ClassOption = { id: string; name: string };
 
@@ -66,9 +72,43 @@ export function AddChildForm({
     feeOverride: "",
   });
   const [showSecond, setShowSecond] = useState(false);
+  // Documents the school requires (Dylan, 30 Sept 2026) -- asked for here,
+  // unless staff tick that they'll follow later.
+  const [requiredDocs, setRequiredDocs] = useState<string[]>([]);
+  const [picked, setPicked] = useState<Record<string, PickedDoc>>({});
+  const [docsLater, setDocsLater] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/organizations/${organizationId}/documents/settings`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) setRequiredDocs(normaliseRequired(d.requiredDocuments));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<typeof f>) => setF((prev) => ({ ...prev, ...patch }));
+
+  // One upload line per required document; a parent's ID once per parent.
+  function documentSlots(withSecond: boolean) {
+    const slots: { key: string; type: string; guardianIndex?: number; label: string; hint: string }[] = [];
+    for (const t of DOCUMENT_TYPES) {
+      if (!requiredDocs.includes(t.type)) continue;
+      if (t.perGuardian) {
+        slots.push({ key: docKey(t.type, 0), type: t.type, guardianIndex: 0, label: `${t.label} — parent/guardian 1`, hint: t.hint });
+        if (withSecond) {
+          slots.push({ key: docKey(t.type, 1), type: t.type, guardianIndex: 1, label: `${t.label} — parent/guardian 2`, hint: t.hint });
+        }
+      } else {
+        slots.push({ key: docKey(t.type), type: t.type, label: t.label, hint: t.hint });
+      }
+    }
+    return slots;
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,6 +138,15 @@ export function AddChildForm({
     const missing = required.filter(([v]) => !v.trim()).map(([, label]) => label);
     if (missing.length > 0) {
       setError(`Please add ${missing.join(", ")}.`);
+      return;
+    }
+
+    const docSlots = documentSlots(hasSecond);
+    const missingDocs = docSlots.filter((s) => !picked[s.key]).map((s) => s.label);
+    if (missingDocs.length > 0 && !docsLater) {
+      setError(
+        `Please upload: ${missingDocs.join(", ")}. If the parent will bring them later, tick "Documents will follow" and they'll show under Missing documents.`
+      );
       return;
     }
 
@@ -187,6 +236,28 @@ export function AddChildForm({
             : data.error ?? "The child couldn't be added. Please check the details and try again."
         );
         return;
+      }
+      // Upload the picked documents onto the new child's file.
+      const failed: string[] = [];
+      for (const s of docSlots) {
+        const doc = picked[s.key];
+        if (!doc) continue;
+        const up = await fetch(`/api/organizations/${organizationId}/children/${data.child.id}/documents`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: doc.type,
+            guardianId: doc.guardianIndex !== undefined ? data.guardianIds?.[doc.guardianIndex] : undefined,
+            fileName: doc.fileName,
+            file: doc.dataUrl,
+          }),
+        }).catch(() => null);
+        if (!up || !up.ok) failed.push(s.label);
+      }
+      if (failed.length > 0) {
+        window.alert(
+          `${f.firstName.trim()} was added, but these documents didn't upload: ${failed.join(", ")}. Upload them on the child's profile.`
+        );
       }
       const siblings = ((data.possibleSiblings ?? []) as { id: string }[]).filter((s) => s.id !== data.child.id);
       onAdded(data.child.id, siblings.length);
@@ -423,6 +494,45 @@ export function AddChildForm({
             />
           </Field>
         </fieldset>
+
+        {requiredDocs.length > 0 && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="font-display mb-2 text-sm font-semibold text-foreground">Documents</legend>
+            {documentSlots(showSecond).map((s) => (
+              <FormDocumentSlot
+                key={s.key}
+                label={s.label}
+                hint={s.hint}
+                required={!docsLater}
+                fileName={picked[s.key]?.fileName ?? null}
+                onPick={async (file) => {
+                  setPicked((prev) => ({
+                    ...prev,
+                    [s.key]: { type: s.type, guardianIndex: s.guardianIndex, dataUrl: file.dataUrl, fileName: file.fileName },
+                  }));
+                  return null;
+                }}
+                onRemove={() =>
+                  setPicked((prev) => {
+                    const next = { ...prev };
+                    delete next[s.key];
+                    return next;
+                  })
+                }
+              />
+            ))}
+            <label className="mt-1 flex items-start gap-2 text-sm text-foreground">
+              <input type="checkbox" className="mt-0.5" checked={docsLater} onChange={(e) => setDocsLater(e.target.checked)} />
+              <span>
+                Documents will follow{" "}
+                <span className="text-muted-foreground">
+                  — add the child now; anything not uploaded shows under Missing documents, where you can send the
+                  parent a link.
+                </span>
+              </span>
+            </label>
+          </fieldset>
+        )}
 
         {error && <p className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>}
 

@@ -36,6 +36,7 @@ const CENTRE_LINKS: NavLink[] = [
   { href: "/dashboard/centre/forms", label: "Forms" },
   { href: "/dashboard/centre/enrolled", label: "Enrolled" },
   { href: "/dashboard/centre/admissions", label: "Admissions" },
+  { href: "/dashboard/centre/documents", label: "Documents" },
   { href: "/dashboard/centre/attendance", label: "Attendance" },
   { href: "/dashboard/centre/classes", label: "Classes" },
   { href: "/dashboard/centre/schedule", label: "Timetable" },

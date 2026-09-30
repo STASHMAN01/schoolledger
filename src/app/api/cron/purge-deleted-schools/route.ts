@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { purgeExpiredOrganizations } from "@/lib/orgDeletion";
+import { purgeAbandonedUploads } from "@/lib/childDocuments";
 
 // Daily (vercel.json "crons"). Vercel sends `Authorization: Bearer
 // <CRON_SECRET>` when the CRON_SECRET env var is set; anything without it
@@ -11,5 +12,7 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await purgeExpiredOrganizations();
-  return NextResponse.json(result, { status: result.failed.length > 0 ? 500 : 200 });
+  // Documents parents uploaded in an online form they never submitted.
+  const abandonedUploads = await purgeAbandonedUploads().catch(() => -1);
+  return NextResponse.json({ ...result, abandonedUploads }, { status: result.failed.length > 0 ? 500 : 200 });
 }

@@ -44,6 +44,9 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const body = rejectSchema.parse(await req.json().catch(() => ({})));
 
+    // Documents the parent uploaded with it are discarded too.
+    await db.childDocument.deleteMany({ where: { submissionId: submission.id, status: "PENDING" } });
+
     await db.parentSubmission.update({
       where: { id: submission.id },
       data: {

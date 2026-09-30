@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { documentLabel } from "@/lib/documents";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
@@ -72,9 +73,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
       });
     }
 
+    // Documents uploaded with the form (see src/lib/publicDocuments.ts).
+    const documents = await db.childDocument.findMany({
+      where: { submissionId: submission.id, organizationId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, type: true, guardianIndex: true, contentType: true, status: true },
+    });
+
     return NextResponse.json({
       submission: {
         id: submission.id,
+        documents: documents.map((d) => ({ ...d, label: documentLabel(d.type) })),
         status: submission.status,
         isNewApplicant: submission.isNewApplicant,
         createdChildId: submission.createdChildId,

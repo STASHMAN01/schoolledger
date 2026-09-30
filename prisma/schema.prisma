@@ -162,6 +162,10 @@ model Organization {
   // "YYYY-MM-DD" (South African date) of the last automatic run, so a
   // retried cron never emails parents twice on the same day.
   lastAutoReminderOn   String?
+  // Documents every child must have on file (Dylan, 30 Sept 2026) -- keys
+  // from src/lib/documents.ts. Default: birth certificate, clinic card and
+  // an ID for each parent/guardian.
+  requiredDocuments    String[]  @default(["BIRTH_CERTIFICATE", "CLINIC_CARD", "GUARDIAN_ID"])
   paystackCustomerCode     String?  @unique
   paystackSubscriptionCode String?  @unique
   paystackPlanCode         String?
@@ -213,6 +217,7 @@ model Organization {
   scheduleItems ClassScheduleItem[]
   whatsappGroupChecks WhatsAppGroupCheck[]
   subscriptionPayments SubscriptionPayment[]
+  childDocuments       ChildDocument[]
 
   @@map("organizations")
 }
@@ -423,6 +428,7 @@ model Child {
   payments     Payment[]
   creditBalance CreditBalance?
   guardians    Guardian[]
+  documents    ChildDocument[]
   formDocuments FormDocument[]
   parentFormLinks ParentFormLink[]
   attendanceRecords AttendanceRecord[]
@@ -473,6 +479,7 @@ model Guardian {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   child        Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  documents    ChildDocument[]
 
   @@index([organizationId])
   @@index([childId])
@@ -541,6 +548,10 @@ model ParentFormLink {
   // one link, one attempt. A parent who needs to redo it gets a fresh
   // link from staff.
   submittedAt     DateTime?
+  // "details" = the full update-your-details form (one submission).
+  // "documents" = upload missing documents only; each upload goes straight
+  // onto the child's file and the link keeps working until it expires.
+  purpose         String    @default("details")
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   child        Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
@@ -580,9 +591,53 @@ model ParentSubmission {
   organization Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   reviewedBy   User?                        @relation("ParentSubmissionReviewedBy", fields: [reviewedByUserId], references: [id])
   attachments  ParentSubmissionAttachment[]
+  documents    ChildDocument[]
 
   @@index([organizationId, status])
   @@map("parent_submissions")
+}
+
+// A document kept on file for a child (Dylan, 30 Sept 2026): birth
+// certificate, clinic card, a parent's ID, ... -- `type` is a key from
+// src/lib/documents.ts. Stored as a data: URL in the row like every other
+// upload in this app (photo or PDF, one per row).
+//
+// status ACTIVE = on the child's file. PENDING = a parent uploaded it
+// while filling in an online form that staff haven't approved yet: it has
+// no child (new family) or isn't counted yet (existing child) until the
+// submission is approved; uploads never attached to a submission are
+// removed by the daily purge after 2 days.
+model ChildDocument {
+  id               String    @id @default(cuid())
+  organizationId   String
+  childId          String?
+  guardianId       String?
+  // Which parent in the submitted form a pending ID belongs to; resolved
+  // to guardianId when the submission is approved.
+  guardianIndex    Int?
+  type             String
+  fileName         String?
+  contentType      String    @default("image/jpeg")
+  fileData         String    @db.Text
+  status           String    @default("ACTIVE")
+  // "staff" or "parent"
+  source           String    @default("staff")
+  uploadedByUserId String?
+  // Random key the parent's browser holds while filling in a form, so only
+  // that browser can attach its uploads to its own submission.
+  uploadKey        String?
+  submissionId     String?
+  createdAt        DateTime  @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child?            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  guardian     Guardian?         @relation(fields: [guardianId], references: [id], onDelete: SetNull)
+  submission   ParentSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([childId])
+  @@index([submissionId])
+  @@map("child_documents")
 }
 
 model ParentSubmissionAttachment {

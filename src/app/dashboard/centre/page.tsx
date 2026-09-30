@@ -93,12 +93,13 @@ export default function CentreManagementHomePage() {
   const [classCount, setClassCount] = useState<number | null>(null);
   const [todayItems, setTodayItems] = useState<TodayItem[] | null>(null);
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
+  const [missingDocs, setMissingDocs] = useState<{ required: string[]; children: unknown[] } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const base = `/api/organizations/${organizationId}`;
     const activityQs = new URLSearchParams({ entityTypes: CENTRE_ENTITY_TYPES.join(",") }).toString();
-    const [kids, att, subs, staff, events, classes, sched, activity] = await Promise.all([
+    const [kids, att, subs, staff, events, classes, sched, activity, docs] = await Promise.all([
       getJson<{ children: ChildStat[] }>(`${base}/children`),
       canSeeAttendance ? getJson<AttendanceSummary>(`${base}/attendance/summary?date=${todayLocal()}`) : null,
       canSeeSubmissions ? getJson<{ submissions: unknown[] }>(`${base}/parent-submissions`) : null,
@@ -109,7 +110,9 @@ export default function CentreManagementHomePage() {
       getJson<{ categories: { archived: boolean }[] }>(`${base}/categories`),
       isTeacher ? getJson<{ items: TodayItem[] }>(`${base}/schedule`) : null,
       canSeeActivity ? getJson<{ entries: AuditEntry[] }>(`${base}/audit?${activityQs}`) : null,
+      getJson<{ required: string[]; children: unknown[] }>(`${base}/documents/missing`),
     ]);
+    setMissingDocs(docs);
     setChildren(kids?.children ?? null);
     setAttendance(att);
     setPendingCount(subs ? subs.submissions.length : null);
@@ -202,6 +205,20 @@ export default function CentreManagementHomePage() {
                 tourId="tile-online-submissions"
               />
             )}
+            <Tile
+              title="Missing documents"
+              href="/dashboard/centre/documents"
+              value={num(missingDocs ? missingDocs.children.length : null)}
+              hint={
+                missingDocs && missingDocs.children.length > 0
+                  ? `Child${missingDocs.children.length === 1 ? "" : "ren"} missing documents`
+                  : missingDocs && missingDocs.required.length === 0
+                    ? "Choose which documents are required"
+                    : "Every child's documents are on file"
+              }
+              warn={Boolean(missingDocs && missingDocs.children.length > 0)}
+              tourId="tile-missing-documents"
+            />
             <Tile
               title="Enrolled"
               href="/dashboard/centre/enrolled"

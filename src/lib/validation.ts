@@ -288,10 +288,19 @@ export const parentSubmissionAttachmentSchema = z.object({
   image: imageDataUrlSchema,
 });
 
+// Documents the parent uploaded one by one while filling in the form (see
+// src/lib/publicDocuments.ts): the ids, plus the random key their browser
+// used, so nobody can attach someone else's uploads.
+const submittedDocumentsSchema = {
+  uploadKey: z.string().uuid().optional(),
+  documentIds: z.array(z.string().cuid()).max(20).optional(),
+};
+
 export const parentSubmissionSchema = z.object({
   child: parentSubmissionChildSchema,
   guardians: z.array(guardianSchema).min(1, "Add at least one parent/guardian.").max(6),
   attachments: z.array(parentSubmissionAttachmentSchema).max(12).optional(),
+  ...submittedDocumentsSchema,
 });
 
 // Fix session B (Dylan 23 Sept): a NEW family applying through the
@@ -315,6 +324,7 @@ export const newApplicantSchema = z.object({
     .max(6)
     .refine((gs) => !!gs[0]?.phone, "The first parent/guardian needs a phone number."),
   attachments: z.array(parentSubmissionAttachmentSchema).max(12).optional(),
+  ...submittedDocumentsSchema,
 });
 
 // Staff approving a new applicant choose where the child goes.

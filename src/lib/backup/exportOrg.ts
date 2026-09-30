@@ -1,4 +1,5 @@
 import archiver from "archiver";
+import { documentLabel } from "@/lib/documents";
 import zipEncrypted from "archiver-zip-encrypted";
 import { PassThrough } from "stream";
 import { db } from "@/lib/db";
@@ -216,6 +217,33 @@ export async function buildOrgBackupZip(
   }
   counts.forms = formDocs.length;
 
+  // Documents on file (birth certificates, clinic cards, IDs, ...).
+  // Read in small batches: each file can be a couple of MB.
+  let documentCount = 0;
+  let cursor: string | undefined;
+  for (;;) {
+    const batch = await db.childDocument.findMany({
+      where: { organizationId, status: "ACTIVE", childId: { not: null } },
+      select: { id: true, childId: true, type: true, guardianId: true, fileData: true },
+      orderBy: { id: "asc" },
+      take: 25,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    if (batch.length === 0) break;
+    for (const d of batch) {
+      const folder = d.childId ? folderByChild.get(d.childId) : undefined;
+      if (!folder) continue;
+      const n = d.guardianId
+        ? guardians.filter((x) => x.childId === d.childId).findIndex((x) => x.id === d.guardianId) + 1
+        : 0;
+      const who = n > 0 ? `-guardian-${n}` : "";
+      addDataUrl(`${folder}/documents/${sanitizeFilePart(documentLabel(d.type))}${who}-${shortId(d.id)}`, d.fileData);
+      documentCount++;
+    }
+    cursor = batch[batch.length - 1].id;
+  }
+  counts.documents = documentCount;
+
   // One statement per child per year that has (non-cancelled) charges.
   const years = [...new Set(planEntries.filter((e) => e.status !== "CANCELLED").map((e) => e.year))].sort();
   let statements = 0;
@@ -309,7 +337,7 @@ function readme(schoolName: string, at: Date, counts: Record<string, number>): s
     `data/activity-log.json      Full activity log`,
     `data/timetables.json        Weekly class timetables`,
     `data/whatsapp-group-checks.json  Parents ticked as added to class WhatsApp groups`,
-    `children/<name>/            Photos, signed forms and yearly statements`,
+    `children/<name>/            Photos, documents, signed forms and yearly statements`,
     `submissions/<id>/           Documents parents uploaded with online forms`,
     `school/                     Logo and letterhead`,
     ``,

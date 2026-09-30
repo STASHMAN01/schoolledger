@@ -20,6 +20,20 @@ import { emergencyContactProblem } from "@/lib/emergencyContact";
 import { ExtraPhonesField, cleanExtraPhones } from "@/components/ExtraPhonesField";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { Logo } from "@/components/Logo";
+import { FormDocumentSlot } from "@/components/FormDocumentSlot";
+import type { MissingDocument } from "@/lib/documents";
+
+type RequiredDoc = { type: string; label: string; hint: string; perGuardian: boolean };
+type Uploaded = { id: string; fileName: string };
+
+function newUploadKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  const h = () => Math.floor(Math.random() * 16).toString(16);
+  const part = (n: number) => Array.from({ length: n }, h).join("");
+  return `${part(8)}-${part(4)}-4${part(3)}-a${part(3)}-${part(12)}`;
+}
+
+const slotKey = (type: string, guardianIndex?: number) => `${type}:${guardianIndex ?? ""}`;
 
 type GuardianDraft = {
   relationship: string;
@@ -32,7 +46,6 @@ type GuardianDraft = {
   email: string;
   address: string;
   photoImage: string | null;
-  idPhoto: string | null;
 };
 
 function blankGuardian(): GuardianDraft {
@@ -47,7 +60,6 @@ function blankGuardian(): GuardianDraft {
     email: "",
     address: "",
     photoImage: null,
-    idPhoto: null,
   };
 }
 
@@ -66,7 +78,15 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
   const [childIdNumber, setChildIdNumber] = useState("");
   const [photoConsentGiven, setPhotoConsentGiven] = useState(false);
   const [childPhoto, setChildPhoto] = useState<string | null>(null);
-  const [childIdPhoto, setChildIdPhoto] = useState<string | null>(null);
+  // Documents (Dylan, 30 Sept 2026): what the school requires, uploaded one
+  // by one as they're picked; the submit then lists them.
+  const [purpose, setPurpose] = useState<"details" | "documents">("details");
+  const [requiredDocs, setRequiredDocs] = useState<RequiredDoc[]>([]);
+  const [stillNeeded, setStillNeeded] = useState<string[]>([]);
+  const [missing, setMissing] = useState<MissingDocument[]>([]);
+  const [received, setReceived] = useState<string[]>([]);
+  const [uploadKey] = useState(newUploadKey);
+  const [uploads, setUploads] = useState<Record<string, Uploaded>>({});
   const [guardians, setGuardians] = useState<GuardianDraft[]>([blankGuardian()]);
   const [allergies, setAllergies] = useState("");
   const [homeAddress, setHomeAddress] = useState("");
@@ -86,6 +106,10 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
     } else {
       setChildFirstName(data.childFirstName ?? "");
       setOrganizationName(data.organizationName);
+      setPurpose(data.purpose === "documents" ? "documents" : "details");
+      setRequiredDocs(data.requiredDocuments ?? []);
+      setStillNeeded(data.stillNeeded ?? []);
+      setMissing(data.missing ?? []);
     }
     setLoading(false);
   }, [apiPath]);
@@ -101,6 +125,61 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
 
   function updateGuardian(index: number, patch: Partial<GuardianDraft>) {
     setGuardians((prev) => prev.map((g, i) => (i === index ? { ...g, ...patch } : g)));
+  }
+
+  // Removing a parent clears the ID uploads of that parent and everyone
+  // after them (their positions change), so those are uploaded again --
+  // the server matches each ID to a parent by position.
+  function removeGuardian(index: number) {
+    setGuardians((prev) => prev.filter((_, idx) => idx !== index));
+    setUploads((prev) => {
+      const next: Record<string, Uploaded> = {};
+      for (const [key, value] of Object.entries(prev)) {
+        const gi = key.split(":")[1];
+        if (gi === "" || Number(gi) < index) next[key] = value;
+      }
+      return next;
+    });
+  }
+
+  // One upload line per required document: once per child (only those not
+  // already on file), and a parent's ID once per parent on the form.
+  const docSlots: { key: string; type: string; guardianIndex?: number; label: string; hint: string }[] = [];
+  for (const d of requiredDocs) {
+    if (d.perGuardian) {
+      guardians.forEach((g, i) => {
+        const who = `${g.firstName} ${g.lastName}`.trim() || `parent/guardian ${i + 1}`;
+        docSlots.push({ key: slotKey(d.type, i), type: d.type, guardianIndex: i, label: `${d.label} — ${who}`, hint: d.hint });
+      });
+    } else if (stillNeeded.includes(d.type)) {
+      docSlots.push({ key: slotKey(d.type), type: d.type, label: d.label, hint: d.hint });
+    }
+  }
+
+  async function uploadDocument(
+    slot: { key?: string; type: string; guardianIndex?: number; guardianId?: string },
+    file: { dataUrl: string; fileName: string }
+  ): Promise<string | null> {
+    const res = await fetch(`${apiPath}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: slot.type,
+        guardianIndex: slot.guardianIndex,
+        guardianId: slot.guardianId,
+        fileName: file.fileName,
+        file: file.dataUrl,
+        uploadKey: purpose === "documents" ? undefined : uploadKey,
+      }),
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => null) : null;
+    if (!res || !res.ok) return data?.error ?? "Upload failed. Please try again.";
+    if (purpose === "documents") {
+      setMissing(data?.missing ?? []);
+    } else if (slot.key) {
+      setUploads((prev) => ({ ...prev, [slot.key!]: { id: data.document.id, fileName: file.fileName } }));
+    }
+    return null;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -136,20 +215,11 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
       return;
     }
 
-    const attachments: { kind: "CHILD_ID" | "GUARDIAN_ID"; guardianIndex?: number; label: string; image: string }[] = [];
-    if (childIdPhoto) {
-      attachments.push({ kind: "CHILD_ID", label: `${childName}'s ID document`, image: childIdPhoto });
+    const notUploaded = docSlots.filter((s) => !uploads[s.key]).map((s) => s.label);
+    if (notUploaded.length > 0) {
+      setSubmitError(`Please upload: ${notUploaded.join(", ")}.`);
+      return;
     }
-    guardians.forEach((g, i) => {
-      if (g.idPhoto) {
-        attachments.push({
-          kind: "GUARDIAN_ID",
-          guardianIndex: i,
-          label: `${g.firstName} ${g.lastName}'s ID document`.trim() || "Guardian's ID document",
-          image: g.idPhoto,
-        });
-      }
-    });
 
     const body = {
       child: {
@@ -183,7 +253,8 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
         address: g.address.trim() || undefined,
         photoImage: photoConsentGiven ? g.photoImage || undefined : undefined,
       })),
-      attachments,
+      uploadKey,
+      documentIds: docSlots.map((s) => uploads[s.key]?.id).filter((id): id is string => Boolean(id)),
     };
 
     setSubmitting(true);
@@ -217,7 +288,9 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
             ? "Enrolment form"
             : isNewApplicant
               ? `Apply to ${organizationName || "the school"}`
-              : `Enrolment form for ${childFirstName}`}
+              : purpose === "documents"
+                ? `Documents for ${childFirstName}`
+                : `Enrolment form for ${childFirstName}`}
         </h1>
         {!loading && !linkError && (
           <p className="mt-1 text-sm text-muted-foreground">{organizationName}</p>
@@ -234,6 +307,44 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
           </p>
         ) : linkError ? (
           <p className="text-sm text-danger">{linkError}</p>
+        ) : purpose === "documents" ? (
+          // Documents-only link: each upload goes straight to the school.
+          <div className="flex flex-col gap-3">
+            {missing.length === 0 ? (
+              <p className="text-sm text-foreground">
+                Thank you — {organizationName} has everything it needs for {childFirstName}.
+                {received.length > 0 ? ` Received: ${received.join(", ")}.` : ""}
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-foreground">
+                  {organizationName} still needs {missing.length === 1 ? "this document" : "these documents"} for{" "}
+                  {childFirstName}. Take a clear photo of each (or upload a PDF). Each one is sent as soon as you
+                  upload it.
+                </p>
+                {received.length > 0 && (
+                  <p className="text-xs text-success">Received: {received.join(", ")}.</p>
+                )}
+                {missing.map((m) => (
+                  <FormDocumentSlot
+                    key={`${m.type}-${m.guardianId ?? ""}`}
+                    label={m.label}
+                    hint={requiredDocs.find((d) => d.type === m.type)?.hint}
+                    required
+                    fileName={null}
+                    onPick={async (file) => {
+                      const problem = await uploadDocument({ type: m.type, guardianId: m.guardianId }, file);
+                      if (!problem) setReceived((prev) => [...prev, m.label]);
+                      return problem;
+                    }}
+                  />
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  This link works for 7 days. Your documents are only seen by staff at {organizationName}.
+                </p>
+              </>
+            )}
+          </div>
         ) : (
           <form onSubmit={onSubmit} className="flex flex-col gap-6">
             <p className="text-xs text-muted-foreground">
@@ -340,13 +451,6 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
                 round
                 onChange={setChildPhoto}
               />
-              <ImageUploadField
-                label={`${childName}'s ID document (optional, if available)`}
-                helpText="A photo of the ID book/card/birth certificate, for staff to verify against the number above."
-                value={childIdPhoto}
-                disabled={false}
-                onChange={setChildIdPhoto}
-              />
             </div>
 
             {guardians.map((g, i) => (
@@ -360,7 +464,7 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setGuardians((prev) => prev.filter((_, idx) => idx !== i))}
+                      onClick={() => removeGuardian(i)}
                     >
                       Remove
                     </Button>
@@ -454,13 +558,6 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
                   round
                   onChange={(dataUrl) => updateGuardian(i, { photoImage: dataUrl })}
                 />
-                <ImageUploadField
-                  label="ID document (optional)"
-                  helpText="A photo of the ID book/card, for staff to verify against the number above."
-                  value={g.idPhoto}
-                  disabled={false}
-                  onChange={(dataUrl) => updateGuardian(i, { idPhoto: dataUrl })}
-                />
               </div>
             ))}
 
@@ -473,6 +570,32 @@ export function ParentForm({ apiPath, isNewApplicant }: { apiPath: string; isNew
               >
                 Add another parent/guardian
               </Button>
+            )}
+
+            {docSlots.length > 0 && (
+              <div className="flex flex-col gap-3 border-t border-border pt-6">
+                <h2 className="font-display text-sm font-semibold text-foreground">Documents</h2>
+                <p className="text-xs text-muted-foreground">
+                  {organizationName} needs these. A clear photo from your phone is fine, or a PDF.
+                </p>
+                {docSlots.map((s) => (
+                  <FormDocumentSlot
+                    key={s.key}
+                    label={s.label}
+                    hint={s.hint}
+                    required
+                    fileName={uploads[s.key]?.fileName ?? null}
+                    onPick={(file) => uploadDocument(s, file)}
+                    onRemove={() =>
+                      setUploads((prev) => {
+                        const next = { ...prev };
+                        delete next[s.key];
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </div>
             )}
 
             <div className="flex flex-col gap-4 border-t border-border pt-6">

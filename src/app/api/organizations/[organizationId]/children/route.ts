@@ -160,6 +160,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     // transaction: a child should never exist without a plan half-created,
     // and a failed plan generation (e.g. no recurring PaymentType exists)
     // should roll back the child creation too rather than leave an orphan.
+    // In the order sent, so the form can attach each parent's ID document.
+    const guardianIds: string[] = [];
     const child = await db.$transaction(async (tx) => {
       const created = await tx.child.create({
         data: {
@@ -187,7 +189,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
       // Centre "Add child" sends parent 1 (and optionally parent 2).
       for (const g of guardians) {
-        await tx.guardian.create({
+        const createdGuardian = await tx.guardian.create({
           data: {
             organizationId,
             childId: created.id,
@@ -202,6 +204,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             address: g.address ?? null,
           },
         });
+        guardianIds.push(createdGuardian.id);
       }
 
       await generateAnnualPlanForChild(
@@ -226,7 +229,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
 
     return NextResponse.json(
-      { child: serializeChild(child, canViewMoney), possibleSiblings },
+      { child: serializeChild(child, canViewMoney), possibleSiblings, guardianIds },
       { status: 201 }
     );
   } catch (err) {

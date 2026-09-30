@@ -51,6 +51,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json({
       links: links.map((l) => ({
         id: l.id,
+        purpose: l.purpose,
         createdAt: l.createdAt,
         expiresAt: l.expiresAt,
         createdBy: l.createdBy,
@@ -81,6 +82,8 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const body = await req.json().catch(() => ({}));
     const sendEmail = body?.sendEmail === true;
+    // "documents": upload missing documents only (Dylan, 30 Sept 2026).
+    const purpose = body?.purpose === "documents" ? "documents" : "details";
 
     if (sendEmail && !child.parentEmail) {
       return NextResponse.json(
@@ -104,6 +107,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         tokenHash,
         createdByUserId: userId,
         expiresAt,
+        purpose,
       },
     });
 
@@ -111,7 +115,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     const url = `${publicBaseUrl(req.nextUrl.origin)}/apply/${token}`;
 
     let emailSent = false;
-    if (sendEmail && child.parentEmail) {
+    if (sendEmail && child.parentEmail && purpose === "documents") {
+      const result = await sendMail({
+        to: child.parentEmail,
+        subject: `Documents still needed for ${child.firstName} at ${organization.name}`,
+        text: `${organization.name} still needs a few documents for ${child.firstName}. You can upload them from your phone (a clear photo is fine). The link expires in ${LINK_EXPIRY_DAYS} days:\n\n${url}`,
+        html: `
+          <p>${organization.name} still needs a few documents for ${child.firstName}.</p>
+          <p><a href="${url}">Upload the documents</a></p>
+          <p style="color:#666;font-size:13px">A clear photo from your phone is fine. The link expires in ${LINK_EXPIRY_DAYS} days.</p>
+        `,
+      });
+      emailSent = result.sent;
+    } else if (sendEmail && child.parentEmail) {
       const result = await sendMail({
         to: child.parentEmail,
         subject: `Enrolment form for ${child.firstName} at ${organization.name}`,
@@ -131,10 +147,10 @@ export async function POST(req: NextRequest, { params }: Params) {
       action: "parentFormLink.created",
       entityType: "ParentFormLink",
       entityId: link.id,
-      metadata: { childId, emailSent },
+      metadata: { childId, emailSent, purpose },
     });
 
-    return NextResponse.json({ url, expiresAt, emailSent }, { status: 201 });
+    return NextResponse.json({ url, expiresAt, emailSent, purpose }, { status: 201 });
   } catch (err) {
     return handleApiError(err);
   }

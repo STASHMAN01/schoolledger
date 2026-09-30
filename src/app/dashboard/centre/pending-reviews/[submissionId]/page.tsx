@@ -47,6 +47,8 @@ type SubmissionDetail = {
     guardians: SubmittedGuardian[];
   };
   attachments: { id: string; kind: string; label: string; image: string }[];
+  // Documents the parent uploaded with the form (Dylan, 30 Sept 2026).
+  documents?: { id: string; type: string; label: string; guardianIndex: number | null; contentType: string }[];
 };
 
 type CurrentChild = {
@@ -295,6 +297,36 @@ export default function ReviewSubmissionPage() {
           ))}
         </div>
       </Card>
+
+      {(submission.documents?.length ?? 0) > 0 && (
+        <Card as="div" className="mb-6 p-5">
+          <h2 className="font-display mb-1 text-sm font-semibold text-foreground">Documents uploaded</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Approving puts these on the child&apos;s file. Rejecting discards them.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {submission.documents!.map((d) => {
+              const g = d.guardianIndex !== null ? submission.data.guardians[d.guardianIndex] : null;
+              return (
+                <li key={d.id} className="flex flex-wrap items-center gap-x-3 text-sm">
+                  <span className="font-medium text-foreground">
+                    {d.label}
+                    {g ? ` — ${g.firstName} ${g.lastName}` : ""}
+                  </span>
+                  <a
+                    href={`/api/organizations/${organizationId}/documents/${d.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="text-brand underline"
+                  >
+                    View {d.contentType === "application/pdf" ? "PDF" : "photo"}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
 
       {submission.attachments.length > 0 && (
         <Card as="div" className="mb-6 p-5">

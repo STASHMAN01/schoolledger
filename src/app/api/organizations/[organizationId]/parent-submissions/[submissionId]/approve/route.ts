@@ -13,6 +13,7 @@ import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
 import { billingFieldsFromGuardian } from "@/lib/billingContact";
 import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
 import { z } from "zod";
+import { activateSubmissionDocuments } from "@/lib/publicDocuments";
 
 type Params = { params: Promise<{ organizationId: string; submissionId: string }> };
 
@@ -129,8 +130,9 @@ export async function POST(req: NextRequest, { params }: Params) {
         },
       });
 
+      const createdGuardianIds: string[] = [];
       for (const g of parsed.guardians) {
-        await tx.guardian.create({
+        const createdGuardian = await tx.guardian.create({
           data: {
             organizationId,
             childId: child.id,
@@ -146,7 +148,11 @@ export async function POST(req: NextRequest, { params }: Params) {
             photoImage: photoConsentGiven ? g.photoImage ?? null : null,
           },
         });
+        createdGuardianIds.push(createdGuardian.id);
       }
+
+      // Documents the parent uploaded go onto the child's file.
+      await activateSubmissionDocuments(tx, submission.id, child.id, createdGuardianIds);
 
       await tx.parentSubmission.update({
         where: { id: submission.id },
@@ -247,8 +253,9 @@ async function approveNewApplicant(
       userId
     );
 
+    const createdGuardianIds: string[] = [];
     for (const g of parsed.guardians) {
-      await tx.guardian.create({
+      const createdGuardian = await tx.guardian.create({
         data: {
           organizationId,
           childId: created.id,
@@ -264,7 +271,10 @@ async function approveNewApplicant(
           photoImage: photoConsentGiven ? g.photoImage ?? null : null,
         },
       });
+      createdGuardianIds.push(createdGuardian.id);
     }
+
+    await activateSubmissionDocuments(tx, submissionId, created.id, createdGuardianIds);
 
     await tx.parentSubmission.update({
       where: { id: submissionId },

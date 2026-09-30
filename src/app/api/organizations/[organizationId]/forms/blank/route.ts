@@ -31,6 +31,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     const spec = buildFormSpec(formType, {
       organizationName: organization.name,
       currencyCode: organization.currencyCode,
+      requiredDocuments: organization.requiredDocuments,
       child: {
         firstName: "",
         lastName: "",

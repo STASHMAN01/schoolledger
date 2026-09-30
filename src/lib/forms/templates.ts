@@ -1,6 +1,7 @@
 import type { FormSpec, FormType } from "./types";
 import { FORM_TYPE_LABELS } from "./types";
 import { formatMoneyCents } from "@/lib/money";
+import { DOCUMENT_TYPES } from "@/lib/documents";
 
 type TemplateGuardian = {
   relationship: string;
@@ -41,6 +42,9 @@ type TemplateInput = {
   currencyCode: string;
   child: TemplateChild;
   guardians: TemplateGuardian[];
+  // The school's required documents (src/lib/documents.ts), listed as a
+  // checklist on the enrolment form.
+  requiredDocuments?: string[];
 };
 
 function fmtDate(d: Date | null): string | null {
@@ -107,10 +111,25 @@ export function buildFormSpec(formType: FormType, input: TemplateInput): FormSpe
         title: FORM_TYPE_LABELS.ENROLMENT,
         intro:
           "Enrolment record for the child and guardian details below. Fields already on file are filled in; anything blank should be completed by hand.",
-        sections: [childSection, ...guardianSections(guardians), {
-          heading: "Home address",
-          fields: [{ label: "Address", value: child.homeAddress ?? null }],
-        }],
+        sections: [
+          childSection,
+          ...guardianSections(guardians),
+          {
+            heading: "Home address",
+            fields: [{ label: "Address", value: child.homeAddress ?? null }],
+          },
+          ...((input.requiredDocuments ?? []).length
+            ? [
+                {
+                  heading: "Documents to attach (copies)",
+                  fields: DOCUMENT_TYPES.filter((t) => input.requiredDocuments!.includes(t.type)).map((t) => ({
+                    label: t.perGuardian ? `${t.label} (each parent/guardian)` : t.label,
+                    value: "[  ] Attached",
+                  })),
+                },
+              ]
+            : []),
+        ],
         signatureLine: true,
       };
 

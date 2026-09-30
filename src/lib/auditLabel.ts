@@ -68,6 +68,14 @@ export function describeAuditAction(row: AuditRow): string {
       return `generated a ${m.formLabel ?? "form"}`;
     case "form.downloaded":
       return `downloaded a ${m.formLabel ?? "form"}`;
+    case "child.document.uploaded":
+      return `added ${m.childFirstName ?? "a child"}'s ${String(m.document ?? "document").toLowerCase()}`;
+    case "child.document.removed":
+      return `removed ${m.childFirstName ?? "a child"}'s ${String(m.document ?? "document").toLowerCase()}`;
+    case "child.document.parentUploaded":
+      return `a parent uploaded ${m.childFirstName ?? "a child"}'s ${String(m.document ?? "document").toLowerCase()}`;
+    case "documents.requirementsUpdated":
+      return "changed which documents are required";
     case "parentFormLink.created":
       return `sent a parent enrolment-form link`;
     case "parentSubmission.submitted":
