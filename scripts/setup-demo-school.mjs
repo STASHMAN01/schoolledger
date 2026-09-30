@@ -9,8 +9,8 @@
 //
 // Also (Dylan, 30 Sept 2026): marks the demo login's email as verified, so
 // the demo account works without clicking a verification link (the demo
-// address has no real inbox), and gives the demo school lifetime access so
-// its trial never locks it -- e.g. for the Paystack reviewers.
+// address has no real inbox). Billing is left alone: the school stays on its
+// normal free trial, so reviewers (e.g. Paystack) see the real Billing page.
 import { PrismaClient } from "@prisma/client";
 
 const CLASSES = [
@@ -59,13 +59,6 @@ try {
   if (!user.emailVerified) {
     await db.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } });
     console.log(`  login  ${user.email} marked as verified`);
-  }
-  if (org.subscriptionStatus !== "lifetime") {
-    await db.organization.update({
-      where: { id: org.id },
-      data: { subscriptionStatus: "lifetime", trialEndsAt: null, currentPeriodEnd: null },
-    });
-    console.log("  access lifetime (the trial will never lock the demo school)");
   }
 
   for (const c of CLASSES) {
