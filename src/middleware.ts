@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   "/privacy",
   "/terms",
   "/popia",
+  "/refund-policy",
   "/login",
   "/register",
   "/forgot-password",
