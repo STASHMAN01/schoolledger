@@ -6,6 +6,11 @@
 // real customer. Safe to run again: classes are matched by name and updated.
 // Adds NO children -- those come from the demo CSV, imported live in front of
 // the prospect.
+//
+// Also (Dylan, 30 Sept 2026): marks the demo login's email as verified, so
+// the demo account works without clicking a verification link (the demo
+// address has no real inbox), and gives the demo school lifetime access so
+// its trial never locks it -- e.g. for the Paystack reviewers.
 import { PrismaClient } from "@prisma/client";
 
 const CLASSES = [
@@ -50,6 +55,18 @@ try {
   }
   const org = demo[0];
   console.log(`Setting up: ${org.name}`);
+
+  if (!user.emailVerified) {
+    await db.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } });
+    console.log(`  login  ${user.email} marked as verified`);
+  }
+  if (org.subscriptionStatus !== "lifetime") {
+    await db.organization.update({
+      where: { id: org.id },
+      data: { subscriptionStatus: "lifetime", trialEndsAt: null, currentPeriodEnd: null },
+    });
+    console.log("  access lifetime (the trial will never lock the demo school)");
+  }
 
   for (const c of CLASSES) {
     const data = { ageMinMonths: c.ageMinMonths, ageMaxMonths: c.ageMaxMonths, monthlyFeeCents: c.fee * 100, archived: false };
