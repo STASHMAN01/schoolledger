@@ -58,6 +58,9 @@ export function MarketingFooter() {
             <Link href="/terms" className="hover:text-foreground">
               Terms
             </Link>
+            <Link href="/refund-policy" className="hover:text-foreground">
+              Refunds &amp; cancellation
+            </Link>
             <Link href="/popia" className="hover:text-foreground">
               POPIA notice
             </Link>

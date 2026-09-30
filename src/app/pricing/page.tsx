@@ -165,21 +165,28 @@ export default async function PricingPage() {
             </div>
           </div>
 
+          {/* Founding-school offer (Dylan, 29 Sept 2026). */}
+          <div className="mt-4 rounded-lg border-2 border-brand bg-surface px-4 py-3 text-sm text-foreground">
+            <strong>Founding schools:</strong> our first 10 schools pay <strong>R299 a month</strong> instead
+            of R499, locked in for as long as they stay subscribed. Choose it on the Billing page after your
+            free trial.
+          </div>
+
           <p className="mt-3 text-xs text-muted-foreground">
-            All prices in South African Rand.{" "}
-            {/* VAT status is an assumption pending Dylan's confirmation — see
-                PRICING_RECOMMENDATION.md / OPEN_QUESTIONS.md. Do not treat
-                this line as verified tax advice. */}
-            Crechely is not currently VAT-registered, so no VAT is added to
-            these prices. <em>(Confirm this is still accurate before relying on it.)</em>
+            All prices in South African Rand. Crechely is not VAT-registered, so no VAT is added to these
+            prices. Cancel any time from Settings → Billing — see our{" "}
+            <Link href="/refund-policy" className="text-brand hover:underline">
+              refund and cancellation policy
+            </Link>
+            .
           </p>
 
           {/* H8: product truth, stated plainly, not buried. */}
           <p className="mt-4 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground">
             Crechely <strong>records</strong> the cash, EFT, and card payments your
             school already receives — it does not collect money from parents
-            itself, and Paystack online payment isn&rsquo;t live yet. Reminders go
-            out by email only, to the address on each child&rsquo;s record.
+            itself. Reminders go out by email (with each family&rsquo;s statement
+            attached) or WhatsApp, to the contact on each child&rsquo;s record.
           </p>
 
           <div className="mt-10 border-t border-border pt-8">

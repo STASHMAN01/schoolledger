@@ -56,27 +56,23 @@ statements and financial records periodically.
 
 ## 4. Subscription, billing, and cancellation
 
-- The Service is offered on a paid subscription basis (monthly or yearly,
-  as shown at signup); pricing is set in [CURRENCY — confirm: is the
-  displayed price the one actually charged, or does it vary by
-  `currencyCode`? Make sure this section matches what the product
-  actually does] and may change with [FILL IN NOTICE PERIOD, e.g. 30 days']
-  notice before it applies to your next renewal.
+- New schools get a 30-day free trial. No card is needed, and nothing is
+  charged automatically when the trial ends.
+- The Service is offered on a paid subscription: R499 a month, R4,990 a
+  year, or (for the first 10 schools only) the founding price of R299 a
+  month, all in South African rand (ZAR). We give at least 30 days' notice
+  by email before a price change applies to your next renewal.
 - Payment is processed by Paystack. By subscribing, you also agree to
   Paystack's own terms for the payment method you use.
-- [FILL IN: trial length, e.g. "New accounts get a 14-day free trial."]
-- Subscriptions [FILL IN: auto-renew? cancellation process — e.g. "auto-
-  renew each billing period until cancelled; you can cancel anytime from
-  the Billing page in Settings, and cancellation takes effect at the end of the
-  current paid period, with no partial refund for the unused portion,
-  unless required otherwise by law"].
-- If a payment fails, the Service may show a limited-access state while
-  Paystack retries the charge per its normal retry schedule; continued
-  failure will result in suspension of access until payment succeeds or
-  the subscription is cancelled.
-- [FILL IN refund policy, if any, e.g. "no refunds except as required by
-  law" or a specific money-back window — decide this deliberately, don't
-  leave it silent.]
+- Subscriptions renew automatically each billing period until cancelled.
+  You can cancel at any time from the Billing page in Settings; cancelling
+  stops future charges, and you keep access until the end of the period
+  you have paid for, after which the school becomes read-only.
+- If a payment fails, you keep access while Paystack retries the charge per
+  its normal retry schedule; continued failure ends the subscription and
+  the school becomes read-only until payment succeeds.
+- Refunds follow our [Refund and Cancellation Policy](/refund-policy),
+  including a 30-day money-back guarantee on the yearly plan.
 
 ## 5. Your data, and what you're allowed to record
 
