@@ -6,8 +6,52 @@ import { LinkButton } from "@/components/ui";
 import { MarketingHeader } from "@/components/MarketingHeader";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { Reveal } from "@/components/Reveal";
+import { AttendancePreview, DocumentsPreview, FeesPreview, RemindersPreview } from "@/components/MarketingPreviews";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
 import { TRIAL_DAYS } from "@/lib/trial";
+
+// The headline features shown with a "what it looks like" preview panel,
+// EarlyTrack-style alternating rows (Dylan, 1 Oct 2026 to-do: "show
+// features clearly with what each looks like"). The full spec-list below
+// still covers everything else the app does.
+const SHOWCASE_FEATURES = [
+  {
+    heading: "Fees & statements",
+    description:
+      "Monthly fees are created automatically for every child. See who's paid and who owes at a glance, per class or per child, and generate a clean PDF statement in one click.",
+    Preview: FeesPreview,
+  },
+  {
+    heading: "Reminders that send themselves",
+    description:
+      "Email every family who's behind, each with their statement attached, in one click — or switch on automatic reminders for the days of the month you choose.",
+    Preview: RemindersPreview,
+  },
+  {
+    heading: "Registers in seconds",
+    description:
+      "Teachers mark attendance for their own class on a phone. You see who's absent today at a glance, and can notify their parent from the same screen.",
+    Preview: AttendancePreview,
+  },
+  {
+    heading: "Documents, tracked automatically",
+    description:
+      "Crechely keeps a list of what's still missing for every child — a birth certificate, a clinic card, a parent's ID — and parents can upload it straight from their phone.",
+    Preview: DocumentsPreview,
+  },
+] as const;
+
+// "Crechely vs the old way" — the comparison Dylan asked for (like
+// EarlyTrack's), stated only in terms of what Crechely actually does
+// (see FEATURE_GROUPS/the product-truth note below — never oversold).
+const COMPARISON_ROWS = [
+  { label: "Who's paid and who owes", paper: "Dig through a book or spreadsheet", crechely: "One screen, always up to date" },
+  { label: "Monthly statements", paper: "Typed by hand, one by one", crechely: "Generated as a PDF in one click" },
+  { label: "Late-fee reminders", paper: "Remembered (or forgotten) by whoever's free", crechely: "Sent automatically, or in one click" },
+  { label: "Daily register", paper: "A paper sheet per class", crechely: "Taken on a phone, visible instantly" },
+  { label: "Who can see what", paper: "Everyone sees everything, or nothing", crechely: "Set per person — teachers, admin, bookkeeper" },
+  { label: "Your records if you leave", paper: "Whatever's in the book or the file", crechely: "One password-protected backup, any time" },
+] as const;
 
 // Sample snapshot of a centre's day, standing in for a dashboard
 // screenshot without pretending to be one. Fictional names and numbers,
@@ -284,8 +328,81 @@ export default async function RootPage() {
           </div>
         </section>
 
-        {/* Features — a spec list, not an icon grid. */}
-        <section id="features" className="border-t border-border bg-surface">
+        {/* Showcase — what each core feature actually looks like,
+            alternating rows (EarlyTrack-style), typeset previews rather
+            than real screenshots (same honesty rule as the hero panel). */}
+        <section id="features" className="border-t border-border">
+          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+            <Reveal>
+              <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+                What it actually looks like
+              </h2>
+            </Reveal>
+            <div className="mt-10 flex flex-col gap-16">
+              {SHOWCASE_FEATURES.map((feature, i) => (
+                <Reveal key={feature.heading}>
+                  <div
+                    className={`grid items-center gap-8 lg:grid-cols-2 lg:gap-16 ${
+                      i % 2 === 1 ? "lg:[&>*:first-child]:order-2" : ""
+                    }`}
+                  >
+                    <div>
+                      <h3 className="font-display text-lg font-semibold text-foreground sm:text-xl">
+                        {feature.heading}
+                      </h3>
+                      <p className="mt-2.5 max-w-md text-sm text-muted-foreground sm:text-base">
+                        {feature.description}
+                      </p>
+                    </div>
+                    <div className="max-w-sm lg:justify-self-end">
+                      <feature.Preview />
+                      <p className="mt-2 text-xs text-muted-foreground">Shown with sample data, not a real school&rsquo;s.</p>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Comparison — "Crechely vs the old way" (Dylan, 1 Oct 2026:
+            "comparison or plans, like EarlyTrack"). */}
+        <section className="border-t border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+            <Reveal>
+              <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+                Crechely vs the old way
+              </h2>
+            </Reveal>
+            <div className="mt-8 overflow-x-auto border border-border-strong">
+              <table className="w-full min-w-[560px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border-strong bg-background">
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">&nbsp;</th>
+                    <th className="px-4 py-3 text-left font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Paper &amp; spreadsheets
+                    </th>
+                    <th className="px-4 py-3 text-left font-mono text-xs font-medium uppercase tracking-wide text-brand">
+                      Crechely
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {COMPARISON_ROWS.map((row) => (
+                    <tr key={row.label}>
+                      <td className="px-4 py-3 font-medium text-foreground">{row.label}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{row.paper}</td>
+                      <td className="px-4 py-3 text-foreground">{row.crechely}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* Full feature list — a spec list, not an icon grid. */}
+        <section className="border-t border-border bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <Reveal>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -458,6 +575,10 @@ export default async function RootPage() {
                     R998, exactly 2 months free. Every feature, Centre
                     Management and fees, either way. Nothing to upgrade into later.
                   </p>
+                  <p className="mt-3 max-w-md text-sm font-medium text-background">
+                    Our first 10 schools pay R299 a month instead, locked in for as
+                    long as they stay subscribed.
+                  </p>
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -468,7 +589,7 @@ export default async function RootPage() {
                       href="/pricing"
                       className="text-sm font-medium text-background underline decoration-background/40 underline-offset-4 hover:decoration-background"
                     >
-                      See pricing →
+                      See plans →
                     </Link>
                   </div>
                   <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-background">

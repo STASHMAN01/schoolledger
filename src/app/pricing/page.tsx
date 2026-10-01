@@ -123,7 +123,7 @@ export default async function PricingPage() {
                 Nothing to upgrade into later.
               </p>
             </div>
-            <div className="grid divide-y divide-border-strong border-t border-border-strong sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            <div className="grid divide-y divide-border-strong border-t border-border-strong sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               <div className="flex flex-col justify-between gap-4 px-5 py-6 sm:px-6">
                 <div>
                   <span className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -162,14 +162,32 @@ export default async function PricingPage() {
                   Start free trial
                 </LinkButton>
               </div>
+              {/* Founding-school offer (Dylan, 29 Sept 2026), now a proper
+                  3rd plan column rather than a banner underneath, per
+                  Dylan's "show it like plans" note (1 Oct 2026). */}
+              <div className="flex flex-col justify-between gap-4 border-2 border-brand px-5 py-6 sm:px-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-medium uppercase tracking-wide text-brand">
+                      Founding
+                    </span>
+                    <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      first 10 schools
+                    </span>
+                  </div>
+                  <div className="font-mono mt-1 text-2xl font-semibold text-foreground">
+                    R299<span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Locked in for as long as you stay subscribed. Choose it on the
+                    Billing page after your free trial.
+                  </p>
+                </div>
+                <LinkButton href="/register" size="sm">
+                  Start free trial
+                </LinkButton>
+              </div>
             </div>
-          </div>
-
-          {/* Founding-school offer (Dylan, 29 Sept 2026). */}
-          <div className="mt-4 rounded-lg border-2 border-brand bg-surface px-4 py-3 text-sm text-foreground">
-            <strong>Founding schools:</strong> our first 10 schools pay <strong>R299 a month</strong> instead
-            of R499, locked in for as long as they stay subscribed. Choose it on the Billing page after your
-            free trial.
           </div>
 
           <p className="mt-3 text-xs text-muted-foreground">
