@@ -29,8 +29,8 @@ const ACCOUNTING_LINKS: NavLink[] = [
 
 // Centre Management, in the order of Dylan's mock-up (23 Sept). Children
 // are reached through Enrolled/Admissions now (no separate tab), online
-// submissions live inside Admissions, and Reports stays hidden until it's
-// defined. Communication sits in the top-right utility cluster.
+// submissions live inside Admissions. Communication sits in the top-right
+// utility cluster. Reports (incident/academic/disciplinary) added 1 Oct.
 const CENTRE_LINKS: NavLink[] = [
   { href: "/dashboard/centre", label: "Home", exact: true },
   { href: "/dashboard/centre/forms", label: "Forms" },
@@ -38,6 +38,7 @@ const CENTRE_LINKS: NavLink[] = [
   { href: "/dashboard/centre/admissions", label: "Admissions" },
   { href: "/dashboard/centre/documents", label: "Documents" },
   { href: "/dashboard/centre/attendance", label: "Attendance" },
+  { href: "/dashboard/centre/reports", label: "Reports" },
   { href: "/dashboard/centre/classes", label: "Classes" },
   { href: "/dashboard/centre/schedule", label: "Timetable" },
   { href: "/dashboard/centre/events", label: "Events" },
@@ -79,6 +80,7 @@ const LINK_REQUIRES: Record<string, string[]> = {
   "/dashboard/accounting/reminders": ["VIEW_MONEY"],
   "/dashboard/centre/forms": ["MANAGE_CHILDREN"],
   "/dashboard/centre/attendance": ["MANAGE_ATTENDANCE"],
+  "/dashboard/centre/reports": ["MANAGE_REPORTS"],
   "/dashboard/centre/staff": ["MANAGE_CLASSES", "MANAGE_TEAM"],
   "/dashboard/centre/communication": ["MANAGE_CHILDREN"],
 };

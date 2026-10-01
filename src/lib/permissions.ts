@@ -19,6 +19,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "VIEW_ACTIVITY_LOG",
   "MANAGE_ATTENDANCE",
   "EXPORT_DATA",
+  "MANAGE_REPORTS",
 ];
 
 // A short label + a longer hover-tooltip description for every
@@ -98,6 +99,11 @@ export const PERMISSION_INFO: Record<Permission, { label: string; description: s
     description:
       "Can download a full password-protected backup of the organization's data (records, forms, statements, payments).",
   },
+  MANAGE_REPORTS: {
+    label: "Manage reports",
+    description:
+      "Can write and edit incident, academic and disciplinary reports. A Teacher with this is limited to their own assigned class.",
+  },
 };
 
 // The DEFAULT permission set for each role — the "hardcode the default,
@@ -143,6 +149,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Exclude<Role, "ADMIN">, Permission
     "MANAGE_CHILDREN",
     "MANAGE_CLASSES",
     "MANAGE_ATTENDANCE",
+    "MANAGE_REPORTS",
     "SEND_REMINDERS",
     "REQUEST_DELETION",
     "VIEW_ACTIVITY_LOG",
@@ -163,12 +170,14 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Exclude<Role, "ADMIN">, Permission
     "VIEW_CENTRE",
     "MANAGE_CHILDREN", // scoped server-side to Membership.assignedCategoryId
     "MANAGE_ATTENDANCE", // scoped server-side to Membership.assignedCategoryId
+    "MANAGE_REPORTS", // scoped server-side to Membership.assignedCategoryId
     "VIEW_ACTIVITY_LOG",
   ],
   RECEPTIONIST: [
     "VIEW_CENTRE",
     "MANAGE_CHILDREN", // org-wide, unlike TEACHER
     "MANAGE_ATTENDANCE", // org-wide, unlike TEACHER
+    "MANAGE_REPORTS", // org-wide, unlike TEACHER
     "VIEW_ACTIVITY_LOG",
   ],
 };

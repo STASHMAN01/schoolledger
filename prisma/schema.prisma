@@ -54,6 +54,21 @@ enum Permission {
   VIEW_ACTIVITY_LOG // can view the audit/activity feed
   MANAGE_ATTENDANCE // can take/edit attendance and notify absent parents (TEACHER: own assigned class only)
   EXPORT_DATA // can download a full password-protected backup of the organization's data
+  MANAGE_REPORTS // can create/edit/delete centre reports (incident/academic/disciplinary) (TEACHER: own assigned class only)
+}
+
+// The three Centre Management report kinds (Dylan, 1 Oct 2026 to-do: "we
+// need to add a few more features, especially on the dashboard of center
+// management reports... incident reports, academic reports, and behavior
+// reports, call it disciplinary reports"). One model with a `type`
+// discriminator, same approach as ChildDocument's `type` -- the three
+// kinds share nearly every field (who, when, what happened, was the
+// parent told), so three near-identical tables would only add
+// duplication, not safety.
+enum ReportType {
+  INCIDENT
+  ACADEMIC
+  DISCIPLINARY
 }
 
 // A child's gender, for the Enrolled tile's gender breakdown chart
@@ -218,6 +233,7 @@ model Organization {
   whatsappGroupChecks WhatsAppGroupCheck[]
   subscriptionPayments SubscriptionPayment[]
   childDocuments       ChildDocument[]
+  childReports         ChildReport[]
 
   @@map("organizations")
 }
@@ -254,6 +270,7 @@ model User {
   parentFormLinksCreated ParentFormLink[] @relation("ParentFormLinkCreatedBy")
   parentSubmissionsReviewed ParentSubmission[] @relation("ParentSubmissionReviewedBy")
   attendanceRecordsMarked AttendanceRecord[]
+  childReportsCreated ChildReport[]
 
   @@map("users")
 }
@@ -358,6 +375,7 @@ model Category {
   teacherAssignments Membership[]
   scheduleItems ClassScheduleItem[]
   whatsappGroupChecks WhatsAppGroupCheck[]
+  reports        ChildReport[]
 
   @@index([organizationId])
   @@index([parentId])
@@ -433,6 +451,7 @@ model Child {
   parentFormLinks ParentFormLink[]
   attendanceRecords AttendanceRecord[]
   whatsappGroupChecks WhatsAppGroupCheck[]
+  reports      ChildReport[]
 
   @@index([organizationId])
   @@index([categoryId])
@@ -702,6 +721,54 @@ model AttendanceRecord {
   @@unique([childId, date])
   @@index([organizationId, date])
   @@map("attendance_records")
+}
+
+// Centre Management Reports (Dylan, 1 Oct 2026): incident, academic and
+// disciplinary/behaviour reports, one per child per occurrence. categoryId
+// is a snapshot of the child's class at the time the report was written,
+// so a teacher's old reports still show "which class" even after the
+// child moves up, and so a TEACHER's own-class scoping stays correct for
+// reports written while that was in fact their class.
+model ChildReport {
+  id             String     @id @default(cuid())
+  organizationId String
+  childId        String
+  categoryId     String
+  type           ReportType
+  occurredAt     DateTime // date (and, for INCIDENT, time) the thing happened
+  summary        String     @db.Text // what happened / observed -- every type's main free-text field
+
+  // INCIDENT-only fields (null for ACADEMIC/DISCIPLINARY).
+  injury         Boolean?
+  firstAidGiven  Boolean?
+  witnesses      String?    @db.Text
+  actionTaken    String?    @db.Text
+
+  // ACADEMIC-only fields.
+  term           String? // e.g. "Term 3 2026"
+  developmentArea String? // e.g. "Gross motor", "Language", "Social/emotional"
+  rating         String? // a short scale value, free text so a school can use its own wording
+
+  // DISCIPLINARY-only fields.
+  behaviour      String?    @db.Text // the specific behaviour observed, separate from the narrative `summary`
+  followUp       String?    @db.Text
+
+  parentNotified   Boolean   @default(false)
+  parentNotifiedAt DateTime?
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id])
+  createdBy    User         @relation(fields: [createdByUserId], references: [id])
+
+  @@index([organizationId, type, occurredAt])
+  @@index([childId, occurredAt])
+  @@index([categoryId])
+  @@map("child_reports")
 }
 
 // Phase 5: a class's fixed weekly timetable (Mon-Fri). The whole week for

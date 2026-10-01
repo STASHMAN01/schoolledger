@@ -97,6 +97,7 @@ export async function buildOrgBackupZip(
     payments,
     creditBalances,
     attendance,
+    reports,
     submissions,
     memberships,
     auditLogs,
@@ -122,6 +123,7 @@ export async function buildOrgBackupZip(
     }),
     db.creditBalance.findMany({ where }),
     db.attendanceRecord.findMany({ where }),
+    db.childReport.findMany({ where, orderBy: { occurredAt: "asc" } }),
     db.parentSubmission.findMany({
       where,
       orderBy: { submittedAt: "asc" },
@@ -162,6 +164,7 @@ export async function buildOrgBackupZip(
   );
   json("credit-balances.json", creditBalances);
   json("attendance.json", attendance);
+  json("reports.json", reports);
   json("parent-submissions.json", submissions);
   json(
     "team.json",
@@ -184,6 +187,7 @@ export async function buildOrgBackupZip(
   counts.payments = payments.length;
   counts.planEntries = planEntries.length;
   counts.attendance = attendance.length;
+  counts.reports = reports.length;
   counts.submissions = submissions.length;
   counts.activityLog = auditLogs.length;
 
@@ -332,6 +336,7 @@ function readme(schoolName: string, at: Date, counts: Record<string, number>): s
     `data/payments.json          Payments, allocations and receipt numbers`,
     `data/credit-balances.json   Credit held per child`,
     `data/attendance.json        Attendance register`,
+    `data/reports.json           Incident, academic and disciplinary reports`,
     `data/parent-submissions.json  Online parent forms (review queue)`,
     `data/team.json              Team members, roles and permission overrides`,
     `data/activity-log.json      Full activity log`,
