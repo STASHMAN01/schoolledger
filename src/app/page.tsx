@@ -329,8 +329,9 @@ export default async function RootPage() {
         </section>
 
         {/* Showcase — what each core feature actually looks like,
-            alternating rows (EarlyTrack-style), typeset previews rather
-            than real screenshots (same honesty rule as the hero panel). */}
+            alternating rows (EarlyTrack-style). Real screenshots of the
+            live dashboard (School Demo account, seed data, 1 Oct 2026),
+            not typeset mockups — see MarketingPreviews.tsx. */}
         <section id="features" className="border-t border-border">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <Reveal>
@@ -356,7 +357,9 @@ export default async function RootPage() {
                     </div>
                     <div className="max-w-sm lg:justify-self-end">
                       <feature.Preview />
-                      <p className="mt-2 text-xs text-muted-foreground">Shown with sample data, not a real school&rsquo;s.</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Real Crechely dashboard, shown with a demo school&rsquo;s data — not a real school&rsquo;s.
+                      </p>
                     </div>
                   </div>
                 </Reveal>
