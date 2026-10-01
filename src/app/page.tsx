@@ -355,7 +355,11 @@ export default async function RootPage() {
                         {feature.description}
                       </p>
                     </div>
-                    <div className="max-w-sm lg:justify-self-end">
+                    {/* max-w-lg, not max-w-sm: the screenshots are of a
+                        full app screen, and at 384px the text inside them
+                        was too small to read. 512px plus the tighter crops
+                        in MarketingPreviews.tsx makes them legible. */}
+                    <div className="max-w-lg lg:justify-self-end">
                       <feature.Preview />
                       <p className="mt-2 text-xs text-muted-foreground">
                         Real Crechely dashboard, shown with a demo school&rsquo;s data — not a real school&rsquo;s.
