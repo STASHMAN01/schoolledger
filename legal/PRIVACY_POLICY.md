@@ -166,11 +166,11 @@ this before finalizing.]
 
 - **While your subscription is active:** for as long as your school
   continues using the Service.
-- **After cancellation:** [DECIDE AND FILL IN — a common approach is to
-  keep data for a defined grace period, e.g. 30-90 days, in case the school
-  wants to reactivate or export it, then permanently delete it. Some
-  financial-record retention obligations may require longer retention of
-  payment/receipt records specifically — check local requirements.]
+- **After cancellation:** 90 days, in case the school wants to reactivate
+  or export it, then permanently deleted. Some financial-record retention
+  obligations may require longer retention of payment/receipt records
+  specifically — check local requirements before relying on this for tax
+  purposes.
 - **Audit logs:** kept for [FILL IN — e.g. 12 months] to support security
   investigations, then deleted.
 - Archived (soft-deleted) children/categories remain in your school's own
