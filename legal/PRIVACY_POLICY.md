@@ -10,7 +10,7 @@ _Last updated: [DATE]_
 
 ## Who this is about and who we are
 
-This policy explains how **[YOUR REGISTERED BUSINESS NAME]** ("**we**",
+This policy explains how **Straight Glow**, trading as Crechely, ("**we**",
 "**us**", operating the Crechely product, referred to here as "**the
 Service**") collects, uses, stores and protects personal information when a
 school ("**you**", "**the school**", "**the customer**") uses the Service

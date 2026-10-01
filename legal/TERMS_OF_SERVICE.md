@@ -11,7 +11,7 @@ _Last updated: [DATE]_
 ## 1. Who these terms are between
 
 These Terms of Service ("**Terms**") are an agreement between
-**[YOUR REGISTERED BUSINESS NAME]** ("**we**", "**us**"), the provider of
+**Straight Glow**, trading as Crechely, ("**we**", "**us**"), the provider of
 Crechely (the "**Service**"), and the school or organization that
 creates an account ("**you**", "**the school**", "**Customer**"). By
 creating an account or using the Service, you accept these Terms on behalf
@@ -158,6 +158,6 @@ We'll update the "Last updated" date when these Terms change, and
 
 ## 12. Contact
 
-**[YOUR REGISTERED BUSINESS NAME]**
-**[SUPPORT/LEGAL EMAIL ADDRESS]**
+**Straight Glow**, trading as Crechely
+**support@crechely.co.za**
 **[PHYSICAL/REGISTERED ADDRESS, if required in your jurisdiction]**
