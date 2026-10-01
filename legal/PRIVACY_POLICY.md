@@ -248,5 +248,4 @@ anything that changes how children's/families' data is handled.]
 ## Contact
 
 Questions about this policy, or to exercise a data-related request:
-**support@crechely.co.za**, **[PHYSICAL ADDRESS if required in
-your jurisdiction]**.
+**support@crechely.co.za**, **31 Kretchmer, Bela Bela, Limpopo, 0480**.

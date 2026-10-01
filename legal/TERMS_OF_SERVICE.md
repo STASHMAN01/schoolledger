@@ -158,6 +158,6 @@ We'll update the "Last updated" date when these Terms change, and
 
 ## 12. Contact
 
-**Straight Glow**, trading as Crechely
+**Straight Glow**, trading as Crechely (reg. no. 2018/360632/07)
 **support@crechely.co.za**
-**[PHYSICAL/REGISTERED ADDRESS, if required in your jurisdiction]**
+**31 Kretchmer, Bela Bela, Limpopo, 0480**

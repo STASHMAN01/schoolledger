@@ -21,8 +21,12 @@ export const SELLER: {
   // registered). Printed as "Crechely is a trading name of Straight Glow" so
   // a school can match the receipt to the name on its bank statement.
   legalName: "Straight Glow",
-  addressLines: [], // [ADD REAL: business address, one line per entry]
-  registrationNumber: null,
+  // Registered office, from the CIPC disclosure certificate (Dylan, 1 Oct 2026).
+  addressLines: ["31 Kretchmer", "Bela Bela", "Limpopo", "0480"],
+  // CIPC company registration number (Straightglow (Pty) Ltd), from the same
+  // disclosure certificate.
+  registrationNumber: "2018/360632/07",
+  // Confirmed NOT VAT-registered (Dylan, 1 Oct 2026) -- leave null.
   vatNumber: null,
   email: SUPPORT_EMAIL,
   website: "www.crechely.co.za",
