@@ -366,7 +366,12 @@ export default async function RootPage() {
         </section>
 
         {/* Comparison — "Crechely vs the old way" (Dylan, 1 Oct 2026:
-            "comparison or plans, like EarlyTrack"). */}
+            "comparison or plans, like EarlyTrack"). Built as a ledger
+            entry list rather than a data table: the old way struck
+            through, Crechely's answer in brand ink after it — since the
+            product's whole pitch is replacing a paper ledger, the
+            comparison itself reads like one being corrected, not a
+            generic feature-matrix table. */}
         <section className="border-t border-border bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <Reveal>
@@ -374,29 +379,21 @@ export default async function RootPage() {
                 Crechely vs the old way
               </h2>
             </Reveal>
-            <div className="mt-8 overflow-x-auto border border-border-strong">
-              <table className="w-full min-w-[560px] border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-border-strong bg-background">
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">&nbsp;</th>
-                    <th className="px-4 py-3 text-left font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Paper &amp; spreadsheets
-                    </th>
-                    <th className="px-4 py-3 text-left font-mono text-xs font-medium uppercase tracking-wide text-brand">
-                      Crechely
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {COMPARISON_ROWS.map((row) => (
-                    <tr key={row.label}>
-                      <td className="px-4 py-3 font-medium text-foreground">{row.label}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{row.paper}</td>
-                      <td className="px-4 py-3 text-foreground">{row.crechely}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-8 border-t border-border-strong">
+              {COMPARISON_ROWS.map((row, i) => (
+                <Reveal key={row.label} delay={i * 40}>
+                  <div className="grid items-baseline gap-x-6 gap-y-1.5 border-b border-border-strong py-4 sm:grid-cols-[180px_1fr_14px_1fr]">
+                    <span className="text-sm text-muted-foreground sm:text-[13px]">{row.label}</span>
+                    <span className="text-sm text-muted decoration-border-strong line-through decoration-2">
+                      {row.paper}
+                    </span>
+                    <span className="hidden text-border-strong sm:block" aria-hidden="true">
+                      →
+                    </span>
+                    <span className="text-sm font-medium text-foreground">{row.crechely}</span>
+                  </div>
+                </Reveal>
+              ))}
             </div>
           </div>
         </section>
