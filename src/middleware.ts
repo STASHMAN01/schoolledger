@@ -30,6 +30,13 @@ const PUBLIC_PATHS = [
   "/opengraph-image.png",
   "/twitter-image.png",
   "/brand",
+  // Marketing screenshots used by the homepage's "What it actually looks
+  // like" section (public/screenshots/*.jpg). Same class of bug as the
+  // robots.txt/sitemap.xml one above: added the folder on 1 Oct 2026 but
+  // not this entry, so every screenshot 302'd to /login and the homepage
+  // rendered four broken images for logged-out visitors (the only kind
+  // that sees the homepage). Caught by Dylan the same day.
+  "/screenshots",
   // Public "give a testimonial" submission form and its API route — no
   // login required to submit; moderation happens separately at
   // /platform/testimonials, which is NOT in this list (platform routes
