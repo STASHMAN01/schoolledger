@@ -39,6 +39,14 @@ export const PUBLIC_PATHS = [
   "/opengraph-image.png",
   "/twitter-image.png",
   "/brand",
+  // Installable-app files (manifest, service worker, offline screen). A
+  // phone fetching these has no session -- and the browser decides
+  // whether to offer "Install app" from them. Single files in public/ are
+  // NOT covered by the folder check in publicPaths.test.ts, so each one is
+  // listed here and checked by name there.
+  "/manifest.webmanifest",
+  "/sw.js",
+  "/offline.html",
   // Marketing screenshots used by the homepage's "What it actually looks
   // like" section (public/screenshots/*.jpg). Same class of bug as the
   // robots.txt/sitemap.xml one above: added the folder on 1 Oct 2026 but

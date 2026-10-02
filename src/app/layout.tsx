@@ -54,6 +54,8 @@ export const metadata: Metadata = {
   description:
     "Crechely helps preschools, nurseries and crèches run the whole centre: online applications, enrolment, attendance, classes, timetables, fees, payments and statements in one place.",
   alternates: { canonical: "/" },
+  // iPhones/iPads: "Add to Home Screen" opens the site full-screen too.
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
@@ -81,6 +83,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Colours the browser/app title bar when installed (matches --brand).
+  themeColor: "#0670b8",
 };
 
 export default function RootLayout({
