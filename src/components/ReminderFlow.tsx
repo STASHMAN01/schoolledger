@@ -1,32 +1,30 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AppFrame, DemoToastSlot } from "@/components/demo/AppFrame";
 
 /**
- * The money moment, demonstrated rather than described: a list of families
- * who are behind, one press of "Send all reminders", and each one turns to
- * "Reminder sent". This is the storyboard Dylan asked for on 2 Oct 2026 —
- * owing → send → notification → sent.
+ * The money moment, demonstrated on the real Payment reminders screen:
+ * the "Send all reminders by email" card, the All / Never reminded /
+ * Already reminded filters, and the list of families with an outstanding
+ * balance — then one press, and each family turns to reminded.
  *
- * Typeset, not a screenshot, because the point is the transition. The
- * families and balances are invented and the caller captions the panel as
- * sample data; the real captured screens are further down the page.
+ * This is Dylan's storyboard (2 Oct 2026) and it stops where his did, at
+ * "reminder sent". It does not go on to show anyone paying: sending a
+ * reminder is not a payment, and the panel should not suggest otherwise.
  *
- * It loops, unlike the hero, because this one IS the explanation — someone
- * who arrives mid-cycle should get to watch it from the start. There is a
- * long pause between runs so it never reads as a flashing advert, and
- * reduced motion stops it entirely on the finished state.
+ * Redrawn rather than screenshotted so it can move, and matched to the
+ * real screen — see src/components/demo/AppFrame.tsx.
  */
 
 const FAMILIES = [
-  { name: "Mokoena family", amount: "R1,050", child: "Grade R" },
-  { name: "Naidoo family", amount: "R750", child: "Baby Bees" },
-  { name: "Venter family", amount: "R420", child: "Ladybugs" },
+  { name: "Lerato Mokoena", klass: "Baby Bees", amount: "R 1,050.00" },
+  { name: "Aiden Pillay", klass: "Grasshoppers", amount: "R 750.00" },
+  { name: "Anika Venter", klass: "Ladybugs", amount: "R 420.00" },
 ];
 
 export function ReminderFlow() {
   const ref = useRef<HTMLDivElement>(null);
-  // -1 = nothing sent yet; 0..n-1 = that many rows sent; n = all sent.
   const [sent, setSent] = useState(0);
   const [pressing, setPressing] = useState(false);
   const [toast, setToast] = useState(false);
@@ -40,9 +38,9 @@ export function ReminderFlow() {
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     if (reduced) {
-      // Same pattern as Reveal.tsx: the preference can only be read in
-      // the browser, so the finished state is set here rather than in
-      // lazy initial state, which would differ between server and client.
+      // Same pattern as Reveal.tsx: the preference can only be read in the
+      // browser, so the finished state is set here rather than in lazy
+      // initial state, which would differ between server and client.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSent(FAMILIES.length);
       return;
@@ -55,18 +53,18 @@ export function ReminderFlow() {
       if (stopped) return;
       setSent(0);
       setToast(false);
-      timers.push(setTimeout(() => setPressing(true), 800));
+      timers.push(setTimeout(() => setPressing(true), 900));
       timers.push(
         setTimeout(() => {
           setPressing(false);
           setToast(true);
-        }, 1700),
+        }, 1800),
       );
       FAMILIES.forEach((_, i) => {
-        timers.push(setTimeout(() => setSent(i + 1), 2100 + i * 450));
+        timers.push(setTimeout(() => setSent(i + 1), 2200 + i * 450));
       });
-      // Hold the finished state, then start again.
-      timers.push(setTimeout(run, 2100 + FAMILIES.length * 450 + 4200));
+      // Hold the finished state well past the toast, then start again.
+      timers.push(setTimeout(run, 2200 + FAMILIES.length * 450 + 4500));
     };
 
     if (typeof IntersectionObserver === "undefined") {
@@ -100,14 +98,24 @@ export function ReminderFlow() {
   const allSent = sent >= FAMILIES.length;
 
   return (
-    <div ref={ref} className="rounded-3xl bg-shell p-2.5 shadow-[var(--shadow-lift)] sm:p-3">
-      <div className="relative overflow-hidden rounded-2xl bg-surface">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <span className="font-display text-sm font-semibold text-foreground">
-            Payment reminders
-          </span>
+    <div ref={ref}>
+      <AppFrame tab="Reminders">
+        <p className="font-display text-sm font-semibold text-foreground">Payment reminders</p>
+        <p className="mt-0.5 text-[9px] text-muted-foreground">
+          Every child with an outstanding balance. Email everyone at once, turn
+          on automatic reminders, or send one at a time.
+        </p>
+
+        {/* "Send all reminders by email" card, as on the real screen. */}
+        <div className="mt-2.5 flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-2.5 py-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold text-foreground">Send all reminders by email</p>
+            <p className="mt-0.5 text-[8px] text-muted-foreground">
+              {FAMILIES.length} parents with an email owe R 2,220.00 in total.
+            </p>
+          </div>
           <span
-            className={`rounded-lg bg-brand px-2.5 py-1.5 text-[11px] font-semibold text-brand-foreground ${
+            className={`shrink-0 rounded-md bg-brand px-2 py-1 text-[9px] font-semibold text-brand-foreground ${
               pressing ? "demo-ping" : ""
             }`}
           >
@@ -115,46 +123,64 @@ export function ReminderFlow() {
           </span>
         </div>
 
-        <div className="grid grid-cols-[1.4fr_0.8fr_1fr] gap-2 border-b border-border bg-background px-4 py-2 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-          <span>Family</span>
-          <span>Balance</span>
-          <span className="text-right">Status</span>
+        {/* Filter pills, as on the real screen. The counts move as the
+            reminders go out, which is what those filters are for. */}
+        <div className="mt-2 flex gap-1">
+          <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[8px] font-semibold text-brand-soft-foreground">
+            All
+          </span>
+          <span className="rounded-md px-1.5 py-0.5 text-[8px] text-muted-foreground">
+            Never reminded {FAMILIES.length - sent}
+          </span>
+          <span className="rounded-md px-1.5 py-0.5 text-[8px] text-muted-foreground">
+            Already reminded {sent}
+          </span>
         </div>
 
-        {FAMILIES.map((f, i) => {
-          const done = i < sent;
-          return (
-            <div
-              key={f.name}
-              className={`grid grid-cols-[1.4fr_0.8fr_1fr] items-center gap-2 px-4 py-2.5 text-[11px] sm:text-xs ${
-                i === FAMILIES.length - 1 ? "" : "border-b border-border"
-              }`}
-            >
-              <span className="text-foreground">
-                {f.name}
-                <span className="block text-[9px] text-muted-foreground">{f.child}</span>
-              </span>
-              <span className="font-medium text-foreground">{f.amount}</span>
-              <span
-                key={done ? "done" : "owing"}
-                className={`text-right font-medium ${
-                  done ? "text-success demo-settle" : "text-accent-soft-foreground"
+        <div className="mt-1.5 overflow-hidden rounded-lg border border-border bg-surface">
+          {FAMILIES.map((f, i) => {
+            const done = i < sent;
+            return (
+              <div
+                key={f.name}
+                className={`flex items-center justify-between gap-3 px-2.5 py-1.5 ${
+                  i === FAMILIES.length - 1 ? "" : "border-b border-border"
                 }`}
               >
-                {done ? "Reminder sent ✓" : "Owing"}
-              </span>
-            </div>
-          );
-        })}
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-[2px] border border-border-strong"
+                    aria-hidden="true"
+                  />
+                  <span className="truncate text-[9px] font-medium text-foreground">
+                    {f.name}
+                    <span className="ml-1 font-normal text-muted-foreground">{f.klass}</span>
+                  </span>
+                </div>
+                <span className="shrink-0 text-right text-[9px]">
+                  <span className="font-medium text-danger">{f.amount}</span>
+                  <span
+                    key={done ? "done" : "never"}
+                    className={`ml-1.5 ${
+                      done ? "text-success demo-settle" : "text-muted-foreground"
+                    }`}
+                  >
+                    {done ? "reminded ✓" : "never reminded"}
+                  </span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
 
-        {toast && (
-          <div className="demo-toast pointer-events-none absolute bottom-3 left-3 right-3 rounded-lg bg-foreground px-3 py-2 text-[11px] font-medium text-background shadow-[var(--shadow-lift)]">
-            {allSent
-              ? `${FAMILIES.length} reminders sent, each with the family's statement attached`
-              : "Sending reminders…"}
-          </div>
-        )}
-      </div>
+        <DemoToastSlot>
+          {toast
+            ? allSent
+              ? `${FAMILIES.length} reminders emailed, each with the family's statement attached`
+              : "Sending reminders…"
+            : null}
+        </DemoToastSlot>
+      </AppFrame>
     </div>
   );
 }

@@ -264,7 +264,7 @@ export default async function RootPage() {
             reminder goes out and a family settles. */}
         <section className="border-b border-border bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
-            <div className="grid gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-14">
+            <div className="grid min-w-0 gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-14 [&>*]:min-w-0">
               <div className="animate-in">
                 <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-brand">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
@@ -375,7 +375,7 @@ export default async function RootPage() {
         {/* The money moment, demonstrated. */}
         <section id="money" className="scroll-mt-16 border-b border-border">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-            <div className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
+            <div className="grid min-w-0 items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16 [&>*]:min-w-0">
               <Reveal>
                 <div>
                   <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-brand">

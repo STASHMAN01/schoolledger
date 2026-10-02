@@ -62,10 +62,9 @@
    * deep navy panels for the strip at the top, the founder card and the
    * closing call to action.
    *
-   * --panel is the navy; --shell is the darker frame drawn around the
-   * product window in the hero, so the screen inside it reads as a screen.
-   * Both have dark-theme values below, which the reference did not need
-   * because it had no dark mode and this site does.
+   * --panel is the navy used for the strip, the founder card and the
+   * closing section. It has a dark-theme value below, which the reference
+   * did not need because it had no dark mode and this site does.
    *
    * The reference's own blue (#1686c2) is deliberately NOT adopted: white
    * text on it misses WCAG AA. --brand stays #0670b8 for the same reason
@@ -73,7 +72,6 @@
   --panel: #0d2740;
   --panel-foreground: #ffffff;
   --panel-muted: #b8c7d6;
-  --shell: #0d1722;
   --shadow-card: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
   --shadow-lift: 0 18px 50px rgba(16, 24, 40, 0.13);
   --shadow-brand: 0 10px 22px rgba(6, 112, 184, 0.22);
@@ -122,7 +120,6 @@
   --panel: #15233a;
   --panel-foreground: #f1f5fb;
   --panel-muted: #9fb2c9;
-  --shell: #05090f;
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-lift: 0 18px 50px rgba(0, 0, 0, 0.6);
   --shadow-brand: 0 10px 22px rgba(56, 189, 248, 0.18);
@@ -163,7 +160,6 @@
   --color-panel: var(--panel);
   --color-panel-foreground: var(--panel-foreground);
   --color-panel-muted: var(--panel-muted);
-  --color-shell: var(--shell);
 
   --font-sans: var(--font-inter);
   --font-display: var(--font-lexend);
