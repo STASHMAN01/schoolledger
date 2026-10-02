@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { REQUIRED_DELETION_APPROVALS } from "@/lib/deletion";
+import { useOrg } from "@/app/dashboard/OrgContext";
 import { Button, Card, Textarea } from "@/components/ui";
 import type { ConfirmOptions } from "@/components/useConfirmDialog";
 
@@ -42,6 +42,7 @@ export function DeletionControl({
   onChanged: () => void | Promise<void>;
   confirm: (opts: ConfirmOptions) => Promise<boolean>;
 }) {
+  const { requiredDeletionApprovals } = useOrg();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promptOpen, setPromptOpen] = useState(false);
@@ -137,8 +138,9 @@ export function DeletionControl({
                 Delete &quot;{targetLabel}&quot;?
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                This needs approval from {REQUIRED_DELETION_APPROVALS} admins before anything
-                happens.
+                {requiredDeletionApprovals > 1
+                  ? `This needs approval from ${requiredDeletionApprovals} admins before anything happens.`
+                  : "You're the only admin, so your approval is all this needs. It goes to Trash for 30 days first."}
               </p>
               <label className="mt-4 block text-xs font-medium text-muted-foreground">
                 Reason for deleting (required)
@@ -181,7 +183,7 @@ export function DeletionControl({
     <div className="flex flex-col items-end gap-0.5">
       <div className="flex items-center gap-2 text-xs">
         <span className="text-accent-soft-foreground">
-          Deletion requested ({deletionRequest.approvalsCount}/{REQUIRED_DELETION_APPROVALS})
+          Deletion requested ({deletionRequest.approvalsCount}/{requiredDeletionApprovals})
         </span>
         {isAdmin && !deletionRequest.approvedByMe && (
           <button

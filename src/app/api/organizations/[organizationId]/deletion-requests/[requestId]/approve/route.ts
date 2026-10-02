@@ -3,14 +3,17 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { REQUIRED_DELETION_APPROVALS } from "@/lib/deletion";
+import { requiredApprovalsForOrg } from "@/lib/deletionApprovers";
 import { statusForEntry } from "@/lib/billing/allocation";
 
 type Params = { params: Promise<{ organizationId: string; requestId: string }> };
 
-// Records one admin's approval, and — once REQUIRED_DELETION_APPROVALS
-// distinct admins have each done this — actually performs the soft-delete
-// in the same transaction. This is the only place in the codebase that
+// Records one admin's approval, and — once enough distinct admins have
+// each done this — actually performs the soft-delete in the same
+// transaction. "Enough" is normally two, but drops to one in a school
+// that only has one person who can approve (see requiredApprovalsFor in
+// src/lib/deletion.ts), because otherwise a one-owner crèche can never
+// delete anything at all. This is the only place in the codebase that
 // ever sets Category.deletedAt / Child.deletedAt.
 export async function POST(_req: NextRequest, { params }: Params) {
   try {
@@ -53,11 +56,15 @@ export async function POST(_req: NextRequest, { params }: Params) {
         where: { id: requestId },
         select: { status: true },
       });
-      if (approvalCount < REQUIRED_DELETION_APPROVALS || current?.status !== "PENDING") {
-        return { executed: false, approvalCount };
+      // Read inside the transaction too: if an admin is removed from the
+      // school while a request is pending, the requirement should reflect
+      // who can actually approve now, not who could when it was raised.
+      const required = await requiredApprovalsForOrg(tx, organizationId);
+      if (approvalCount < required || current?.status !== "PENDING") {
+        return { executed: false, approvalCount, required };
       }
 
-      // Second (or later) distinct admin approval — execute the deletion.
+      // Enough distinct approvals — execute the deletion.
       let paymentReversal: {
         creditClawedBackCents: number;
         creditShortfallCents: number;
@@ -139,7 +146,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
         data: { status: "APPROVED", resolvedAt: new Date() },
       });
 
-      return { executed: true, approvalCount, paymentReversal };
+      return { executed: true, approvalCount, required, paymentReversal };
     });
 
     const entityType =
@@ -164,7 +171,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     return NextResponse.json({
       executed: result.executed,
       approvalCount: result.approvalCount,
-      requiredApprovals: REQUIRED_DELETION_APPROVALS,
+      requiredApprovals: result.required,
     });
   } catch (err) {
     return handleApiError(err);

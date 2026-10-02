@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../../OrgContext";
 import { Badge, Button, Card, EmptyState, PageHeader } from "@/components/ui";
-import { REQUIRED_DELETION_APPROVALS } from "@/lib/deletion";
 
 type TrashItem = {
   targetType: "CATEGORY" | "CHILD";
@@ -37,7 +36,7 @@ const TARGET_TYPE_BADGE: Record<PendingRequest["targetType"], "accent" | "brand"
 };
 
 export default function TrashPage() {
-  const { organizationId, permissions } = useOrg();
+  const { organizationId, permissions, requiredDeletionApprovals } = useOrg();
   const isAdmin = permissions.includes("APPROVE_DELETION");
   const [items, setItems] = useState<TrashItem[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
@@ -124,7 +123,7 @@ export default function TrashPage() {
     <div className="animate-in max-w-3xl">
       <PageHeader
         title="Trash"
-        description={`Deleted classes and children are kept here for 30 days before they're gone for good. Deleting any record — including a payment — always needs ${REQUIRED_DELETION_APPROVALS} admins to approve first, with a reason on record.`}
+        description={`Deleted classes and children are kept here for 30 days before they're gone for good. Deleting any record — including a payment — always needs ${requiredDeletionApprovals > 1 ? `${requiredDeletionApprovals} admins` : "an admin"} to approve first, with a reason on record.`}
       />
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
@@ -150,7 +149,7 @@ export default function TrashPage() {
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       Requested by {r.requestedBy} · {r.approvals.length}/
-                      {REQUIRED_DELETION_APPROVALS} approved
+                      {requiredDeletionApprovals} approved
                       {r.approvals.length > 0 && ` (${r.approvals.join(", ")})`}
                     </p>
                     {r.reason && (
