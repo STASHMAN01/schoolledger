@@ -1,4 +1,4 @@
-# Privacy Policy — Crechely (working name)
+# Privacy Policy — Crechely
 
 **Status: DRAFT — not yet reviewed by a lawyer. Do not publish this or start
 onboarding paying customers until a lawyer (ideally one familiar with POPIA,
@@ -6,7 +6,7 @@ since the first customers are South African schools) has reviewed it and
 the bracketed placeholders below have been filled in with your real
 business details.**
 
-_Last updated: [DATE]_
+_Last updated: 2 October 2026_
 
 ## Who this is about and who we are
 

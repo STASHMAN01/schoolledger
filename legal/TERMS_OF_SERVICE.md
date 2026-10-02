@@ -1,4 +1,4 @@
-# Terms of Service — Crechely (working name)
+# Terms of Service — Crechely
 
 **Status: DRAFT — not yet reviewed by a lawyer. Do not publish this or
 start charging customers until a lawyer has reviewed it, the bracketed
@@ -6,7 +6,7 @@ placeholders are filled in, and it's cross-checked against the Privacy
 Policy (`PRIVACY_POLICY.md` in this folder) and `SECURITY.md` in the main
 project so the three documents agree with each other.**
 
-_Last updated: [DATE]_
+_Last updated: 2 October 2026_
 
 ## 1. Who these terms are between
 
@@ -139,9 +139,10 @@ counsel, don't just fill in a number here:]
   Terms (e.g. non-payment after a reasonable cure period, fraudulent use,
   or using the Service to store data you're not permitted to hold), with
   notice where practical.
-- On termination, [FILL IN — should match the retention section of the
-  Privacy Policy: e.g. "your school's data will be available for export
-  for [N] days, after which it will be permanently deleted."]
+- On termination, your school's data stays available for export for 90
+  days, after which it is permanently deleted. This matches "How long we
+  keep it" in the Privacy Policy; if one of the two is ever changed, change
+  both.
 
 ## 10. Governing law
 

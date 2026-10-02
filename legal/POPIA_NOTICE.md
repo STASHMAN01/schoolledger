@@ -1,4 +1,4 @@
-# POPIA Notice — Crechely (working name)
+# POPIA Notice — Crechely
 
 **Status: DRAFT — not yet reviewed by a lawyer. This is a plain-language
 summary of the Protection of Personal Information Act (POPIA) points that
@@ -7,7 +7,7 @@ substitute for the full Privacy Policy (`PRIVACY_POLICY.md`), and both
 should be read together. Do not publish or rely on this until a lawyer
 familiar with POPIA has reviewed it.**
 
-_Last updated: [DATE]_
+_Last updated: 2 October 2026_
 
 ## The short version
 
