@@ -6,15 +6,25 @@ import { auth } from "@/lib/auth";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
 import { TRIAL_DAYS } from "@/lib/trial";
+// Prices come from one module so the homepage and this page can never
+// disagree -- see src/lib/pricingDisplay.ts.
+import {
+  MONTHLY_PRICE,
+  YEARLY_PRICE,
+  FOUNDING_PRICE,
+  TWELVE_MONTHS_PRICE,
+  MONTHS_FREE_ON_YEARLY,
+} from "@/lib/pricingDisplay";
+import { FOUNDING_SPOTS } from "@/lib/billing/founding";
 
 // Fixes H1 — see CRECHELY_AUDIT.md.
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `R499/month or R4,990/year, flat — one plan, everything included, no per-child fees, ${TRIAL_DAYS}-day free trial.`,
+  description: `${MONTHLY_PRICE}/month or ${YEARLY_PRICE}/year, flat — one plan, everything included, no per-child fees, ${TRIAL_DAYS}-day free trial.`,
   alternates: { canonical: "/pricing" },
   openGraph: {
     title: "Crechely pricing",
-    description: "R499/month or R4,990/year, flat — one plan, everything included.",
+    description: `${MONTHLY_PRICE}/month or ${YEARLY_PRICE}/year, flat — one plan, everything included.`,
   },
 };
 
@@ -130,7 +140,7 @@ export default async function PricingPage() {
                     Monthly
                   </span>
                   <div className="font-mono mt-1 text-2xl font-semibold text-foreground">
-                    R499<span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
+                    {MONTHLY_PRICE}<span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Pay as you go, cancel any time — no contract.
@@ -147,15 +157,16 @@ export default async function PricingPage() {
                       Yearly
                     </span>
                     <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-brand">
-                      2 months free
+                      {MONTHS_FREE_ON_YEARLY} months free
                     </span>
                   </div>
                   <div className="font-mono mt-1 text-2xl font-semibold text-foreground">
-                    R4,990<span className="ml-1 text-sm font-normal text-muted-foreground">/ year</span>
+                    {YEARLY_PRICE}<span className="ml-1 text-sm font-normal text-muted-foreground">/ year</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Billed once a year. R499 × 12 = R5,988 — you pay R4,990, exactly
-                    2 months free. 30-day money-back guarantee.
+                    Billed once a year. {MONTHLY_PRICE} × 12 = {TWELVE_MONTHS_PRICE} — you
+                    pay {YEARLY_PRICE}, exactly {MONTHS_FREE_ON_YEARLY} months free. 30-day
+                    money-back guarantee.
                   </p>
                 </div>
                 <LinkButton href="/register" size="sm">
@@ -172,11 +183,11 @@ export default async function PricingPage() {
                       Founding
                     </span>
                     <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      first 10 schools
+                      first {FOUNDING_SPOTS} schools
                     </span>
                   </div>
                   <div className="font-mono mt-1 text-2xl font-semibold text-foreground">
-                    R299<span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
+                    {FOUNDING_PRICE}<span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Locked in for as long as you stay subscribed. Choose it on the

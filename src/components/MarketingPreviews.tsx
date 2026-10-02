@@ -1,73 +1,73 @@
-// "What it looks like" panels for the homepage features section (Dylan,
-// 1 Oct 2026: "show features clearly with what each looks like"). These
-// are real screenshots of the live Crechely dashboard — captured from the
+// Real screenshots of the live Crechely dashboard, captured from the
 // "School Demo" account (seed/sample children, all enrolled the same day,
 // no real family's data) — not typeset mockups. Each is captioned as a
-// demo school below, in src/app/page.tsx.
+// demo school wherever it's used.
 //
 // Cropped tight to the content: the app's two navigation bars and the
 // page's left/right margins are cut away, so the panel shows the screen
-// itself rather than a shrunk-down browser window. Combined with the
-// wider max-w-lg slot in page.tsx, the actual content renders roughly
-// 1.8x larger than the first pass did, which was the complaint.
-// Source crops live in scratchpad/screenshots-final; the uncropped
-// captures are scratchpad/screenshots-raw.
+// itself rather than a shrunk-down browser window. Source crops live in
+// scratchpad/screenshots-final; the uncropped captures are in
+// scratchpad/screenshots-raw.
+//
+// The frame deliberately carries no title bar. It used to, and it read as
+// a stutter: the frame said "Attendance" and the screenshot immediately
+// below it said "Attendance" again. The screenshot already names itself.
 
 import Image from "next/image";
 
-function ScreenshotFrame({
-  title,
-  tag,
+function Screenshot({
   src,
   alt,
   width,
   height,
+  priority = false,
+  sizes = "(min-width: 1024px) 512px, 90vw",
 }: {
-  title: string;
-  tag?: string;
   src: string;
   alt: string;
   width: number;
   height: number;
+  priority?: boolean;
+  sizes?: string;
 }) {
   return (
     <div className="overflow-hidden border border-border-strong bg-surface">
-      <div className="flex items-baseline justify-between border-b border-border-strong px-4 py-2.5">
-        <span className="font-display text-xs font-semibold text-foreground">{title}</span>
-        {tag && <span className="font-mono text-[10px] text-muted-foreground">{tag}</span>}
-      </div>
       <Image
         src={src}
         alt={alt}
         width={width}
         height={height}
         className="block w-full"
-        sizes="(min-width: 1024px) 512px, 90vw"
+        sizes={sizes}
+        // The hero shot is the largest paint on the page; everything
+        // below the fold keeps next/image's default lazy loading.
+        priority={priority}
       />
     </div>
   );
 }
 
-export function FeesPreview() {
+export function FeesPreview({ priority = false, sizes }: { priority?: boolean; sizes?: string }) {
   return (
-    <ScreenshotFrame
-      title="Accounting — School Demo"
-      tag="Live dashboard"
+    <Screenshot
       src="/screenshots/fees.jpg"
-      alt="Crechely accounting dashboard showing outstanding fees, amount paid this month, and accounts due, for a demo school of 30 children"
-      width={1176}
-      height={314}
+      alt="The Crechely accounting screen for a demo school: outstanding fees of R426,000, amount paid this month, accounts due, reminders and active children"
+      // Cropped narrower than the other three (813px, not 1176): this one
+      // sits beside the headline rather than filling a column, and at the
+      // wider crop the figures were too small to read at hero size.
+      width={813}
+      height={312}
+      priority={priority}
+      sizes={sizes}
     />
   );
 }
 
 export function RemindersPreview() {
   return (
-    <ScreenshotFrame
-      title="Payment reminders"
-      tag="Live dashboard"
+    <Screenshot
       src="/screenshots/reminders.jpg"
-      alt="Crechely's payment reminders screen, showing the option to email all families who owe fees at once, or turn on automatic reminders"
+      alt="Crechely's payment reminders screen, with a button to email every family who owes fees and an option to turn on automatic reminders"
       width={1176}
       height={314}
     />
@@ -76,11 +76,9 @@ export function RemindersPreview() {
 
 export function AttendancePreview() {
   return (
-    <ScreenshotFrame
-      title="Attendance"
-      tag="Live dashboard"
+    <Screenshot
       src="/screenshots/attendance.jpg"
-      alt="Crechely's attendance register for a class, with every child marked Present and a Save register button"
+      alt="Crechely's attendance register for one class, each child marked Present, with a Save register button"
       width={1176}
       height={448}
     />
@@ -89,11 +87,9 @@ export function AttendancePreview() {
 
 export function DocumentsPreview() {
   return (
-    <ScreenshotFrame
-      title="Missing documents"
-      tag="Live dashboard"
+    <Screenshot
       src="/screenshots/documents.jpg"
-      alt="Crechely's missing documents list, showing which children still need a birth certificate, clinic card, or parent ID on file"
+      alt="Crechely's missing documents list, showing which children still need a birth certificate, clinic card or parent ID"
       width={1176}
       height={452}
     />
