@@ -448,8 +448,10 @@ export default async function RootPage() {
             <p className="mt-8 max-w-2xl border-t border-border pt-6 text-xs text-muted-foreground">
               To be clear: Crechely <strong className="text-foreground">records</strong>{" "}
               cash, EFT and card payments your school has already received. It
-              doesn&rsquo;t collect money from parents itself. Reminders go out by
-              email only, and Crechely doesn&rsquo;t send WhatsApp messages.
+              doesn&rsquo;t collect money from parents itself. The reminders it
+              sends go out by email only — it can write a WhatsApp reminder and
+              open it in your own WhatsApp, but it never sends WhatsApp messages
+              on your behalf.
             </p>
             {/* H2: second low-commitment CTA, after the benefits section. */}
             <p className="mt-4 text-sm text-muted-foreground">

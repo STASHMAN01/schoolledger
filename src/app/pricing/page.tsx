@@ -77,7 +77,7 @@ const FAQ = [
   },
   {
     q: "How do reminders reach families?",
-    a: "By email, to the address on the child's record. There are no SMS or WhatsApp reminders.",
+    a: "Crechely sends them by email, to the address on the child's record, with the family's statement attached. It can also write a WhatsApp reminder and open it in your own WhatsApp for you to send — but it never sends WhatsApp messages on your behalf. There are no SMS reminders.",
   },
 ];
 
@@ -203,8 +203,10 @@ export default async function PricingPage() {
           <p className="mt-4 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground">
             Crechely <strong>records</strong> the cash, EFT, and card payments your
             school already receives — it does not collect money from parents
-            itself. Reminders go out by email (with each family&rsquo;s statement
-            attached) or WhatsApp, to the contact on each child&rsquo;s record.
+            itself. The reminders Crechely sends go out by email, with each
+            family&rsquo;s statement attached. It can also write a WhatsApp
+            reminder and open it in your own WhatsApp for you to send, but it
+            never sends WhatsApp messages on your behalf.
           </p>
 
           <div className="mt-10 border-t border-border pt-8">
