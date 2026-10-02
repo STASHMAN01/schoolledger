@@ -25,6 +25,7 @@ const ACCOUNTING_LINKS: NavLink[] = [
   { href: "/dashboard/accounting/classes", label: "Classes" },
   { href: "/dashboard/accounting/events", label: "Events" },
   { href: "/dashboard/accounting/reminders", label: "Reminders" },
+  { href: "/dashboard/accounting/files", label: "Files" },
 ];
 
 // Centre Management, in the order of Dylan's mock-up (23 Sept). Children
@@ -39,6 +40,7 @@ const CENTRE_LINKS: NavLink[] = [
   { href: "/dashboard/centre/documents", label: "Documents" },
   { href: "/dashboard/centre/attendance", label: "Attendance" },
   { href: "/dashboard/centre/reports", label: "Reports" },
+  { href: "/dashboard/centre/files", label: "Files" },
   { href: "/dashboard/centre/classes", label: "Classes" },
   { href: "/dashboard/centre/schedule", label: "Timetable" },
   { href: "/dashboard/centre/events", label: "Events" },
@@ -78,6 +80,10 @@ const LINK_REQUIRES: Record<string, string[]> = {
   "/dashboard/accounting/payments": ["VIEW_MONEY"],
   "/dashboard/accounting/events": ["VIEW_MONEY"],
   "/dashboard/accounting/reminders": ["VIEW_MONEY"],
+  // Files only has Statements in Accounting; in Centre it has a folder
+  // per kind of document, each behind its own permission (src/lib/files.ts).
+  "/dashboard/accounting/files": ["VIEW_MONEY"],
+  "/dashboard/centre/files": ["VIEW_MONEY", "MANAGE_CHILDREN", "MANAGE_REPORTS", "MANAGE_ATTENDANCE"],
   "/dashboard/centre/forms": ["MANAGE_CHILDREN"],
   "/dashboard/centre/attendance": ["MANAGE_ATTENDANCE"],
   "/dashboard/centre/reports": ["MANAGE_REPORTS"],
