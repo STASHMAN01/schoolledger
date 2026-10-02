@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { emailSchema } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
+import { isTokenStillValid } from "@/lib/tokenVersion";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
@@ -84,14 +85,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Invalidate this token if the user's tokenVersion has since been
       // bumped (password change, admin-forced logout, suspected compromise).
+      // A failed lookup keeps the session -- see src/lib/tokenVersion.ts.
       if (typeof token.userId === "string") {
-        const current = await db.user.findUnique({
-          where: { id: token.userId },
-          select: { tokenVersion: true },
-        });
-        if (!current || current.tokenVersion !== token.tokenVersion) {
-          return {};
-        }
+        const userId = token.userId;
+        const valid = await isTokenStillValid(token.tokenVersion, () =>
+          db.user.findUnique({ where: { id: userId }, select: { tokenVersion: true } }),
+        );
+        if (!valid) return {};
       }
 
       return token;
