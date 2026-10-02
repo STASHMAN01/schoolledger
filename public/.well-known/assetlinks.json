@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "za.co.crechely.app",
+      "sha256_cert_fingerprints": [
+        "97:6A:20:68:13:E3:14:29:25:35:DD:84:CA:12:08:C9:10:35:2C:0F:F6:87:A8:FC:89:44:E2:39:18:80:E3:56"
+      ]
+    }
+  }
+]
