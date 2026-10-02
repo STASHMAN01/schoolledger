@@ -13,11 +13,18 @@ import {
   YEARLY_PRICE,
   FOUNDING_PRICE,
   TWELVE_MONTHS_PRICE,
+  YEARLY_VS_MONTHLY,
   MONTHS_FREE_ON_YEARLY,
+  PLAN_INCLUDES,
 } from "@/lib/pricingDisplay";
-import { FOUNDING_SPOTS } from "@/lib/billing/founding";
+import { FOUNDING_SPOTS, foundingSpotsLeft } from "@/lib/billing/founding";
 
-// Fixes H1 — see CRECHELY_AUDIT.md.
+// Styled to match the homepage after its 2 Oct 2026 rebuild: navy strip,
+// dot-led eyebrows, rounded cards with soft shadows, the founding offer
+// featured and badged, objections and FAQ as expandable panels, navy
+// closing section. The content is unchanged -- it was already the
+// strongest part of this page -- only its presentation.
+
 export const metadata: Metadata = {
   title: "Pricing",
   description: `${MONTHLY_PRICE}/month or ${YEARLY_PRICE}/year, flat — one plan, everything included, no per-child fees, ${TRIAL_DAYS}-day free trial.`,
@@ -28,10 +35,8 @@ export const metadata: Metadata = {
   },
 };
 
-// H6: this used to repeat the homepage's feature list, which doesn't
-// answer what someone on a pricing page is actually asking. These are the
-// specific objections a price-sensitive buyer comparing 2-3 tools in one
-// evening would have.
+// The specific objections a price-sensitive buyer comparing 2-3 tools in
+// one evening would have.
 const OBJECTIONS = [
   {
     q: `What happens on day ${TRIAL_DAYS + 1}, if I haven't paid?`,
@@ -55,7 +60,6 @@ const OBJECTIONS = [
   },
 ];
 
-// H7.
 const FAQ = [
   {
     q: "How long does setup take?",
@@ -92,199 +96,253 @@ const FAQ = [
 ];
 
 export default async function PricingPage() {
-  const session = await auth();
+  const [session, spotsLeft] = await Promise.all([
+    auth(),
+    // Counted from real subscriptions. Never hardcode this: a places-left
+    // figure that doesn't move is an invented scarcity claim.
+    foundingSpotsLeft(),
+  ]);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <div className="bg-panel px-4 py-2 text-center text-xs text-panel-muted">
+        Built for preschools, nurseries &amp; crèches · Made in South Africa
+      </div>
+
       <MarketingHeader isAuthenticated={Boolean(session?.user?.id)} />
 
       <main className="flex-1">
-        <section className="mx-auto max-w-3xl px-4 pb-6 pt-14 sm:px-6 sm:pt-20">
-          <p className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-brand">
-            Pricing
-          </p>
-          {/* H5: single value framing sitewide — "one paying family a
-              month covers it" — replacing the old "one term of one
-              child's fees" line here so the site says one thing, not two. */}
-          <h1 className="font-display mt-3 max-w-lg text-3xl font-semibold text-foreground sm:text-4xl">
-            One paying family a month covers your whole school.
-          </h1>
-          <p className="mt-3 max-w-md text-sm text-muted-foreground">
-            One plan, no tiers, nothing locked behind a higher price.
-          </p>
-          <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
-            <span className="text-success">✓</span> No card, no commitment — free for {TRIAL_DAYS} days.
-          </p>
+        <section className="border-b border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-brand">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
+              Pricing
+            </p>
+            <h1 className="font-display mt-4 max-w-2xl text-[clamp(2.1rem,4.2vw,3.4rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-foreground">
+              One paying family a month covers your whole school.
+            </h1>
+            <p className="mt-4 max-w-lg text-base text-muted-foreground sm:text-lg">
+              One plan, no tiers, nothing locked behind a higher price. Every
+              feature, whether you have 10 children or 200.
+            </p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              No card, no commitment — free for {TRIAL_DAYS} days.
+            </p>
+
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
+              {/* The founding offer leads: it is the one worth noticing, and
+                  the places-left figure is counted from real subscriptions,
+                  never typed in — see foundingSpotsLeft(). */}
+              <div className="relative flex h-full flex-col rounded-2xl border-2 border-brand bg-background p-6 shadow-[var(--shadow-brand)]">
+                <span className="absolute -top-3 right-5 rounded-full bg-brand px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-foreground">
+                  First {FOUNDING_SPOTS} schools
+                </span>
+                <h2 className="font-display text-base font-semibold text-foreground">
+                  Founding price
+                </h2>
+                <p className="font-display mt-2 text-4xl font-semibold tracking-[-0.04em] text-foreground">
+                  {FOUNDING_PRICE}
+                  <span className="ml-1 text-sm font-normal tracking-normal text-muted-foreground">
+                    / month
+                  </span>
+                </p>
+                <p className="mt-2 min-h-14 text-sm text-muted-foreground">
+                  Locked in for as long as you stay subscribed. Choose it on the
+                  Billing page after your free trial.
+                  {spotsLeft > 0
+                    ? ` ${spotsLeft} of ${FOUNDING_SPOTS} places still open.`
+                    : " All places have been taken."}
+                </p>
+                <Includes />
+                <div className="mt-auto pt-6">
+                  <LinkButton href="/register" className="w-full justify-center">
+                    Start my free trial
+                  </LinkButton>
+                </div>
+              </div>
+
+              <PlanCard
+                name="Monthly"
+                price={MONTHLY_PRICE}
+                per="/ month"
+                blurb="Pay as you go, cancel any time — no contract."
+              />
+              <PlanCard
+                name="Yearly"
+                price={YEARLY_PRICE}
+                per="/ year"
+                blurb={`Billed once a year. ${MONTHLY_PRICE} × 12 = ${TWELVE_MONTHS_PRICE}, so you save ${YEARLY_VS_MONTHLY} — exactly ${MONTHS_FREE_ON_YEARLY} months free, with a 30-day money-back guarantee.`}
+              />
+            </div>
+
+            <p className="mt-5 text-xs text-muted-foreground">
+              All prices in South African Rand. Crechely is not VAT-registered, so no VAT is added to
+              these prices. Cancel any time from Settings → Billing — see our{" "}
+              <Link href="/refund-policy" className="text-brand hover:underline">
+                refund and cancellation policy
+              </Link>
+              .
+            </p>
+
+            <p className="mt-5 max-w-3xl rounded-xl border border-border bg-background px-4 py-3 text-sm text-muted-foreground">
+              Crechely <strong className="text-foreground">records</strong> the cash, EFT and card
+              payments your school already receives — it does not collect money from parents itself.
+              The reminders Crechely sends go out by email, with each family&rsquo;s statement
+              attached. It can also write a WhatsApp reminder and open it in your own WhatsApp for
+              you to send, but it never sends WhatsApp messages on your behalf.
+            </p>
+          </div>
         </section>
 
-        {/* H5: one card with a monthly/yearly toggle, not two competing
-            cards — two cards read as "which plan is right for me," which
-            contradicts "no tiers." Toggle is server-rendered as two
-            visible rows here (no client JS needed) but styled as one
-            unit — see BEFORE_AFTER.md if a true interactive toggle is
-            wanted later. */}
-        <section className="mx-auto max-w-3xl px-4 pb-14 sm:px-6">
-          <div className="border border-border-strong bg-surface">
-            <div className="flex flex-col gap-1 px-5 py-6 sm:px-6">
-              <span className="font-display text-base font-semibold text-foreground">
-                Crechely — one plan, everything included
-              </span>
-              <p className="text-sm text-muted-foreground">
-                Every feature, for every school, whether you have 10 children or 200.
-                Nothing to upgrade into later.
-              </p>
-            </div>
-            <div className="grid divide-y divide-border-strong border-t border-border-strong sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              <div className="flex flex-col justify-between gap-4 px-5 py-6 sm:px-6">
-                <div>
-                  <span className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Monthly
-                  </span>
-                  <div className="font-mono mt-1 text-2xl font-semibold text-foreground">
-                    {MONTHLY_PRICE}<span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Pay as you go, cancel any time — no contract.
-                  </p>
-                </div>
-                <LinkButton href="/register" size="sm">
-                  Start free trial
-                </LinkButton>
-              </div>
-              <div className="flex flex-col justify-between gap-4 bg-brand-soft/40 px-5 py-6 sm:px-6">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Yearly
-                    </span>
-                    <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-brand">
-                      {MONTHS_FREE_ON_YEARLY} months free
-                    </span>
-                  </div>
-                  <div className="font-mono mt-1 text-2xl font-semibold text-foreground">
-                    {YEARLY_PRICE}<span className="ml-1 text-sm font-normal text-muted-foreground">/ year</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Billed once a year. {MONTHLY_PRICE} × 12 = {TWELVE_MONTHS_PRICE} — you
-                    pay {YEARLY_PRICE}, exactly {MONTHS_FREE_ON_YEARLY} months free. 30-day
-                    money-back guarantee.
-                  </p>
-                </div>
-                <LinkButton href="/register" size="sm">
-                  Start free trial
-                </LinkButton>
-              </div>
-              {/* Founding-school offer (Dylan, 29 Sept 2026), now a proper
-                  3rd plan column rather than a banner underneath, per
-                  Dylan's "show it like plans" note (1 Oct 2026). */}
-              <div className="flex flex-col justify-between gap-4 border-2 border-brand px-5 py-6 sm:px-6">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-medium uppercase tracking-wide text-brand">
-                      Founding
-                    </span>
-                    <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      first {FOUNDING_SPOTS} schools
-                    </span>
-                  </div>
-                  <div className="font-mono mt-1 text-2xl font-semibold text-foreground">
-                    {FOUNDING_PRICE}<span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Locked in for as long as you stay subscribed. Choose it on the
-                    Billing page after your free trial.
-                  </p>
-                </div>
-                <LinkButton href="/register" size="sm">
-                  Start free trial
-                </LinkButton>
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-3 text-xs text-muted-foreground">
-            All prices in South African Rand. Crechely is not VAT-registered, so no VAT is added to these
-            prices. Cancel any time from Settings → Billing — see our{" "}
-            <Link href="/refund-policy" className="text-brand hover:underline">
-              refund and cancellation policy
-            </Link>
-            .
-          </p>
-
-          {/* H8: product truth, stated plainly, not buried. */}
-          <p className="mt-4 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground">
-            Crechely <strong>records</strong> the cash, EFT, and card payments your
-            school already receives — it does not collect money from parents
-            itself. The reminders Crechely sends go out by email, with each
-            family&rsquo;s statement attached. It can also write a WhatsApp
-            reminder and open it in your own WhatsApp for you to send, but it
-            never sends WhatsApp messages on your behalf.
-          </p>
-
-          <div className="mt-10 border-t border-border pt-8">
-            <h2 className="font-display text-base font-semibold text-foreground">
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+            <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
               Before you commit
             </h2>
-            <div className="mt-4 flex flex-col divide-y divide-border">
+            <div className="mt-8 grid max-w-3xl gap-3">
               {OBJECTIONS.map((o) => (
-                <div key={o.q} className="py-3">
-                  <p className="text-sm font-medium text-foreground">{o.q}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{o.a}</p>
-                </div>
+                <Panel key={o.q} q={o.q} a={o.a} />
               ))}
             </div>
           </div>
+        </section>
 
-          <div className="mt-10 border-t border-border pt-8">
-            <h2 className="font-display text-base font-semibold text-foreground">
+        <section className="border-b border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+            <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
               Frequently asked questions
             </h2>
-            <div className="mt-4 flex flex-col divide-y divide-border">
+            <div className="mt-8 grid max-w-3xl gap-3">
               {FAQ.map((f) => (
-                <div key={f.q} className="py-3">
-                  <p className="text-sm font-medium text-foreground">{f.q}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{f.a}</p>
-                </div>
+                <Panel key={f.q} q={f.q} a={f.a} surface />
               ))}
             </div>
           </div>
+        </section>
 
-          <p className="mt-10 text-sm text-muted-foreground">
-            Not sure yet? Start the free trial — no card needed — and decide
-            once you&rsquo;ve actually used it with your real families. Prefer to
-            talk first? Email{" "}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium text-brand hover:underline">
-              {SUPPORT_EMAIL}
-            </a>
-            {WHATSAPP_NUMBER && (
-              <>
-                {" "}
-                or{" "}
-                <a
-                  href={WHATSAPP_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-brand hover:underline"
-                >
-                  WhatsApp us
-                </a>
-              </>
-            )}{" "}
-            and we&rsquo;ll send a sample statement so you can see the actual output
-            before signing up.
-          </p>
-
-          <div className="mt-6">
-            <Link
-              href="/register"
-              className="text-sm font-medium text-foreground underline decoration-border-strong underline-offset-4 hover:decoration-foreground"
-            >
-              Start free trial →
-            </Link>
+        <section className="bg-panel text-panel-foreground">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-16">
+              <div>
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-panel-muted">
+                  <span className="h-1.5 w-1.5 rounded-full bg-panel-muted" aria-hidden="true" />
+                  Still deciding
+                </p>
+                <h2 className="font-display mt-3 max-w-xl text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
+                  Try it with your real families first.
+                </h2>
+                <p className="mt-3 max-w-lg text-sm text-panel-muted">
+                  Start the free trial — no card needed — and decide once
+                  you&rsquo;ve actually used it. Prefer to talk first? Email{" "}
+                  <a
+                    href={`mailto:${SUPPORT_EMAIL}`}
+                    className="font-medium text-panel-foreground underline underline-offset-4"
+                  >
+                    {SUPPORT_EMAIL}
+                  </a>
+                  {WHATSAPP_NUMBER && (
+                    <>
+                      {" "}
+                      or{" "}
+                      <a
+                        href={WHATSAPP_LINK}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-panel-foreground underline underline-offset-4"
+                      >
+                        WhatsApp us
+                      </a>
+                    </>
+                  )}{" "}
+                  and we&rsquo;ll send a sample statement so you can see the actual
+                  output before signing up.
+                </p>
+              </div>
+              <Link
+                href="/register"
+                className="lift-on-hover inline-flex min-h-12 shrink-0 items-center rounded-xl bg-panel-foreground px-6 text-sm font-semibold text-panel"
+              >
+                Start my free trial
+              </Link>
+            </div>
           </div>
         </section>
       </main>
 
       <MarketingFooter />
     </div>
+  );
+}
+
+function Includes() {
+  return (
+    <ul className="mt-5 grid gap-2 border-t border-border pt-5 text-sm text-muted-foreground">
+      {PLAN_INCLUDES.map((item) => (
+        <li key={item} className="flex gap-2">
+          <span className="font-semibold text-success" aria-hidden="true">
+            ✓
+          </span>
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PlanCard({
+  name,
+  price,
+  per,
+  blurb,
+}: {
+  name: string;
+  price: string;
+  per: string;
+  blurb: string;
+}) {
+  return (
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-background p-6 shadow-[var(--shadow-card)]">
+      <h2 className="font-display text-base font-semibold text-foreground">{name}</h2>
+      <p className="font-display mt-2 text-4xl font-semibold tracking-[-0.04em] text-foreground">
+        {price}
+        <span className="ml-1 text-sm font-normal tracking-normal text-muted-foreground">{per}</span>
+      </p>
+      <p className="mt-2 min-h-14 text-sm text-muted-foreground">{blurb}</p>
+      <Includes />
+      <div className="mt-auto pt-6">
+        <LinkButton href="/register" variant="secondary" className="w-full justify-center">
+          Start my free trial
+        </LinkButton>
+      </div>
+    </div>
+  );
+}
+
+function Panel({ q, a, surface = false }: { q: string; a: string; surface?: boolean }) {
+  return (
+    <details
+      className={`group rounded-2xl border border-border px-5 py-4 shadow-[var(--shadow-card)] ${
+        surface ? "bg-background" : "bg-surface"
+      }`}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-sm font-semibold text-foreground">
+        {q}
+        <svg
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+          viewBox="0 0 12 12"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M2.5 4.5L6 8l3.5-3.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </summary>
+      <p className="mt-3 text-sm text-muted-foreground">{a}</p>
+    </details>
   );
 }

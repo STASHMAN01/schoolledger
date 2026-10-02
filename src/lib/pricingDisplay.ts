@@ -37,3 +37,18 @@ export const YEARLY_VS_MONTHLY = rand(MONTHLY_PRICE_CENTS * 12 - YEARLY_PRICE_CE
  */
 export const MONTHS_FREE_ON_YEARLY =
   (MONTHLY_PRICE_CENTS * 12 - YEARLY_PRICE_CENTS) / MONTHLY_PRICE_CENTS;
+
+/**
+ * What the one plan includes, shown on every pricing card.
+ *
+ * Here rather than in a page so the homepage's pricing section and
+ * /pricing list the same things. Every line is a feature that exists
+ * today; don't add one until it ships.
+ */
+export const PLAN_INCLUDES = [
+  "Centre management",
+  "Fees & statements",
+  "Attendance & registers",
+  "Applications & child records",
+  "Staff permissions",
+];

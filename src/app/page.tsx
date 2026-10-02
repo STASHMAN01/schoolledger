@@ -18,6 +18,7 @@ import {
   YEARLY_VS_MONTHLY,
   FOUNDING_PRICE,
   MONTHS_FREE_ON_YEARLY,
+  PLAN_INCLUDES,
 } from "@/lib/pricingDisplay";
 
 // Visual language and section order both follow the reference concept
@@ -204,13 +205,6 @@ const FEATURE_GROUPS = [
   },
 ];
 
-const PLAN_INCLUDES = [
-  "Centre management",
-  "Fees & statements",
-  "Attendance & registers",
-  "Applications & child records",
-  "Staff permissions",
-];
 
 const HOME_FAQ = [
   {
@@ -654,7 +648,7 @@ export default async function RootPage() {
               {/* Founding offer first and featured: it is the one worth
                   noticing, and its places-left figure is counted from real
                   subscriptions — see foundingSpotsLeft(). */}
-              <div className="relative h-full rounded-2xl border-2 border-brand bg-background p-6 shadow-[var(--shadow-brand)]">
+              <div className="relative flex h-full flex-col rounded-2xl border-2 border-brand bg-background p-6 shadow-[var(--shadow-brand)]">
                 <span className="absolute -top-3 right-5 rounded-full bg-brand px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-foreground">
                   First {FOUNDING_SPOTS} schools
                 </span>
@@ -674,9 +668,11 @@ export default async function RootPage() {
                     : " All places have been taken."}
                 </p>
                 <PlanIncludes />
-                <LinkButton href="/register" className="mt-6 w-full justify-center">
-                  Start my free trial
-                </LinkButton>
+                <div className="mt-auto pt-6">
+                  <LinkButton href="/register" className="w-full justify-center">
+                    Start my free trial
+                  </LinkButton>
+                </div>
               </div>
 
               <PlanCard
@@ -827,7 +823,7 @@ function PlanCard({
   blurb: string;
 }) {
   return (
-    <div className="h-full rounded-2xl border border-border bg-background p-6 shadow-[var(--shadow-card)]">
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-background p-6 shadow-[var(--shadow-card)]">
       <h3 className="font-display text-base font-semibold text-foreground">{name}</h3>
       <p className="font-display mt-2 text-4xl font-semibold tracking-[-0.04em] text-foreground">
         {price}
@@ -837,13 +833,11 @@ function PlanCard({
       </p>
       <p className="mt-2 min-h-10 text-sm text-muted-foreground">{blurb}</p>
       <PlanIncludes />
-      <LinkButton
-        href="/register"
-        variant="secondary"
-        className="mt-6 w-full justify-center"
-      >
-        Start my free trial
-      </LinkButton>
+      <div className="mt-auto pt-6">
+        <LinkButton href="/register" variant="secondary" className="w-full justify-center">
+          Start my free trial
+        </LinkButton>
+      </div>
     </div>
   );
 }
