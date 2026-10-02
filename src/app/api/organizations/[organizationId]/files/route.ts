@@ -254,6 +254,7 @@ export async function GET(req: NextRequest, { params }: Params) {
                 detail: `${latest.joint ? "Joint statement, generated" : "Generated"} ${dayMonthYear(latest.at, tz)}`,
                 href,
                 downloadHref: withDownload(href),
+                shareable: true,
               },
             ];
           }

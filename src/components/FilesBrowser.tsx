@@ -14,6 +14,7 @@ import { useSearchParams } from "next/navigation";
 import { useOrg } from "@/app/dashboard/OrgContext";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
 import type { FileEntry, FilesMode, FilesResponse } from "@/lib/files";
+import { canShareFiles, sharePdfFromUrl } from "@/lib/sharePdf";
 
 function FolderIcon() {
   return (
@@ -60,6 +61,26 @@ function FolderRow({ href, title, subtitle }: { href: string; title: string; sub
 }
 
 function FileRow({ file }: { file: FileEntry }) {
+  const [canShare, setCanShare] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  // Only phones/tablets (and some desktops) can share files; check on mount.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time feature detection on mount
+    setCanShare(canShareFiles());
+  }, []);
+
+  async function share() {
+    setSharing(true);
+    setShareError(null);
+    const result = await sharePdfFromUrl(file.downloadHref, `${file.name}.pdf`);
+    if (!result.ok && !result.cancelled) setShareError(result.message);
+    setSharing(false);
+  }
+
+  const buttonClass =
+    "transition-standard rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-background";
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-3">
       <FileIcon />
@@ -68,21 +89,19 @@ function FileRow({ file }: { file: FileEntry }) {
         <p className="truncate text-xs text-muted-foreground">{file.detail}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <a
-          href={file.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="transition-standard rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-background"
-        >
+        <a href={file.href} target="_blank" rel="noopener noreferrer" className={buttonClass}>
           Open
         </a>
-        <a
-          href={file.downloadHref}
-          className="transition-standard rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-background"
-        >
+        <a href={file.downloadHref} className={buttonClass}>
           Download
         </a>
+        {file.shareable && canShare && (
+          <button type="button" onClick={share} disabled={sharing} className={`${buttonClass} disabled:opacity-50`}>
+            {sharing ? "Preparing…" : "Share"}
+          </button>
+        )}
       </div>
+      {shareError && <p className="w-full text-xs text-danger">{shareError}</p>}
     </div>
   );
 }

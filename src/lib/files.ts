@@ -233,6 +233,8 @@ export type FileEntry = {
   detail: string;
   href: string;
   downloadHref: string;
+  // Show a Share button (statements: the phone's share sheet, e.g. WhatsApp).
+  shareable?: boolean;
 };
 
 export type ChildEntry = {
