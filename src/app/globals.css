@@ -56,6 +56,27 @@
   --chart-cat-1: #2a78d6;
   --chart-cat-2: #eb6834;
   --chart-cat-3: #1baf7a;
+
+  /* Surfaces and depth for the marketing pages (2 Oct 2026). Dylan asked
+   * for the look of a reference concept: rounded cards, soft shadows, and
+   * deep navy panels for the strip at the top, the founder card and the
+   * closing call to action.
+   *
+   * --panel is the navy; --shell is the darker frame drawn around the
+   * product window in the hero, so the screen inside it reads as a screen.
+   * Both have dark-theme values below, which the reference did not need
+   * because it had no dark mode and this site does.
+   *
+   * The reference's own blue (#1686c2) is deliberately NOT adopted: white
+   * text on it misses WCAG AA. --brand stays #0670b8 for the same reason
+   * it was chosen originally; see the note at the top of this file. */
+  --panel: #0d2740;
+  --panel-foreground: #ffffff;
+  --panel-muted: #b8c7d6;
+  --shell: #0d1722;
+  --shadow-card: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-lift: 0 18px 50px rgba(16, 24, 40, 0.13);
+  --shadow-brand: 0 10px 22px rgba(6, 112, 184, 0.22);
 }
 
 /* CHANGELOG (2026-09-19): this used to auto-switch to dark colours
@@ -97,6 +118,15 @@
   --chart-cat-1: #3987e5;
   --chart-cat-2: #d95926;
   --chart-cat-3: #199e70;
+
+  --panel: #15233a;
+  --panel-foreground: #f1f5fb;
+  --panel-muted: #9fb2c9;
+  --shell: #05090f;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 18px 50px rgba(0, 0, 0, 0.6);
+  --shadow-brand: 0 10px 22px rgba(56, 189, 248, 0.18);
+
 }
 
 @theme inline {
@@ -129,6 +159,11 @@
   --color-chart-cat-1: var(--chart-cat-1);
   --color-chart-cat-2: var(--chart-cat-2);
   --color-chart-cat-3: var(--chart-cat-3);
+
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-panel-muted: var(--panel-muted);
+  --color-shell: var(--shell);
 
   --font-sans: var(--font-inter);
   --font-display: var(--font-lexend);
@@ -189,5 +224,68 @@ h1, h2, h3, h4, h5, h6 {
 @media (prefers-reduced-motion: reduce) {
   .animate-in {
     animation: none;
+  }
+}
+
+/* ── Product-demo motion ───────────────────────────────────────────────
+ * Dylan, 2 Oct 2026: "static for information, motion for attention and
+ * demonstration." These keyframes exist for exactly one job — showing a
+ * reminder going out and a balance being settled — and are used only by
+ * HeroDashboard and ReminderFlow. There is no decorative motion on the
+ * page: no animated gradients, no parallax, no floating shapes.
+ *
+ * Every one of them is inside prefers-reduced-motion: no-preference. The
+ * components also check the same preference in JS and jump straight to
+ * the finished state, so someone with reduced motion sees the outcome
+ * (reminder sent, balance paid) without the journey. */
+@media (prefers-reduced-motion: no-preference) {
+  .demo-toast {
+    animation: demo-toast 3.2s ease-out both;
+  }
+  .demo-settle {
+    animation: demo-settle 0.45s ease-out both;
+  }
+  .demo-ping {
+    animation: demo-ping 0.9s ease-out 2;
+  }
+  .demo-tick {
+    animation: demo-tick 0.35s ease-out both;
+  }
+}
+
+@keyframes demo-toast {
+  0% { opacity: 0; transform: translateY(6px) scale(0.98); }
+  10%, 80% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+@keyframes demo-settle {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* A button briefly "activating", as if someone pressed it. Deliberately
+ * finite (2 runs) rather than an infinite pulse — a CTA that never stops
+ * moving reads as nagging, not as a demonstration. */
+@keyframes demo-ping {
+  0% { box-shadow: 0 0 0 0 rgba(6, 112, 184, 0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(6, 112, 184, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(6, 112, 184, 0); }
+}
+
+@keyframes demo-tick {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Buttons lift slightly on hover (reference concept's treatment). Pointer
+ * devices only, so it never fires as a sticky state on a phone. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .lift-on-hover {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .lift-on-hover:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lift);
   }
 }

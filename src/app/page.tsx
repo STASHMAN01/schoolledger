@@ -6,7 +6,9 @@ import { LinkButton } from "@/components/ui";
 import { MarketingHeader } from "@/components/MarketingHeader";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { Reveal } from "@/components/Reveal";
-import { AttendancePreview, DocumentsPreview, FeesPreview, RemindersPreview } from "@/components/MarketingPreviews";
+import { HeroDashboard } from "@/components/HeroDashboard";
+import { ReminderFlow } from "@/components/ReminderFlow";
+import { AttendancePreview, DocumentsPreview } from "@/components/MarketingPreviews";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
 import { TRIAL_DAYS } from "@/lib/trial";
 import { FOUNDING_SPOTS, foundingSpotsLeft } from "@/lib/billing/founding";
@@ -18,22 +20,28 @@ import {
   MONTHS_FREE_ON_YEARLY,
 } from "@/lib/pricingDisplay";
 
-// Page order follows the conversion-first structure Dylan asked for
-// (2 Oct 2026, from a reference concept): hero with the product visible
-// immediately, then who it's for, the problem in the owner's own words,
-// the money moment, the rest of the product, the old way, the full
-// feature list, founder proof, pricing, objections, one final ask.
+// Visual language and section order both follow the reference concept
+// Dylan supplied (2 Oct 2026): navy panels, rounded cards with soft
+// shadows, a product window in the hero, a job/Crechely/old-way table,
+// three pricing cards with the founding offer featured.
 //
-// Two things in that reference were deliberately not carried over. Its
-// hero and fee tables were hand-drawn mockups with invented families and
-// balances; the real screenshots below say the same thing and are true.
-// And its section headings were notes written to Dylan about the redesign
-// ("Why this hero is different", "The feature I would make impossible to
-// miss") rather than copy for a preschool owner to read.
+// Two departures from the reference, both deliberate:
+//   - Its blue (#1686c2) is not used. White text on it misses WCAG AA;
+//     --brand (#0670b8) was picked for that reason and is kept.
+//   - Its section headings were notes written to Dylan about the redesign
+//     ("Why this hero is different", "The feature I would make impossible
+//     to miss"). Those are replaced with copy aimed at a preschool owner.
+//
+// Motion: only the hero panel and the reminder demo move, and both are
+// demonstrating the product. Nothing decorative animates, and everything
+// respects prefers-reduced-motion — see globals.css.
 
-// The three questions a principal actually asks, in their words. Lifted
-// from the problem Dylan describes in the founder section below — arguing
-// over fees with no system behind you — not invented personas.
+const TRUST_CHIPS = [
+  "Built for crèches, not big schools",
+  "Works on the phone you have",
+  "Priced in rand",
+];
+
 const PAIN_POINTS = [
   {
     question: "Who has actually paid?",
@@ -52,8 +60,6 @@ const PAIN_POINTS = [
   },
 ];
 
-// The money moment: what the fee side actually does. Every line matches a
-// feature that exists today — see FEATURE_GROUPS below.
 const MONEY_POINTS = [
   {
     term: "See who owes, right now",
@@ -70,7 +76,6 @@ const MONEY_POINTS = [
   },
 ];
 
-// The remaining product story, after the fee problem is established.
 const SHOWCASE_FEATURES = [
   {
     heading: "Registers in seconds",
@@ -86,16 +91,17 @@ const SHOWCASE_FEATURES = [
   },
 ] as const;
 
-// "Crechely vs the old way" — stated only in terms of what Crechely
-// actually does (see FEATURE_GROUPS and the product-truth note below).
+// Job / Crechely / the old way, as the reference lays it out. Every claim
+// in the middle column is a feature that exists today.
 const COMPARISON_ROWS = [
-  { label: "Who's paid and who owes", paper: "Dig through a book or spreadsheet", crechely: "One screen, always up to date" },
-  { label: "Monthly statements", paper: "Typed by hand, one by one", crechely: "Generated as a PDF in one click" },
-  { label: "Late-fee reminders", paper: "Remembered (or forgotten) by whoever's free", crechely: "Sent automatically, or in one click" },
-  { label: "Daily register", paper: "A paper sheet per class", crechely: "Taken on a phone, visible instantly" },
-  { label: "Who can see what", paper: "Everyone sees everything, or nothing", crechely: "Set per person — teachers, admin, bookkeeper" },
-  { label: "Your records if you leave", paper: "Whatever's in the book or the file", crechely: "One password-protected backup, any time" },
-] as const;
+  { job: "Applications", crechely: "Parents apply online; you review and accept", old: "Paper forms, then retyping" },
+  { job: "Child records", crechely: "Guardians, contacts, forms and missing details together", old: "Files spread across folders" },
+  { job: "Attendance", crechely: "Teachers mark their own class on a phone", old: "A paper register per class" },
+  { job: "Fees", crechely: "Cash, EFT and card payments recorded as they come in", old: "A book, or a spreadsheet" },
+  { job: "Statements", crechely: "Generated as a PDF in one click", old: "Typed by hand, one by one" },
+  { job: "Reminders", crechely: "Sent automatically, or in one click", old: "Remembered by whoever is free" },
+  { job: "Permissions", crechely: "Set person by person", old: "Everyone sees everything, or nothing" },
+];
 
 const WHO_ITS_FOR = [
   {
@@ -115,10 +121,6 @@ const WHO_ITS_FOR = [
   },
 ];
 
-// Grouped by the part of the day they help with, so a principal can see
-// the whole centre is covered, not just the fee book. Every line below
-// describes a feature that exists in the app today; don't add a claim
-// here until the feature ships.
 const FEATURE_GROUPS = [
   {
     heading: "Admissions & enrolment",
@@ -202,8 +204,14 @@ const FEATURE_GROUPS = [
   },
 ];
 
-// The questions that stop a sign-up, answered on the page rather than
-// only behind a link. Kept to the shortlist; /pricing carries the rest.
+const PLAN_INCLUDES = [
+  "Centre management",
+  "Fees & statements",
+  "Attendance & registers",
+  "Applications & child records",
+  "Staff permissions",
+];
+
 const HOME_FAQ = [
   {
     q: "Can I bring my current list of children across?",
@@ -233,99 +241,97 @@ export default async function RootPage() {
     redirect("/dashboard");
   }
 
-  // Only ever approved, real, user-submitted testimonials — see
-  // /api/testimonials (public submission) and /platform/testimonials
-  // (Dylan's approval queue). Never invented or auto-published.
   const [testimonials, spotsLeft] = await Promise.all([
     db.testimonial.findMany({
       where: { status: "APPROVED" },
       orderBy: { reviewedAt: "desc" },
       take: 3,
     }),
-    // A real count of founding places still open, not a made-up
-    // scarcity number — see src/lib/billing/founding.ts.
     foundingSpotsLeft(),
   ]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      {/* Narrow navy strip above the nav, as in the reference. */}
+      <div className="bg-panel px-4 py-2 text-center text-xs text-panel-muted">
+        Built for preschools, nurseries &amp; crèches · Made in South Africa
+      </div>
+
       <MarketingHeader />
 
       <main className="flex-1">
-        {/* Hero. The product is the proof, so a real screen of the money
-            screen sits beside the headline rather than below the fold. */}
-        <section className="mx-auto max-w-6xl px-4 pb-14 pt-12 sm:px-6 sm:pt-16 lg:pb-20">
-          <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-12">
-            <div className="animate-in">
-              <p className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-brand">
-                Centre management for South African preschools
-              </p>
-              <h1 className="font-display mt-4 max-w-xl text-4xl font-semibold leading-[1.06] text-foreground sm:text-5xl">
-                Know who&rsquo;s paid, who owes, and what still needs doing.
-              </h1>
-              <p className="mt-5 max-w-md text-base text-muted-foreground">
-                Crechely puts fees, attendance, applications and children&rsquo;s
-                records in one place, so you stop digging through books,
-                spreadsheets and messages to answer a question about your own
-                school.
-              </p>
-              <div className="mt-8">
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                  <LinkButton href="/register" size="lg">
+        {/* Hero. The product moves here rather than sitting still: a
+            reminder goes out and a family settles. */}
+        <section className="border-b border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
+            <div className="grid gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-14">
+              <div className="animate-in">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-brand">
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
+                  Centre management for South African preschools
+                </p>
+                <h1 className="font-display mt-4 max-w-xl text-[clamp(2.3rem,4.6vw,3.9rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-foreground">
+                  Know who&rsquo;s paid, who owes, and what still needs doing.
+                </h1>
+                <p className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg">
+                  Crechely puts fees, attendance, applications and children&rsquo;s
+                  records in one place, so you stop digging through books,
+                  spreadsheets and messages to answer a question about your own
+                  school.
+                </p>
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                  <LinkButton href="/register" size="lg" className="shadow-[var(--shadow-brand)]">
                     Start my free trial
                   </LinkButton>
                   <Link
                     href="#money"
-                    className="text-sm font-medium text-foreground underline decoration-border-strong underline-offset-4 hover:decoration-foreground"
+                    className="lift-on-hover inline-flex min-h-11 items-center rounded-xl border border-border-strong bg-surface px-5 text-sm font-semibold text-foreground"
                   >
                     See how it works
                   </Link>
                 </div>
-                <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
-                  <span className="text-success">✓</span> No card required — full access for {TRIAL_DAYS} days, free.
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No card required · Full access for {TRIAL_DAYS} days · Cancel any time
                 </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Rather talk first?{" "}
-                  {WHATSAPP_NUMBER ? (
-                    <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="font-medium text-brand hover:underline">
-                      WhatsApp us
-                    </a>
-                  ) : (
-                    <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("I'd like to see Crechely")}`} className="font-medium text-brand hover:underline">
-                      Email us for a walkthrough
-                    </a>
-                  )}
-                  .
+                <ul className="mt-5 flex flex-wrap gap-2">
+                  {TRUST_CHIPS.map((chip) => (
+                    <li
+                      key={chip}
+                      className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground"
+                    >
+                      {chip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <HeroDashboard />
+                <p className="mt-3 text-xs text-muted-foreground">
+                  An example of a centre&rsquo;s day in Crechely, shown with sample
+                  data — not a real school&rsquo;s.
                 </p>
               </div>
-            </div>
-
-            <div className="lg:pt-1">
-              <FeesPreview priority sizes="(min-width: 1024px) 620px, 92vw" />
-              <p className="mt-3 text-xs text-muted-foreground">
-                The real Crechely accounting screen, shown with a demo
-                school&rsquo;s data — not a real school&rsquo;s.
-              </p>
             </div>
           </div>
         </section>
 
-        {/* Who it's for — answers "is this for me?" before anything else. */}
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        {/* Who it's for. */}
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
             <Reveal>
-              <h2 className="font-display max-w-sm text-xl font-semibold text-foreground sm:text-2xl">
+              <h2 className="font-display max-w-xl text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
                 Built for early-years centres, not primary and high schools
               </h2>
             </Reveal>
-            <div className="mt-8 divide-y divide-border border-t border-border">
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
               {WHO_ITS_FOR.map((item, i) => (
-                <Reveal key={item.label} delay={i * 60}>
-                  <div className="grid gap-2 py-5 sm:grid-cols-[220px_1fr] sm:gap-8">
-                    <span className="font-mono text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Reveal key={item.label} delay={i * 80}>
+                  <div className="h-full rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-card)]">
+                    <h3 className="font-display text-base font-semibold text-foreground">
                       {item.label}
-                    </span>
-                    <p className="text-sm text-foreground sm:text-base">{item.description}</p>
+                    </h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
                   </div>
                 </Reveal>
               ))}
@@ -334,19 +340,28 @@ export default async function RootPage() {
         </section>
 
         {/* The problem, in the principal's own words. */}
-        <section className="border-t border-border bg-surface">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <section className="border-b border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
             <Reveal>
-              <h2 className="font-display max-w-lg text-xl font-semibold text-foreground sm:text-2xl">
-                You don&rsquo;t need more software. You need to stop hunting for
-                answers.
-              </h2>
+              <div className="max-w-2xl">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-brand">
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
+                  The problem
+                </p>
+                <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
+                  You don&rsquo;t need more software. You need to stop hunting for
+                  answers.
+                </h2>
+              </div>
             </Reveal>
-            <div className="mt-8 grid gap-8 sm:grid-cols-3 sm:gap-10">
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
               {PAIN_POINTS.map((p, i) => (
-                <Reveal key={p.question} delay={i * 60}>
-                  <div className="border-t-2 border-foreground pt-4">
-                    <h3 className="font-display text-base font-semibold text-foreground">
+                <Reveal key={p.question} delay={i * 80}>
+                  <div className="h-full rounded-2xl border border-border bg-background p-6 shadow-[var(--shadow-card)]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft font-display text-sm font-semibold text-brand-soft-foreground">
+                      {i + 1}
+                    </span>
+                    <h3 className="font-display mt-4 text-lg font-semibold text-foreground">
                       &ldquo;{p.question}&rdquo;
                     </h3>
                     <p className="mt-2 text-sm text-muted-foreground">{p.answer}</p>
@@ -357,29 +372,29 @@ export default async function RootPage() {
           </div>
         </section>
 
-        {/* The money moment — the one the whole product is built around,
-            given its own section rather than a row in a feature list. */}
-        <section id="money" className="scroll-mt-16 border-t border-border">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        {/* The money moment, demonstrated. */}
+        <section id="money" className="scroll-mt-16 border-b border-border">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+            <div className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
               <Reveal>
                 <div>
-                  <p className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-brand">
-                    Fees &amp; statements
+                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-brand">
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
+                    The money moment
                   </p>
-                  <h2 className="font-display mt-3 max-w-md text-2xl font-semibold text-foreground sm:text-3xl">
+                  <h2 className="font-display mt-3 max-w-md text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
                     The fee book, replaced.
                   </h2>
-                  <p className="mt-3 max-w-md text-sm text-muted-foreground sm:text-base">
+                  <p className="mt-3 max-w-md text-base text-muted-foreground">
                     Monthly fees are created for every child automatically.
                     Record a payment and the family&rsquo;s balance works itself
-                    out — oldest amount owing first, so the number is always
-                    one you can defend to a parent.
+                    out — oldest amount owing first, so the number is always one
+                    you can defend to a parent.
                   </p>
-                  <dl className="mt-6 flex flex-col gap-4 border-t border-border pt-6">
+                  <dl className="mt-7 grid gap-4">
                     {MONEY_POINTS.map((point) => (
                       <div key={point.term} className="flex gap-3">
-                        <span className="mt-0.5 text-success" aria-hidden="true">
+                        <span className="font-semibold text-success" aria-hidden="true">
                           ✓
                         </span>
                         <div>
@@ -396,10 +411,10 @@ export default async function RootPage() {
                 </div>
               </Reveal>
               <Reveal delay={80}>
-                <div className="max-w-lg lg:justify-self-end">
-                  <RemindersPreview />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Real Crechely dashboard, shown with a demo school&rsquo;s data — not a real school&rsquo;s.
+                <div>
+                  <ReminderFlow />
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Shown with sample families — not a real school&rsquo;s data.
                   </p>
                 </div>
               </Reveal>
@@ -407,33 +422,33 @@ export default async function RootPage() {
           </div>
         </section>
 
-        {/* The rest of the centre, once the money problem has landed. */}
-        <section id="features" className="scroll-mt-16 border-t border-border bg-surface">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        {/* The rest of the centre, with real captured screens. */}
+        <section id="features" className="scroll-mt-16 border-b border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
             <Reveal>
-              <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+              <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
                 It runs the rest of the centre too
               </h2>
             </Reveal>
-            <div className="mt-10 flex flex-col gap-16">
+            <div className="mt-12 flex flex-col gap-16">
               {SHOWCASE_FEATURES.map((feature, i) => (
                 <Reveal key={feature.heading}>
                   <div
-                    className={`grid items-center gap-8 lg:grid-cols-2 lg:gap-16 ${
+                    className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-16 ${
                       i % 2 === 1 ? "lg:[&>*:first-child]:order-2" : ""
                     }`}
                   >
                     <div>
-                      <h3 className="font-display text-lg font-semibold text-foreground sm:text-xl">
+                      <h3 className="font-display text-xl font-semibold text-foreground">
                         {feature.heading}
                       </h3>
-                      <p className="mt-2.5 max-w-md text-sm text-muted-foreground sm:text-base">
+                      <p className="mt-3 max-w-md text-base text-muted-foreground">
                         {feature.description}
                       </p>
                     </div>
                     <div className="max-w-lg lg:justify-self-end">
                       <feature.Preview />
-                      <p className="mt-2 text-xs text-muted-foreground">
+                      <p className="mt-3 text-xs text-muted-foreground">
                         Real Crechely dashboard, shown with a demo school&rsquo;s data — not a real school&rsquo;s.
                       </p>
                     </div>
@@ -444,42 +459,60 @@ export default async function RootPage() {
           </div>
         </section>
 
-        {/* Comparison — built as a ledger entry list rather than a data
-            table: the old way struck through, Crechely's answer in brand
-            ink after it. The product's whole pitch is replacing a paper
-            ledger, so the comparison reads like one being corrected. */}
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        {/* Crechely vs the old way. */}
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
             <Reveal>
-              <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+              <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
                 Crechely vs the old way
               </h2>
             </Reveal>
-            <div className="mt-8 border-t border-border-strong">
-              {COMPARISON_ROWS.map((row, i) => (
-                <Reveal key={row.label} delay={i * 40}>
-                  <div className="grid items-baseline gap-x-6 gap-y-1.5 border-b border-border-strong py-4 sm:grid-cols-[180px_1fr_14px_1fr]">
-                    <span className="text-sm text-muted-foreground sm:text-[13px]">{row.label}</span>
-                    <span className="text-sm text-muted decoration-border-strong line-through decoration-2">
-                      {row.paper}
-                    </span>
-                    <span className="hidden text-border-strong sm:block" aria-hidden="true">
-                      →
-                    </span>
-                    <span className="text-sm font-medium text-foreground">{row.crechely}</span>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
+            <Reveal>
+              <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--shadow-card)]">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="bg-background">
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground sm:px-5">
+                        Job
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground sm:px-5">
+                        Crechely
+                      </th>
+                      <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground sm:table-cell sm:px-5">
+                        The old way
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {COMPARISON_ROWS.map((row) => (
+                      <tr key={row.job} className="border-t border-border">
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground sm:px-5">
+                          {row.job}
+                        </td>
+                        <td className="px-4 py-3.5 text-sm font-medium text-foreground sm:px-5">
+                          {row.crechely}
+                          <span className="mt-0.5 block text-xs text-muted line-through sm:hidden">
+                            {row.old}
+                          </span>
+                        </td>
+                        <td className="hidden px-4 py-3.5 text-sm text-muted line-through sm:table-cell sm:px-5">
+                          {row.old}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Reveal>
           </div>
         </section>
 
-        {/* Full feature list — a spec list, not an icon grid. */}
-        <section className="border-t border-border bg-surface">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        {/* Full feature list. */}
+        <section className="border-b border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
             <Reveal>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
                   Everything your centre runs on
                 </h2>
                 <p className="text-sm text-muted-foreground">
@@ -487,34 +520,30 @@ export default async function RootPage() {
                 </p>
               </div>
             </Reveal>
-            <div className="mt-8 flex flex-col gap-12 border-t border-border pt-8">
-              {FEATURE_GROUPS.map((group) => (
-                <div key={group.heading}>
-                  <Reveal>
-                    <h3 className="font-mono text-xs font-medium uppercase tracking-wide text-brand">
+            <div className="mt-10 grid gap-5 md:grid-cols-2">
+              {FEATURE_GROUPS.map((group, gi) => (
+                <Reveal key={group.heading} delay={gi * 60}>
+                  <div className="h-full rounded-2xl border border-border bg-background p-6 shadow-[var(--shadow-card)]">
+                    <h3 className="font-display text-base font-semibold text-brand">
                       {group.heading}
                     </h3>
-                  </Reveal>
-                  <dl className="mt-4 grid gap-x-10 gap-y-6 sm:grid-cols-3">
-                    {group.items.map((feature, i) => (
-                      <Reveal key={feature.term} delay={i * 60}>
-                        <div>
+                    <dl className="mt-4 grid gap-4">
+                      {group.items.map((feature) => (
+                        <div key={feature.term}>
                           <dt className="font-display text-sm font-semibold text-foreground">
                             {feature.term}
                           </dt>
-                          <dd className="mt-1.5 text-sm text-muted-foreground">
+                          <dd className="mt-1 text-sm text-muted-foreground">
                             {feature.definition}
                           </dd>
                         </div>
-                      </Reveal>
-                    ))}
-                  </dl>
-                </div>
+                      ))}
+                    </dl>
+                  </div>
+                </Reveal>
               ))}
             </div>
-            {/* Product truth, stated plainly where the feature claims are
-                made, not buried on /pricing. */}
-            <p className="mt-8 max-w-2xl border-t border-border pt-6 text-xs text-muted-foreground">
+            <p className="mt-8 max-w-2xl text-xs text-muted-foreground">
               To be clear: Crechely <strong className="text-foreground">records</strong>{" "}
               cash, EFT and card payments your school has already received. It
               doesn&rsquo;t collect money from parents itself. The reminders it
@@ -525,72 +554,73 @@ export default async function RootPage() {
           </div>
         </section>
 
-        {/* Founder proof. Nothing here is invented — no fake testimonials,
-            customer counts, logos or awards. Testimonials only ever come
-            from the public submission form and only appear once Dylan
-            approves them. No founder photo by request. */}
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-            <Reveal>
-              <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-                Who&rsquo;s behind Crechely
-              </h2>
-            </Reveal>
-            <div className="mt-8 grid gap-10 lg:grid-cols-[220px_1fr] lg:gap-16">
-              <div className="text-center lg:text-left">
-                <p className="font-medium text-foreground">Dylan Maps</p>
-                <p className="text-sm text-muted-foreground">Founder, Crechely</p>
-              </div>
-              <div>
-                <p className="text-sm text-foreground sm:text-base">
-                  I grew up in Bela-Bela, where my parents started a crèche back in 2015.
-                  I&rsquo;ve been working in this industry ever since — 6 years part-time, then 4
-                  years full-time after school, so I&rsquo;ve seen the day-to-day of running one up
-                  close, not from the outside. I built Crechely because most software gets built
-                  for primary and high schools, or by developers who&rsquo;ve never actually worked
-                  in this industry. What made the job hardest wasn&rsquo;t the kids — it was
-                  arguing with parents over fees because there was no proper system tracking who
-                  owed what. That kind of dispute can cost you a friendship, not just a payment.
-                  Crechely is my attempt to fix that.
-                </p>
-                <div className="mt-6 grid gap-4 text-sm text-muted-foreground sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                      Contact
-                    </p>
-                    <a href={`mailto:${SUPPORT_EMAIL}`} className="mt-1 block text-brand hover:underline">
-                      {SUPPORT_EMAIL}
-                    </a>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                      Based in
-                    </p>
-                    <p className="mt-1">Bela-Bela, South Africa</p>
-                  </div>
+        {/* Founder proof. Nothing invented: no fake testimonials, customer
+            counts, logos or awards. */}
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+            <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-8">
+              <Reveal>
+                <div className="h-full rounded-3xl bg-panel p-7 text-panel-foreground shadow-[var(--shadow-lift)]">
+                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-panel-muted">
+                    <span className="h-1.5 w-1.5 rounded-full bg-panel-muted" aria-hidden="true" />
+                    Built from inside the industry
+                  </p>
+                  <p className="font-display mt-5 text-2xl font-semibold">Dylan Maps</p>
+                  <p className="mt-1 text-sm text-panel-muted">
+                    Founder, Crechely · Bela-Bela, South Africa
+                  </p>
+                  <p className="mt-5 text-sm text-panel-muted">
+                    What made the job hardest wasn&rsquo;t the kids — it was arguing
+                    with parents over fees because there was no proper system
+                    tracking who owed what.
+                  </p>
+                  <a
+                    href={`mailto:${SUPPORT_EMAIL}`}
+                    className="mt-6 inline-block text-sm font-medium text-panel-foreground underline underline-offset-4"
+                  >
+                    {SUPPORT_EMAIL}
+                  </a>
                 </div>
-              </div>
+              </Reveal>
+              <Reveal delay={80}>
+                <div className="h-full rounded-3xl border border-border bg-surface p-7 shadow-[var(--shadow-card)]">
+                  <h2 className="font-display text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">
+                    Who&rsquo;s behind Crechely
+                  </h2>
+                  <p className="mt-4 text-base text-muted-foreground">
+                    I grew up in Bela-Bela, where my parents started a crèche back in 2015.
+                    I&rsquo;ve been working in this industry ever since — 6 years part-time, then 4
+                    years full-time after school, so I&rsquo;ve seen the day-to-day of running one up
+                    close, not from the outside. I built Crechely because most software gets built
+                    for primary and high schools, or by developers who&rsquo;ve never actually worked
+                    in this industry. That kind of dispute over fees can cost you a friendship, not
+                    just a payment. Crechely is my attempt to fix that.
+                  </p>
+                </div>
+              </Reveal>
             </div>
 
             {testimonials.length > 0 && (
-              <div className="mt-12 border-t border-border pt-8">
+              <div className="mt-10">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-sm font-medium text-foreground">What schools say</h3>
+                  <h3 className="font-display text-base font-semibold text-foreground">
+                    What schools say
+                  </h3>
                   <Link
                     href="/testimonials/new"
                     className="text-sm font-medium text-brand hover:underline"
                   >
-                    Give a testimonial →
+                    Give a testimonial
                   </Link>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-5 md:grid-cols-3">
                   {testimonials.map((t) => (
                     <div
                       key={t.id}
-                      className="flex flex-col justify-between rounded-lg border border-border bg-background p-4"
+                      className="flex flex-col justify-between rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-card)]"
                     >
                       <p className="text-sm text-foreground">&ldquo;{t.quote}&rdquo;</p>
-                      <p className="mt-3 text-xs font-medium text-muted-foreground">
+                      <p className="mt-4 text-xs font-medium text-muted-foreground">
                         {t.authorName}
                         {t.schoolName ? ` · ${t.schoolName}` : ""}
                       </p>
@@ -602,104 +632,90 @@ export default async function RootPage() {
           </div>
         </section>
 
-        {/* Pricing on the page itself, so nobody has to go hunting for it.
-            One plan billed two ways plus the founding offer — not three
-            invented tiers, because there is only one product. */}
-        <section id="pricing" className="scroll-mt-16 border-t border-border bg-surface">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        {/* Pricing — calm on purpose. Nothing here animates. */}
+        <section id="pricing" className="scroll-mt-16 border-b border-border bg-surface">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
             <Reveal>
-              <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
-                <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+              <div className="max-w-2xl">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-brand">
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
+                  Pricing
+                </p>
+                <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
                   One plan. Everything included.
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="mt-3 text-base text-muted-foreground">
                   One paying family a month covers your whole school.
                 </p>
               </div>
             </Reveal>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <Reveal>
-                <div className="flex h-full flex-col border border-border-strong bg-background p-6">
-                  <p className="text-sm font-medium text-foreground">Monthly</p>
-                  <p className="font-display mt-2 text-3xl font-semibold text-foreground">
-                    {MONTHLY_PRICE}
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
-                  </p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Pay monthly, cancel any time, no contract.
-                  </p>
-                </div>
-              </Reveal>
-
-              <Reveal delay={60}>
-                <div className="flex h-full flex-col border border-border-strong bg-background p-6">
-                  <p className="text-sm font-medium text-foreground">Yearly</p>
-                  <p className="font-display mt-2 text-3xl font-semibold text-foreground">
-                    {YEARLY_PRICE}
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">/ year</span>
-                  </p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Saves {YEARLY_VS_MONTHLY} against paying monthly — exactly{" "}
-                    {MONTHS_FREE_ON_YEARLY} months free. 30-day money-back guarantee.
-                  </p>
-                </div>
-              </Reveal>
-
-              {/* The founding offer is the one worth noticing, so it is the
-                  only card that carries the brand colour. The places-left
-                  figure is counted from real subscriptions, never typed in
-                  by hand — see foundingSpotsLeft(). */}
-              <Reveal delay={120}>
-                <div className="flex h-full flex-col border-2 border-brand bg-brand-soft p-6">
-                  <p className="text-sm font-medium text-brand-soft-foreground">
-                    Founding price — first {FOUNDING_SPOTS} schools
-                  </p>
-                  <p className="font-display mt-2 text-3xl font-semibold text-foreground">
-                    {FOUNDING_PRICE}
-                    <span className="ml-1 text-sm font-normal text-brand-soft-foreground">/ month</span>
-                  </p>
-                  <p className="mt-2 text-sm text-brand-soft-foreground">
-                    Locked in for as long as your school stays subscribed.
-                    {spotsLeft > 0
-                      ? ` ${spotsLeft} of ${FOUNDING_SPOTS} places still open.`
-                      : " All places have been taken."}
-                  </p>
-                </div>
-              </Reveal>
-            </div>
-
-            <Reveal>
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-8">
-                <LinkButton href="/register" size="lg">
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
+              {/* Founding offer first and featured: it is the one worth
+                  noticing, and its places-left figure is counted from real
+                  subscriptions — see foundingSpotsLeft(). */}
+              <div className="relative h-full rounded-2xl border-2 border-brand bg-background p-6 shadow-[var(--shadow-brand)]">
+                <span className="absolute -top-3 right-5 rounded-full bg-brand px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-brand-foreground">
+                  First {FOUNDING_SPOTS} schools
+                </span>
+                <h3 className="font-display text-base font-semibold text-foreground">
+                  Founding price
+                </h3>
+                <p className="font-display mt-2 text-4xl font-semibold tracking-[-0.04em] text-foreground">
+                  {FOUNDING_PRICE}
+                  <span className="ml-1 text-sm font-normal tracking-normal text-muted-foreground">
+                    / month
+                  </span>
+                </p>
+                <p className="mt-2 min-h-10 text-sm text-muted-foreground">
+                  Locked in for as long as your school stays subscribed.
+                  {spotsLeft > 0
+                    ? ` ${spotsLeft} of ${FOUNDING_SPOTS} places still open.`
+                    : " All places have been taken."}
+                </p>
+                <PlanIncludes />
+                <LinkButton href="/register" className="mt-6 w-full justify-center">
                   Start my free trial
                 </LinkButton>
-                <Link
-                  href="/pricing"
-                  className="text-sm font-medium text-foreground underline decoration-border-strong underline-offset-4 hover:decoration-foreground"
-                >
-                  Full pricing details
-                </Link>
               </div>
-              <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
-                <span className="text-success">✓</span> No card required — full access for {TRIAL_DAYS} days, free.
-              </p>
-            </Reveal>
+
+              <PlanCard
+                name="Monthly"
+                price={MONTHLY_PRICE}
+                per="/ month"
+                blurb="Pay monthly. Cancel any time. No contract."
+              />
+              <PlanCard
+                name="Yearly"
+                price={YEARLY_PRICE}
+                per="/ year"
+                blurb={`Saves ${YEARLY_VS_MONTHLY} against paying monthly — exactly ${MONTHS_FREE_ON_YEARLY} months free, with a 30-day money-back guarantee.`}
+              />
+            </div>
+
+            <p className="mt-6 rounded-xl border border-brand-soft bg-brand-soft px-4 py-3 text-sm text-brand-soft-foreground">
+              No card is needed for the {TRIAL_DAYS}-day trial. The point of the
+              trial is to run Crechely with your own families before you pay for
+              anything.
+            </p>
           </div>
         </section>
 
-        {/* Objections, answered on the page. */}
-        <section className="border-t border-border">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        {/* Objections. */}
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
             <Reveal>
-              <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+              <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl">
                 Before you sign up
               </h2>
             </Reveal>
-            <div className="mt-8 max-w-3xl divide-y divide-border border-y border-border">
+            <div className="mt-8 grid max-w-3xl gap-3">
               {HOME_FAQ.map((item) => (
-                <details key={item.q} className="group">
-                  <summary className="transition-standard flex cursor-pointer list-none items-center justify-between gap-6 py-4 text-sm font-medium text-foreground hover:text-brand">
+                <details
+                  key={item.q}
+                  className="group rounded-2xl border border-border bg-surface px-5 py-4 shadow-[var(--shadow-card)]"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-sm font-semibold text-foreground">
                     {item.q}
                     <svg
                       className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
@@ -716,7 +732,7 @@ export default async function RootPage() {
                       />
                     </svg>
                   </summary>
-                  <p className="max-w-2xl pb-5 text-sm text-muted-foreground">{item.a}</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
                 </details>
               ))}
             </div>
@@ -736,36 +752,42 @@ export default async function RootPage() {
           </div>
         </section>
 
-        {/* One final ask, in the same words as every other CTA. */}
-        <section className="bg-foreground text-background">
+        {/* The final ask. */}
+        <section className="bg-panel text-panel-foreground">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
             <Reveal>
-              <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-16">
+              <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-16">
                 <div>
-                  <h2 className="font-display max-w-md text-2xl font-semibold sm:text-3xl">
+                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-panel-muted">
+                    <span className="h-1.5 w-1.5 rounded-full bg-panel-muted" aria-hidden="true" />
+                    The next step
+                  </p>
+                  <h2 className="font-display mt-3 max-w-xl text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
                     Stop wondering who owes. See it for yourself.
                   </h2>
-                  <p className="mt-3 max-w-md text-sm text-background/70">
+                  <p className="mt-3 max-w-md text-sm text-panel-muted">
                     Set up your classes, bring your children across from the
                     spreadsheet you already keep, and watch the first month&rsquo;s
                     fees create themselves. {TRIAL_DAYS} days, every feature, no card.
                   </p>
                 </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                    <LinkButton href="/register" size="lg">
-                      Start my free trial
-                    </LinkButton>
-                    <Link
-                      href="/pricing"
-                      className="text-sm font-medium text-background underline decoration-background/40 underline-offset-4 hover:decoration-background"
+                <div className="flex flex-col items-start gap-3">
+                  <Link
+                    href="/register"
+                    className="lift-on-hover inline-flex min-h-12 items-center rounded-xl bg-panel-foreground px-6 text-sm font-semibold text-panel"
+                  >
+                    Start my free trial
+                  </Link>
+                  {WHATSAPP_NUMBER && (
+                    <a
+                      href={WHATSAPP_LINK}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-panel-muted underline underline-offset-4"
                     >
-                      See pricing
-                    </Link>
-                  </div>
-                  <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-background">
-                    <span className="text-success">✓</span> No card required — full access for {TRIAL_DAYS} days, free.
-                  </p>
+                      Prefer to talk first? WhatsApp us
+                    </a>
+                  )}
                 </div>
               </div>
             </Reveal>
@@ -774,6 +796,54 @@ export default async function RootPage() {
       </main>
 
       <MarketingFooter />
+    </div>
+  );
+}
+
+function PlanIncludes() {
+  return (
+    <ul className="mt-5 grid gap-2 border-t border-border pt-5 text-sm text-muted-foreground">
+      {PLAN_INCLUDES.map((item) => (
+        <li key={item} className="flex gap-2">
+          <span className="font-semibold text-success" aria-hidden="true">
+            ✓
+          </span>
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PlanCard({
+  name,
+  price,
+  per,
+  blurb,
+}: {
+  name: string;
+  price: string;
+  per: string;
+  blurb: string;
+}) {
+  return (
+    <div className="h-full rounded-2xl border border-border bg-background p-6 shadow-[var(--shadow-card)]">
+      <h3 className="font-display text-base font-semibold text-foreground">{name}</h3>
+      <p className="font-display mt-2 text-4xl font-semibold tracking-[-0.04em] text-foreground">
+        {price}
+        <span className="ml-1 text-sm font-normal tracking-normal text-muted-foreground">
+          {per}
+        </span>
+      </p>
+      <p className="mt-2 min-h-10 text-sm text-muted-foreground">{blurb}</p>
+      <PlanIncludes />
+      <LinkButton
+        href="/register"
+        variant="secondary"
+        className="mt-6 w-full justify-center"
+      >
+        Start my free trial
+      </LinkButton>
     </div>
   );
 }

@@ -31,7 +31,8 @@ function Screenshot({
   sizes?: string;
 }) {
   return (
-    <div className="overflow-hidden border border-border-strong bg-surface">
+    // Rounded and lifted to match the rest of the page (2 Oct 2026).
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-[var(--shadow-lift)]">
       <Image
         src={src}
         alt={alt}
