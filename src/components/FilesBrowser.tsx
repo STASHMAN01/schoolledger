@@ -208,6 +208,15 @@ function Browser({ mode }: { mode: FilesMode }) {
 
       {data && (
         <>
+          {crumbs.length > 1 && crumbs[crumbs.length - 2].href && (
+            <Link
+              href={crumbs[crumbs.length - 2].href as string}
+              className="transition-standard mb-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand-hover"
+            >
+              <span aria-hidden="true">&larr;</span> Back
+              <span className="sr-only"> to {crumbs[crumbs.length - 2].label}</span>
+            </Link>
+          )}
           <Crumbs items={crumbs} />
 
           {data.level === "root" &&
