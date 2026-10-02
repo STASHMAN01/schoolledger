@@ -22,6 +22,11 @@ export function MarketingFooter() {
             <Link href="/pricing" className="hover:text-foreground">
               Pricing
             </Link>
+            {/* Kept here because the homepage block that used to carry this
+                link is hidden until there are testimonials to show. */}
+            <Link href="/testimonials/new" className="hover:text-foreground">
+              Give a testimonial
+            </Link>
             <Link href="/support" className="hover:text-foreground">
               Contact
             </Link>

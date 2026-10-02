@@ -524,28 +524,23 @@ export default async function RootPage() {
             </div>
 
             {/* Real, approved testimonials only (see /api/testimonials and
-                /platform/testimonials) — never invented. Falls back to an
-                honest "be the first" prompt when there are none yet, rather
-                than empty dashed boxes or fake quotes. */}
-            <div className="mt-12 border-t border-border pt-8">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-sm font-medium text-foreground">What schools say</h3>
-                <Link
-                  href="/testimonials/new"
-                  className="text-sm font-medium text-brand hover:underline"
-                >
-                  Give a testimonial →
-                </Link>
-              </div>
-              {testimonials.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border-strong px-4 py-6 text-center text-sm text-muted">
-                  No testimonials yet — if you use Crechely, be the first to{" "}
-                  <Link href="/testimonials/new" className="text-brand hover:underline">
-                    share yours
+                /platform/testimonials) — never invented. When there are
+                none, the whole block is hidden rather than showing a "no
+                testimonials yet" panel: on a page whose job is to build
+                confidence, that panel advertised the one thing the page
+                couldn't show (2 Oct 2026 landing-page audit). The link to
+                submit one moves to the footer so it stays reachable. */}
+            {testimonials.length > 0 && (
+              <div className="mt-12 border-t border-border pt-8">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-medium text-foreground">What schools say</h3>
+                  <Link
+                    href="/testimonials/new"
+                    className="text-sm font-medium text-brand hover:underline"
+                  >
+                    Give a testimonial →
                   </Link>
-                  .
-                </p>
-              ) : (
+                </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   {testimonials.map((t) => (
                     <div
@@ -560,8 +555,8 @@ export default async function RootPage() {
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </section>
 
