@@ -47,6 +47,10 @@ export const PUBLIC_PATHS = [
   "/manifest.webmanifest",
   "/sw.js",
   "/offline.html",
+  // Digital Asset Links (public/.well-known/assetlinks.json): Android
+  // fetches this, signed-out, to confirm the installed app really belongs
+  // to this site. Without it the app shows a browser address bar.
+  "/.well-known",
   // Marketing screenshots used by the homepage's "What it actually looks
   // like" section (public/screenshots/*.jpg). Same class of bug as the
   // robots.txt/sitemap.xml one above: added the folder on 1 Oct 2026 but
