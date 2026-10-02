@@ -77,7 +77,45 @@ export const PUBLIC_PATHS = [
   // Vercel Cron (e.g. the daily purge of deleted schools). No session --
   // each cron route checks the CRON_SECRET bearer token itself.
   "/api/cron",
+  // The email-verification link. Like /invite and /apply above, the token
+  // in the URL is what's checked (src/app/api/auth/verify-email), and the
+  // page itself reads no session at all. It was missing from this list,
+  // so anyone who opened the verification email anywhere they weren't
+  // already signed in -- a phone, another browser -- landed on /login
+  // instead of verifying. The API route was reachable the whole time
+  // (it sits under the public /api/auth); only the page was blocked.
+  "/verify-email",
 ];
+
+// Areas that genuinely require a session. Everything outside these is
+// either public (above) or simply doesn't exist.
+//
+// This distinction is why it matters: the middleware used to treat
+// "not public" as "send them to /login", which meant every typo'd URL and
+// every stale inbound link showed a logged-out visitor the login page
+// instead of a 404, and search engines crawling a dead link were served
+// "Welcome back". Listing the protected areas instead lets an unknown
+// path fall through to src/app/not-found.tsx.
+//
+// This is not the only thing guarding these areas -- src/app/dashboard
+// and src/app/platform each check the session in their own layout and
+// redirect, and every API route checks membership for itself. The
+// middleware is the outer layer, not the only one.
+export const PROTECTED_PREFIXES = ["/dashboard", "/platform"];
+
+/**
+ * Whether a request must carry a session to proceed.
+ *
+ * API routes stay default-deny: anything under /api that isn't explicitly
+ * public needs a session, so a new private endpoint is protected the
+ * moment it exists. Page routes are deny-by-area, so that unknown URLs
+ * can 404 properly.
+ */
+export function requiresSession(pathname: string) {
+  if (isPublicPath(pathname)) return false;
+  if (pathname === "/api" || pathname.startsWith("/api/")) return true;
+  return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
 
 // Matches a listed path exactly, or anything beneath it. The `p + "/"`
 // (rather than a bare prefix test) is deliberate: it keeps "/brandnew"

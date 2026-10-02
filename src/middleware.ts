@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { REQUEST_METHOD_HEADER } from "@/lib/requestMethod";
 // The list of session-free paths lives in its own module so it can be
 // unit-tested without booting NextAuth -- see src/lib/publicPaths.test.ts.
-import { isPublicPath } from "@/lib/publicPaths";
+import { requiresSession } from "@/lib/publicPaths";
 
 export default auth((req: NextRequest & { auth?: unknown }) => {
   const { pathname } = req.nextUrl;
@@ -16,7 +16,11 @@ export default auth((req: NextRequest & { auth?: unknown }) => {
   requestHeaders.set(REQUEST_METHOD_HEADER, req.method);
   const next = () => NextResponse.next({ request: { headers: requestHeaders } });
 
-  const response = isPublicPath(pathname)
+  // Note this asks "does this path need a session", not "is this path
+  // public". A path that is neither public nor protected is one that
+  // doesn't exist, and it should fall through to the 404 page rather than
+  // be redirected to /login. See src/lib/publicPaths.ts.
+  const response = !requiresSession(pathname)
     ? next()
     : req.auth
       ? next()

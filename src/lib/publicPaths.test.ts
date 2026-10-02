@@ -2,7 +2,7 @@ import { readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
-import { isPublicPath } from "./publicPaths";
+import { isPublicPath, requiresSession } from "./publicPaths";
 
 // Regression guard for a bug that has shipped four times: a new folder is
 // added under public/, but not to PUBLIC_PATHS, so the auth middleware
@@ -58,6 +58,17 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/platform/testimonials")).toBe(false);
   });
 
+  it("lets a token-authenticated link through without a session", () => {
+    // Each of these is reached by someone who is, by definition, not
+    // logged in: a parent filling in a form, an invited colleague, or
+    // anyone opening the verification email on a second device. The URL's
+    // own token is what gets checked server-side.
+    expect(isPublicPath("/apply/some-token")).toBe(true);
+    expect(isPublicPath("/invite/some-token")).toBe(true);
+    expect(isPublicPath("/verify-email/some-token")).toBe(true);
+    expect(isPublicPath("/reset-password/some-token")).toBe(true);
+  });
+
   it("matches on path segments, not bare string prefixes", () => {
     // "/brand" being public must not make "/brandnew" public.
     expect(isPublicPath("/brandnew")).toBe(false);
@@ -65,5 +76,40 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/logins")).toBe(false);
     // The "/" entry must not make everything public.
     expect(isPublicPath("/children")).toBe(false);
+  });
+});
+
+describe("requiresSession", () => {
+  it("protects the app itself", () => {
+    expect(requiresSession("/dashboard")).toBe(true);
+    expect(requiresSession("/dashboard/accounting/children")).toBe(true);
+    expect(requiresSession("/platform/testimonials")).toBe(true);
+  });
+
+  it("keeps API routes default-deny, so a new endpoint is protected on day one", () => {
+    expect(requiresSession("/api/children")).toBe(true);
+    expect(requiresSession("/api/organizations/abc/trash")).toBe(true);
+    expect(requiresSession("/api/some-endpoint-nobody-has-written-yet")).toBe(true);
+    // ...except the handful that are explicitly public.
+    expect(requiresSession("/api/auth/callback/credentials")).toBe(false);
+    expect(requiresSession("/api/cron/purge")).toBe(false);
+  });
+
+  it("lets an unknown URL reach the 404 page instead of the login page", () => {
+    // The whole point of the 2 Oct 2026 change. These paths don't exist;
+    // a logged-out visitor should get not-found.tsx, and a crawler should
+    // get a 404 rather than "Welcome back".
+    expect(requiresSession("/features")).toBe(false);
+    expect(requiresSession("/contact")).toBe(false);
+    expect(requiresSession("/signup")).toBe(false);
+    expect(requiresSession("/blog/some-old-post")).toBe(false);
+    expect(requiresSession("/asdfghjkl")).toBe(false);
+  });
+
+  it("does not ask for a session on the public pages or their assets", () => {
+    expect(requiresSession("/")).toBe(false);
+    expect(requiresSession("/pricing")).toBe(false);
+    expect(requiresSession("/screenshots/fees.jpg")).toBe(false);
+    expect(requiresSession("/verify-email/some-token")).toBe(false);
   });
 });
