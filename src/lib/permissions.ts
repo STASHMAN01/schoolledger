@@ -1,4 +1,5 @@
 import type { Permission, Role } from "@prisma/client";
+import { TEACHER_PERMISSION_CEILING } from "@/lib/teacherAccess";
 
 // The full closed set, used for ADMIN (who always has everything, see
 // getEffectivePermissions) and to validate override rows.
@@ -166,13 +167,10 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<Exclude<Role, "ADMIN">, Permission
     // either. Grant VIEW_MONEY per-person if this viewer should be a
     // bookkeeper-style read-only accountant.
   ],
-  TEACHER: [
-    "VIEW_CENTRE",
-    "MANAGE_CHILDREN", // scoped server-side to Membership.assignedCategoryId
-    "MANAGE_ATTENDANCE", // scoped server-side to Membership.assignedCategoryId
-    "MANAGE_REPORTS", // scoped server-side to Membership.assignedCategoryId
-    "VIEW_ACTIVITY_LOG",
-  ],
+  // Also the ceiling for every Teacher (TEACHER_PERMISSION_CEILING in
+  // src/lib/teacherAccess.ts, Dylan 4 Oct 2026): no managing children, no
+  // activity log. All scoped server-side to Membership.assignedCategoryId.
+  TEACHER: ["VIEW_CENTRE", "MANAGE_ATTENDANCE", "MANAGE_REPORTS"],
   RECEPTIONIST: [
     "VIEW_CENTRE",
     "MANAGE_CHILDREN", // org-wide, unlike TEACHER
@@ -228,7 +226,17 @@ export function getEffectivePermissions(
     return limitProfilePermissions(getEffectivePermissions(role, overrides));
   }
   if (role === "ADMIN") return [...ALL_PERMISSIONS];
+  if (role === "TEACHER") {
+    // Every Teacher is capped (Dylan, 4 Oct 2026): register, routine and
+    // incident reports only, whatever per-person ticks exist. See
+    // src/lib/teacherAccess.ts for the rest of the teacher rules.
+    const ceiling = new Set<Permission>(TEACHER_PERMISSION_CEILING);
+    return applyOverrides(role, overrides).filter((p) => ceiling.has(p));
+  }
+  return applyOverrides(role, overrides);
+}
 
+function applyOverrides(role: Exclude<Role, "ADMIN">, overrides: PermissionOverride[]): Permission[] {
   const effective = new Set<Permission>(ROLE_DEFAULT_PERMISSIONS[role]);
   for (const o of overrides) {
     if (o.granted) effective.add(o.permission);

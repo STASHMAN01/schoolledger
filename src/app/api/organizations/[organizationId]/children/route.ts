@@ -5,7 +5,7 @@ import { childCreateSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
-import { serializeChild } from "@/lib/childView";
+import { serializeChild, serializeChildForTeacher } from "@/lib/childView";
 import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -42,6 +42,10 @@ export async function GET(req: NextRequest, { params }: Params) {
       include: { category: true, guardians: { select: { phone: true } } },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
+
+    if (role === "TEACHER") {
+      return NextResponse.json({ children: children.map((c) => serializeChildForTeacher(c)) });
+    }
 
     const pendingRequests = await db.deletionRequest.findMany({
       where: {

@@ -35,6 +35,8 @@ async function accessibleReport(organizationId: string, reportId: string, role: 
   const report = await db.childReport.findFirst({ where: { id: reportId, organizationId }, select: detailSelect });
   if (!report) return null;
   if (role === "TEACHER" && report.categoryId !== assignedCategoryId) return null;
+  // Teachers work with incident reports only (Dylan, 4 Oct 2026).
+  if (role === "TEACHER" && report.type !== "INCIDENT") return null;
   return report;
 }
 

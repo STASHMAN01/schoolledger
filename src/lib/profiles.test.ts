@@ -82,7 +82,6 @@ describe("profile permissions", () => {
       expect(perms).not.toContain(blocked);
     }
     expect(perms).toContain("MANAGE_ATTENDANCE");
-    expect(perms).toContain("MANAGE_CHILDREN");
     expect(perms).toContain("VIEW_CENTRE");
   });
 
@@ -93,6 +92,6 @@ describe("profile permissions", () => {
 
   it("leave normal accounts unchanged", () => {
     expect(getEffectivePermissions("ADMIN", [])).toEqual(ALL_PERMISSIONS);
-    expect(getEffectivePermissions("TEACHER", [])).toContain("VIEW_ACTIVITY_LOG");
+    expect(getEffectivePermissions("ACCOUNTANT", [])).toContain("VIEW_ACTIVITY_LOG");
   });
 });

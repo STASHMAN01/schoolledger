@@ -70,7 +70,10 @@ function ageColor(index: number): string {
 }
 
 export default function EnrolledPage() {
-  const { organizationId, permissions } = useOrg();
+  const { organizationId, permissions, role } = useOrg();
+  // Teachers never get parent details, so "incomplete profile" (which
+  // needs a parent phone) would flag every child: hidden for them.
+  const isTeacher = role === "TEACHER";
   const canManage = permissions.includes("MANAGE_CHILDREN");
   const [children, setChildren] = useState<ChildRow[]>([]);
   const [classList, setClassList] = useState<ClassRow[]>([]);
@@ -114,7 +117,10 @@ export default function EnrolledPage() {
     () => children.filter((c) => !c.archived && !c.exitDate),
     [children]
   );
-  const incompleteCount = useMemo(() => enrolled.filter((c) => isProfileIncomplete(c)).length, [enrolled]);
+  const incompleteCount = useMemo(
+    () => (isTeacher ? 0 : enrolled.filter((c) => isProfileIncomplete(c)).length),
+    [enrolled, isTeacher]
+  );
 
   const genderRows: BarRow[] = useMemo(() => {
     const counts = { MALE: 0, FEMALE: 0, OTHER: 0, none: 0 };
@@ -278,7 +284,7 @@ export default function EnrolledPage() {
                             .slice()
                             .sort((a, b) => a.lastName.localeCompare(b.lastName))
                             .map((c) => {
-                              const missing = missingCoreDetails(c);
+                              const missing = isTeacher ? [] : missingCoreDetails(c);
                               return (
                                 <Link
                                   key={c.id}

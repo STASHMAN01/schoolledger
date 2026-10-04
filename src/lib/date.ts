@@ -38,3 +38,12 @@ export function formatDateZA(value: string | Date | null | undefined): string {
   // leading zero ("4 Sept 2026", not "04 Sept 2026").
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/** Today's date ("YYYY-MM-DD") in a given IANA time zone, e.g. the school's. */
+export function todayInTimeZone(timeZone: string, now: Date = new Date()): string {
+  try {
+    return now.toLocaleDateString("en-CA", { timeZone });
+  } catch {
+    return now.toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+  }
+}

@@ -49,7 +49,7 @@ const ROLE_SUMMARY: Record<Role, string> = {
   MANAGER: "Organizes children/classes in both modes, but can't see money.",
   VIEWER:
     "Read-only in Accounting, for a business partner or outside accountant who should only look. No money by default.",
-  TEACHER: "Centre Management only, limited to their one assigned class.",
+  TEACHER: "Their own class only: register, routine and incident reports. Sees each child's name, age, gender, allergies and emergency contact, nothing else.",
   RECEPTIONIST: "Centre Management only, can add children.",
 };
 

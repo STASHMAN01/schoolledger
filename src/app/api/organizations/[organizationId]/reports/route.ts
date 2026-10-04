@@ -34,7 +34,8 @@ export async function GET(req: NextRequest, { params }: Params) {
       return NextResponse.json({ reports: [] });
     }
 
-    const typeParam = req.nextUrl.searchParams.get("type");
+    // Teachers see incident reports only (Dylan, 4 Oct 2026).
+    const typeParam = role === "TEACHER" ? "INCIDENT" : req.nextUrl.searchParams.get("type");
     const childId = req.nextUrl.searchParams.get("childId");
 
     const reports = await db.childReport.findMany({
@@ -61,6 +62,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     const { userId, role, assignedCategoryId } = await requireMembership(organizationId, "MANAGE_REPORTS");
 
     const body = reportCreateSchema.parse(await req.json());
+    if (role === "TEACHER" && body.type !== "INCIDENT") {
+      return NextResponse.json({ error: "Teachers can only write incident reports." }, { status: 403 });
+    }
 
     const child = await db.child.findFirst({
       where: { id: body.childId, organizationId },

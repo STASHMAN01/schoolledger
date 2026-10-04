@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { Permission } from "@prisma/client";
 import { hasActiveAccess } from "@/lib/billing/access";
-import { REQUEST_METHOD_HEADER } from "@/lib/requestMethod";
+import { REQUEST_METHOD_HEADER, REQUEST_PATH_HEADER } from "@/lib/requestMethod";
+import { teacherMayCall } from "@/lib/teacherAccess";
 import { getEffectivePermissions } from "@/lib/permissions";
 
 export class TenantAccessError extends Error {
@@ -99,6 +100,19 @@ export async function requireMembership(
   // account still hasn't clicked its verification link.
   if (!membership.user.emailVerified) {
     throw new TenantAccessError("Please verify your email before continuing.", 403);
+  }
+
+  // Teachers (Dylan, 4 Oct 2026) may only make the API calls on the list in
+  // src/lib/teacherAccess.ts. Default-deny: anything new is closed to them
+  // until it's added there. Path and method come from middleware; if
+  // either is missing, refuse.
+  if (membership.role === "TEACHER") {
+    const h = await headers();
+    const method = h.get(REQUEST_METHOD_HEADER);
+    const path = h.get(REQUEST_PATH_HEADER);
+    if (!method || !path || !teacherMayCall(method, path)) {
+      throw new TenantAccessError("Not allowed for your role.", 403);
+    }
   }
 
   if (requiredPermission && !permissions.includes(requiredPermission)) {

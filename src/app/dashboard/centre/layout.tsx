@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getPrimaryMembership } from "@/lib/org";
 import { getEffectivePermissions } from "@/lib/permissions";
+import { TeacherPageGuard } from "./TeacherPageGuard";
 
 // Mirrors accounting/layout.tsx -- blocks direct URL access to
 // /dashboard/centre/* for anyone without VIEW_CENTRE (e.g. an Accountant
@@ -24,5 +25,5 @@ export default async function CentreLayout({
     redirect(permissions.includes("VIEW_ACCOUNTING") ? "/dashboard/accounting" : "/dashboard");
   }
 
-  return <>{children}</>;
+  return <TeacherPageGuard>{children}</TeacherPageGuard>;
 }

@@ -68,8 +68,13 @@ function emptyForm(type: ReportTypeValue, childId = ""): FormState {
 }
 
 export default function ReportsPage() {
-  const { organizationId } = useOrg();
+  const { organizationId, role } = useOrg();
   const canManage = useHasPermission("MANAGE_REPORTS");
+  // Teachers write incident reports only and can't change or delete one
+  // once saved (Dylan, 4 Oct 2026); the server enforces both.
+  const isTeacher = role === "TEACHER";
+  const visibleTypes = isTeacher ? REPORT_TYPES.filter((t) => t === "INCIDENT") : REPORT_TYPES;
+  const canChange = canManage && !isTeacher;
   const base = `/api/organizations/${organizationId}`;
 
   const [activeType, setActiveType] = useState<ReportTypeValue>("INCIDENT");
@@ -185,7 +190,7 @@ export default function ReportsPage() {
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       <div className="mb-5 flex flex-wrap gap-2">
-        {REPORT_TYPES.map((t) => (
+        {visibleTypes.map((t) => (
           <button
             key={t}
             type="button"
@@ -240,7 +245,7 @@ export default function ReportsPage() {
                   >
                     View PDF
                   </a>
-                  {canManage && (
+                  {canChange && (
                     <>
                       <button type="button" onClick={() => startEdit(r)} className="text-sm text-brand underline underline-offset-2">
                         Edit

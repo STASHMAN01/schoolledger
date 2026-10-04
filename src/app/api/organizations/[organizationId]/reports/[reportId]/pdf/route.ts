@@ -36,7 +36,10 @@ export async function GET(req: NextRequest, { params }: Params) {
         createdBy: { select: { name: true } },
       },
     });
-    if (!report || (role === "TEACHER" && report.categoryId !== assignedCategoryId)) {
+    if (
+      !report ||
+      (role === "TEACHER" && (report.categoryId !== assignedCategoryId || report.type !== "INCIDENT"))
+    ) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 

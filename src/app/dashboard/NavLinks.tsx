@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useOrg } from "./OrgContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { teacherMayOpen } from "@/lib/teacherAccess";
 
 type NavLink = { href: string; label: string; exact?: boolean };
 
@@ -42,7 +43,9 @@ const CENTRE_LINKS: NavLink[] = [
   { href: "/dashboard/centre/reports", label: "Reports" },
   { href: "/dashboard/centre/files", label: "Files" },
   { href: "/dashboard/centre/classes", label: "Classes" },
-  { href: "/dashboard/centre/schedule", label: "Timetable" },
+  // "Routine" is the word the teachers use (Dylan, 4 Oct 2026); the URL
+  // stays /schedule so old links keep working.
+  { href: "/dashboard/centre/schedule", label: "Routine" },
   { href: "/dashboard/centre/events", label: "Events" },
   { href: "/dashboard/centre/staff", label: "Staff" },
 ];
@@ -112,18 +115,21 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 
 function useNav() {
   const pathname = usePathname();
-  const { permissions } = useOrg();
+  const { permissions, role } = useOrg();
+  // Teachers get their short menu only (src/lib/teacherAccess.ts): no
+  // Settings, no Communication, nothing outside TEACHER_PAGES.
+  const isTeacher = role === "TEACHER";
   const inAccounting = pathname.startsWith("/dashboard/accounting");
-  const links = (inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS).filter((l) =>
-    canSeeLink(l.href, permissions)
+  const links = (inAccounting ? ACCOUNTING_LINKS : CENTRE_LINKS).filter(
+    (l) => canSeeLink(l.href, permissions) && (!isTeacher || teacherMayOpen(l.href))
   );
   const settingsBase = inAccounting ? "/dashboard/accounting/settings" : "/dashboard/centre/settings";
-  const settings: NavLink[] = SETTINGS_PAGES.filter((p) => {
+  const settings: NavLink[] = isTeacher ? [] : SETTINGS_PAGES.filter((p) => {
     const needed = SETTINGS_REQUIRES[p.slug];
     return !needed || needed.some((perm) => (permissions as readonly string[]).includes(perm));
   }).map((p) => ({ href: `${settingsBase}/${p.slug}`, label: p.label }));
   const communication: NavLink | null =
-    !inAccounting && canSeeLink("/dashboard/centre/communication", permissions)
+    !inAccounting && !isTeacher && canSeeLink("/dashboard/centre/communication", permissions)
       ? { href: "/dashboard/centre/communication", label: "Communication" }
       : null;
   // Replays that mode's guided walkthrough -- the home page's mount effect

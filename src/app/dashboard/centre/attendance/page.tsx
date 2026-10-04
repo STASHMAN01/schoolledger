@@ -143,12 +143,15 @@ export default function AttendancePage() {
           day: "numeric",
         })}. Everyone defaults to Present -- tap a child to mark them Absent.`}
         actions={
-          <Link
-            href="/dashboard/centre/attendance/absent"
-            className="text-sm font-medium text-brand hover:underline"
-          >
-            Absent & notify parents →
-          </Link>
+          // Contacting parents is admin work (Dylan, 4 Oct 2026).
+          isTeacher ? undefined : (
+            <Link
+              href="/dashboard/centre/attendance/absent"
+              className="text-sm font-medium text-brand hover:underline"
+            >
+              Absent & notify parents →
+            </Link>
+          )
         }
       />
 

@@ -16,6 +16,7 @@ import { pickBillingGuardianId } from "@/lib/billingContact";
 import { EditChildDetails } from "@/components/EditChildDetails";
 import { ChildDocumentsCard } from "@/components/ChildDocumentsCard";
 import { formatDateZA } from "@/lib/date";
+import { TeacherChildView } from "./TeacherChildView";
 
 type ParentFormLinkRow = {
   id: string;
@@ -257,7 +258,18 @@ function GuardianCard({
   );
 }
 
+// Teachers get the short, read-only view (Dylan, 4 Oct 2026); everyone
+// else gets the full profile below.
 export default function ChildProfilePage() {
+  const { organizationId, role } = useOrg();
+  const params = useParams<{ childId: string }>();
+  if (role === "TEACHER") {
+    return <TeacherChildView organizationId={organizationId} childId={params.childId} />;
+  }
+  return <FullChildProfile />;
+}
+
+function FullChildProfile() {
   const { organizationId, organizationName, role, currencyCode } = useOrg();
   const canManage = useHasPermission("MANAGE_CHILDREN");
   const params = useParams<{ childId: string }>();

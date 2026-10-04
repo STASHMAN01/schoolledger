@@ -11,7 +11,7 @@ import {
   monthlyFeeForChild,
 } from "@/lib/billing/financialPlan";
 import { planAdjustments, summariseAdjustments, ymFromDate } from "@/lib/billing/planAdjust";
-import { serializeChild } from "@/lib/childView";
+import { serializeChild, serializeChildForTeacher } from "@/lib/childView";
 import { PROFILE_VIEW_ENTITY_TYPE } from "@/lib/activityArea";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
@@ -61,6 +61,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
         entityId: childId,
         metadata: { childName: `${child.firstName} ${child.lastName}` },
       });
+    }
+
+    // Teachers get the short version only (src/lib/childView.ts); the view
+    // is still logged above.
+    if (role === "TEACHER") {
+      return NextResponse.json({ child: serializeChildForTeacher(child) });
     }
 
     // ID numbers are masked by default everywhere (see reveal-id/route.ts

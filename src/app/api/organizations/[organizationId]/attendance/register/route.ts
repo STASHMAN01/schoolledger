@@ -5,6 +5,7 @@ import { attendanceRegisterSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
+import { todayInTimeZone } from "@/lib/date";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -96,6 +97,22 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     if (role === "TEACHER" && body.categoryId !== assignedCategoryId) {
       return NextResponse.json({ error: "Not allowed for your class." }, { status: 403 });
+    }
+
+    // Teachers can fix today's register but not earlier days (Dylan,
+    // 4 Oct 2026). "Today" is the school's own date, not the server's.
+    if (role === "TEACHER") {
+      const org = await db.organization.findUnique({
+        where: { id: organizationId },
+        select: { timezone: true },
+      });
+      const today = todayInTimeZone(org?.timezone ?? "Africa/Johannesburg");
+      if (body.date.toISOString().slice(0, 10) !== today) {
+        return NextResponse.json(
+          { error: "You can only mark today's register. Ask an admin to change an earlier day." },
+          { status: 403 }
+        );
+      }
     }
 
     const category = await db.category.findFirst({

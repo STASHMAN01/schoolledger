@@ -107,10 +107,10 @@ export default function CentreManagementHomePage() {
         ? getJson<{ staff: { role: string; assignedClass: unknown }[] }>(`${base}/staff`)
         : null,
       getJson<{ total: number; events: UpcomingEvent[] }>(`${base}/events/upcoming?from=${todayLocal()}`),
-      getJson<{ categories: { archived: boolean }[] }>(`${base}/categories`),
+      isTeacher ? null : getJson<{ categories: { archived: boolean }[] }>(`${base}/categories`),
       isTeacher ? getJson<{ items: TodayItem[] }>(`${base}/schedule`) : null,
       canSeeActivity ? getJson<{ entries: AuditEntry[] }>(`${base}/audit?${activityQs}`) : null,
-      getJson<{ required: string[]; children: unknown[] }>(`${base}/documents/missing`),
+      isTeacher ? null : getJson<{ required: string[]; children: unknown[] }>(`${base}/documents/missing`),
     ]);
     setMissingDocs(docs);
     setChildren(kids?.children ?? null);
@@ -160,13 +160,17 @@ export default function CentreManagementHomePage() {
         {/* Left: tiles, then activity */}
         <div className="min-w-0">
           <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            <Tile
-              title="Admissions"
-              href="/dashboard/centre/admissions"
-              value={num(children ? newThisWeekCount : null)}
-              hint="New this week"
-              tourId="tile-admissions"
-            />
+            {/* Teachers only get Attendance, Enrolled and Upcoming events
+                (Dylan, 4 Oct 2026; src/lib/teacherAccess.ts). */}
+            {!isTeacher && (
+              <Tile
+                title="Admissions"
+                href="/dashboard/centre/admissions"
+                value={num(children ? newThisWeekCount : null)}
+                hint="New this week"
+                tourId="tile-admissions"
+              />
+            )}
 
             {canSeeAttendance && (
               <div data-tour="tile-attendance" className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -187,10 +191,18 @@ export default function CentreManagementHomePage() {
                       <span className="block text-xs text-muted-foreground">Present</span>
                       <span className="font-display text-2xl font-semibold text-success">{attendance.present}</span>
                     </Link>
-                    <Link href="/dashboard/centre/attendance/absent" className="block p-3 hover:bg-background">
-                      <span className="block text-xs text-muted-foreground">Absent</span>
-                      <span className="font-display text-2xl font-semibold text-danger">{attendance.absent}</span>
-                    </Link>
+                    {isTeacher ? (
+                      // The absent list shows parents' contacts: admin only.
+                      <Link href="/dashboard/centre/attendance" className="block p-3 hover:bg-background">
+                        <span className="block text-xs text-muted-foreground">Absent</span>
+                        <span className="font-display text-2xl font-semibold text-danger">{attendance.absent}</span>
+                      </Link>
+                    ) : (
+                      <Link href="/dashboard/centre/attendance/absent" className="block p-3 hover:bg-background">
+                        <span className="block text-xs text-muted-foreground">Absent</span>
+                        <span className="font-display text-2xl font-semibold text-danger">{attendance.absent}</span>
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
@@ -205,6 +217,7 @@ export default function CentreManagementHomePage() {
                 tourId="tile-online-submissions"
               />
             )}
+            {!isTeacher && (
             <Tile
               title="Missing documents"
               href="/dashboard/centre/documents"
@@ -219,6 +232,7 @@ export default function CentreManagementHomePage() {
               warn={Boolean(missingDocs && missingDocs.children.length > 0)}
               tourId="tile-missing-documents"
             />
+            )}
             <Tile
               title="Enrolled"
               href="/dashboard/centre/enrolled"
@@ -251,19 +265,21 @@ export default function CentreManagementHomePage() {
               }
               tourId="tile-upcoming-events"
             />
-            <Tile
-              title="Classes"
-              href="/dashboard/centre/classes"
-              value={num(classCount)}
-              hint="Teachers and age groups"
-              tourId="tile-classes"
-            />
+            {!isTeacher && (
+              <Tile
+                title="Classes"
+                href="/dashboard/centre/classes"
+                value={num(classCount)}
+                hint="Teachers and age groups"
+                tourId="tile-classes"
+              />
+            )}
           </div>
 
           {isTeacher && todayItems !== null && (
             <Card as="div" className="mb-8 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-display text-sm font-semibold text-foreground">Today&apos;s timetable</h2>
+                <h2 className="font-display text-sm font-semibold text-foreground">Today&apos;s routine</h2>
                 <Link href="/dashboard/centre/schedule" className="text-xs font-medium text-brand hover:underline">
                   Full week →
                 </Link>

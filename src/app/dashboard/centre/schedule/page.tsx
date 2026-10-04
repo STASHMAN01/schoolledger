@@ -88,7 +88,7 @@ export default function SchedulePage() {
       } else {
         setLoadedCategory(null);
         setItems([]);
-        setError(data.error ?? "Could not load the timetable.");
+        setError(data.error ?? "Could not load the routine.");
       }
       setLoading(false);
     },
@@ -155,7 +155,7 @@ export default function SchedulePage() {
     const data = await res.json().catch(() => ({}));
     setSaving(false);
     if (!res.ok) {
-      setError(data.error ?? "Could not save the timetable.");
+      setError(data.error ?? "Could not save the routine.");
       return;
     }
     setItems(data.items);
@@ -165,16 +165,16 @@ export default function SchedulePage() {
   return (
     <div className="animate-in max-w-4xl">
       <PageHeader
-        title="Timetable"
+        title="Routine"
         description={
           isTeacher
-            ? "Your class's weekly timetable. If it changes, you'll see a to-do on your dashboard."
-            : "Each class's fixed weekly timetable, Monday to Friday. Teachers see their own class's timetable and get a dashboard to-do when it changes."
+            ? "Your class's weekly routine. If it changes, you'll see a to-do on your dashboard."
+            : "Each class's fixed weekly routine, Monday to Friday. Teachers see their own class's routine and get a dashboard to-do when it changes."
         }
         actions={
           canEdit && loadedCategory && !editing ? (
             <Button size="sm" onClick={startEditing}>
-              Edit timetable
+              Edit routine
             </Button>
           ) : undefined
         }
@@ -207,8 +207,8 @@ export default function SchedulePage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : !loadedCategory ? null : !editing && items.length === 0 ? (
         <EmptyState
-          title={`No timetable for ${loadedCategory.name} yet`}
-          description={canEdit ? "Click “Edit timetable” to add the daily routine." : "Ask the principal to add one."}
+          title={`No routine for ${loadedCategory.name} yet`}
+          description={canEdit ? "Click “Edit routine” to add the daily routine." : "Ask the principal to add one."}
         />
       ) : (
         <div className="space-y-4">
@@ -295,7 +295,7 @@ export default function SchedulePage() {
           {editing && (
             <div className="flex gap-2">
               <Button onClick={save} disabled={saving}>
-                {saving ? "Saving…" : "Save timetable"}
+                {saving ? "Saving…" : "Save routine"}
               </Button>
               <Button variant="secondary" onClick={() => setEditing(false)} disabled={saving}>
                 Cancel

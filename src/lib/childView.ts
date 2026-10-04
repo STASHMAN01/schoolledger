@@ -36,3 +36,50 @@ export function serializeChild<T extends ChildLike>(child: T, canViewMoney: bool
   }
   return out;
 }
+
+// What a Teacher gets (Dylan, 4 Oct 2026): name, class, gender, age
+// (date of birth), allergies and emergency contact. Nothing else leaves
+// the server for a Teacher -- no parent details, ID numbers, address,
+// photo, documents or money. Built as an allowlist so a new Child column
+// is never exposed to teachers by accident.
+type TeacherChildSource = {
+  id: string;
+  categoryId: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: Date | null;
+  gender: string | null;
+  allergies: string | null;
+  emergencyContactName: string | null;
+  emergencyContactRelationship: string | null;
+  emergencyContactPhone: string | null;
+  enrollmentDate: Date;
+  exitDate: Date | null;
+  archived: boolean;
+  category?: { id: string; name: string } | null;
+};
+
+export function serializeChildForTeacher(child: TeacherChildSource) {
+  return {
+    id: child.id,
+    categoryId: child.categoryId,
+    category: child.category ? { id: child.category.id, name: child.category.name, monthlyFeeCents: null } : null,
+    firstName: child.firstName,
+    lastName: child.lastName,
+    dateOfBirth: child.dateOfBirth,
+    gender: child.gender,
+    allergies: child.allergies,
+    emergencyContactName: child.emergencyContactName,
+    emergencyContactRelationship: child.emergencyContactRelationship,
+    emergencyContactPhone: child.emergencyContactPhone,
+    enrollmentDate: child.enrollmentDate,
+    exitDate: child.exitDate,
+    archived: child.archived,
+    // Empty rather than missing so pages that read them don't crash.
+    guardians: [],
+    planEntries: [],
+    creditBalance: null,
+    deletionRequest: null,
+    teacherView: true,
+  };
+}

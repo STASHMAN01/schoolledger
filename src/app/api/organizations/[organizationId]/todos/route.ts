@@ -247,7 +247,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     ) {
       todos.push({
         id: "schedule.changed",
-        label: "Your class timetable changed — have a look",
+        label: "Your class routine changed — have a look",
         count: 1,
         href: "/dashboard/centre/schedule",
       });

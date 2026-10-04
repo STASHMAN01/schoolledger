@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
-import { REQUEST_METHOD_HEADER } from "@/lib/requestMethod";
+import { REQUEST_METHOD_HEADER, REQUEST_PATH_HEADER } from "@/lib/requestMethod";
 // The list of session-free paths lives in its own module so it can be
 // unit-tested without booting NextAuth -- see src/lib/publicPaths.test.ts.
 import { requiresSession } from "@/lib/publicPaths";
@@ -14,6 +14,8 @@ export default auth((req: NextRequest & { auth?: unknown }) => {
   // so it can't be spoofed to sneak a write past the read-only check.
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set(REQUEST_METHOD_HEADER, req.method);
+  // Same for the path, for the Teacher allowlist in requireMembership.
+  requestHeaders.set(REQUEST_PATH_HEADER, pathname);
   const next = () => NextResponse.next({ request: { headers: requestHeaders } });
 
   // Note this asks "does this path need a session", not "is this path

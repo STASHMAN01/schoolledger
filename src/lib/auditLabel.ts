@@ -106,11 +106,11 @@ export function describeAuditAction(row: AuditRow): string {
     }
     case "schedule.updated": {
       const className = typeof m.className === "string" ? m.className : "a class";
-      return `updated the ${className} timetable`;
+      return `updated the ${className} routine`;
     }
     case "schedule.acknowledged": {
       const className = typeof m.className === "string" ? m.className : "their class";
-      return `saw the updated ${className} timetable`;
+      return `saw the updated ${className} routine`;
     }
     case "export.downloaded":
       return `downloaded a full data backup`;
