@@ -9,7 +9,7 @@
 //  - always TEACHER, scoped to one class
 //  - never any of PROFILE_BLOCKED_PERMISSIONS, whatever an admin ticks
 import { z } from "zod";
-import { schoolSlug } from "@/lib/schoolMail";
+import { schoolSlug } from "@/lib/slug";
 
 export const MAX_PROFILES_PER_ORG = 10;
 
@@ -43,15 +43,7 @@ export function candidateUsernames(schoolName: string, profileName: string): str
   return Array.from(new Set(names));
 }
 
-/** What the login box got: an email (has "@") or a profile username. */
-export function parseLoginIdentifier(raw: unknown): { kind: "email" | "username"; value: string } | null {
-  if (typeof raw !== "string") return null;
-  const value = raw.trim().toLowerCase();
-  if (!value || value.length > 200) return null;
-  if (value.includes("@")) return { kind: "email", value };
-  if (!/^[a-z0-9-]+\.[a-z0-9-]+$/.test(value)) return null;
-  return { kind: "username", value };
-}
+export { parseLoginIdentifier } from "@/lib/loginIdentifier";
 
 export const createProfileSchema = z.object({
   name: z.string().trim().min(1, "Give the profile a name.").max(60),

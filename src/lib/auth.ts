@@ -5,7 +5,8 @@ import { verifyPassword } from "@/lib/password";
 import { emailSchema } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { isTokenStillValid } from "@/lib/tokenVersion";
-import { parseLoginIdentifier } from "@/lib/profiles";
+// Must stay import-free: auth.ts runs in the Edge middleware too.
+import { parseLoginIdentifier } from "@/lib/loginIdentifier";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {

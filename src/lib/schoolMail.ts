@@ -29,18 +29,8 @@ export function sendingDomain(): string {
   return process.env.RESEND_FROM_DOMAIN || "mail.crechely.co.za";
 }
 
-/** "Sunny Smiles Pre-School (Pty) Ltd" -> "sunny-smiles-pre-school-pty-ltd" (never empty). */
-export function schoolSlug(name: string): string {
-  const slug = name
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40)
-    .replace(/-+$/g, "");
-  return slug || "school";
-}
+import { schoolSlug } from "@/lib/slug";
+export { schoolSlug };
 
 /** A display name safe inside a From header: no quotes, angle brackets or line breaks. */
 export function safeDisplayName(name: string): string {
