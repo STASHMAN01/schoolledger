@@ -85,8 +85,22 @@ export async function POST(req: NextRequest, { params }: Params) {
         summary: body.summary,
         parentNotified: body.parentNotified,
         parentNotifiedAt: body.parentNotified ? new Date() : null,
-        injury: body.type === "INCIDENT" ? body.injury ?? false : null,
-        firstAidGiven: body.type === "INCIDENT" ? body.firstAidGiven ?? false : null,
+        injury:
+          body.type === "INCIDENT"
+            ? body.incidentTypes?.includes("MINOR_INJURY") ?? body.injury ?? false
+            : null,
+        firstAidGiven: body.type === "INCIDENT" ? body.firstAidGiven ?? null : null,
+        incidentTime: body.type === "INCIDENT" ? blankToNull(body.incidentTime) : null,
+        location: body.type === "INCIDENT" ? blankToNull(body.location) : null,
+        incidentTypes: body.type === "INCIDENT" ? body.incidentTypes ?? [] : [],
+        incidentTypeOther:
+          body.type === "INCIDENT" && body.incidentTypes?.includes("OTHER")
+            ? blankToNull(body.incidentTypeOther)
+            : null,
+        caregiver: body.type === "INCIDENT" ? blankToNull(body.caregiver) : null,
+        emergencyCareRequired: body.type === "INCIDENT" ? body.emergencyCareRequired ?? null : null,
+        staffConsulted: body.type === "INCIDENT" ? body.staffConsulted ?? null : null,
+        witnessesPresent: body.type === "INCIDENT" ? body.witnessesPresent ?? null : null,
         witnesses: body.type === "INCIDENT" ? blankToNull(body.witnesses) : null,
         actionTaken: body.type === "INCIDENT" ? blankToNull(body.actionTaken) : null,
         term: body.type === "ACADEMIC" ? blankToNull(body.term) : null,

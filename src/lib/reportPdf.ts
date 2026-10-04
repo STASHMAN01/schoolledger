@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
-import { REPORT_TYPE_INFO, type ReportTypeValue } from "@/lib/reports";
+import { INCIDENT_TYPE_LABELS, INCIDENT_TYPES, REPORT_TYPE_INFO, ageAt, type ReportTypeValue } from "@/lib/reports";
 
 // Printable PDF for one Centre Management report (incident/academic/
 // disciplinary) -- same pdf-lib approach as statementPdf.ts and
@@ -60,6 +60,14 @@ type ReportData = {
   firstAidGiven: boolean | null;
   witnesses: string | null;
   actionTaken: string | null;
+  incidentTime?: string | null;
+  location?: string | null;
+  incidentTypes?: string[];
+  incidentTypeOther?: string | null;
+  caregiver?: string | null;
+  emergencyCareRequired?: boolean | null;
+  staffConsulted?: boolean | null;
+  witnessesPresent?: boolean | null;
   term: string | null;
   developmentArea: string | null;
   rating: string | null;
@@ -67,7 +75,7 @@ type ReportData = {
   followUp: string | null;
   parentNotified: boolean;
   parentNotifiedAt: Date | null;
-  child: { firstName: string; lastName: string };
+  child: { firstName: string; lastName: string; dateOfBirth?: Date | null };
   category: { name: string };
   createdBy: { name: string };
   createdAt: Date;
@@ -83,6 +91,10 @@ function fmtDate(d: Date) {
 }
 function fmtDateTime(d: Date) {
   return d.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function yesNo(v: boolean | null | undefined) {
+  return v == null ? "Not recorded" : v ? "Yes" : "No";
 }
 
 export async function generateReportPdf(org: ReportOrg, report: ReportData): Promise<Uint8Array> {
@@ -174,30 +186,56 @@ export async function generateReportPdf(org: ReportOrg, report: ReportData): Pro
   y -= 24;
 
   field("Child", `${report.child.firstName} ${report.child.lastName}`);
+  if (report.type === "INCIDENT") {
+    field("Date of report", fmtDate(report.createdAt));
+    field("Age", ageAt(report.child.dateOfBirth, report.occurredAt) ?? "Not recorded");
+  }
   field("Class", report.category.name);
-  field("Date", fmtDate(report.occurredAt));
+  field(report.type === "INCIDENT" ? "Incident date" : "Date", fmtDate(report.occurredAt));
+  if (report.type === "INCIDENT") {
+    if (report.incidentTime) field("Time", report.incidentTime);
+    if (report.location) field("Location", report.location);
+    if (report.caregiver) field("Caregiver", report.caregiver);
+  }
   field("Written by", report.createdBy.name);
   if (report.type === "ACADEMIC" && report.term) field("Term", report.term);
   if (report.type === "ACADEMIC" && report.developmentArea) field("Development area", report.developmentArea);
   if (report.type === "ACADEMIC" && report.rating) field("Rating", report.rating);
   y -= 4;
 
-  section(report.type === "DISCIPLINARY" ? "What happened" : "Summary");
+  if (report.type === "INCIDENT") {
+    const picked = new Set(report.incidentTypes ?? []);
+    section("Type of incident");
+    if (picked.size === 0) {
+      // Reports written before the template fields existed.
+      field("Injury", report.injury ? "Yes" : "No");
+    } else {
+      for (const t of INCIDENT_TYPES) {
+        if (!picked.has(t)) continue;
+        const label = INCIDENT_TYPE_LABELS[t];
+        field(label, t === "OTHER" && report.incidentTypeOther ? report.incidentTypeOther : "Yes");
+      }
+    }
+  }
+
+  section(report.type === "DISCIPLINARY" ? "What happened" : report.type === "INCIDENT" ? "Description of the incident" : "Summary");
   paragraph(report.summary || "—");
 
   if (report.type === "INCIDENT") {
-    section("Injury and first aid");
-    field("Injury", report.injury ? "Yes" : "No");
-    field("First aid given", report.firstAidGiven ? "Yes" : "No");
-    if (report.witnesses) {
-      y -= 2;
-      text("Witnesses:", { size: 9.5, f: bold });
-      y -= 14;
-      paragraph(report.witnesses, { size: 9.5 });
-    }
+    section("Care and response");
+    field("First aid provided", yesNo(report.firstAidGiven));
+    field("Emergency care required", yesNo(report.emergencyCareRequired));
+    field("Staff member or nurse consulted", yesNo(report.staffConsulted));
     if (report.actionTaken) {
-      section("Action taken");
-      paragraph(report.actionTaken);
+      y -= 2;
+      text("Care or intervention provided:", { size: 9.5, f: bold });
+      y -= 14;
+      paragraph(report.actionTaken, { size: 9.5 });
+    }
+    section("Witnesses");
+    field("Any witnesses", yesNo(report.witnessesPresent ?? (report.witnesses ? true : null)));
+    if (report.witnesses) {
+      paragraph(report.witnesses, { size: 9.5 });
     }
   }
 

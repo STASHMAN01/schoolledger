@@ -51,6 +51,48 @@ export function resolveReportScope(
   return { mode: "all" };
 }
 
+// Incident form fields from the school's own "Daycare Incident Report"
+// template (Dylan, 4 Oct 2026). The values are stored as these codes; the
+// labels are what the form and the PDF show.
+export const INCIDENT_TYPES = [
+  "MINOR_INJURY",
+  "ILLNESS",
+  "ALLERGIC_REACTION",
+  "BEHAVIOURAL",
+  "BITING_SCRATCHING",
+  "CHOKING_RISK",
+  "OTHER",
+] as const;
+export type IncidentTypeValue = (typeof INCIDENT_TYPES)[number];
+
+export const INCIDENT_TYPE_LABELS: Record<IncidentTypeValue, string> = {
+  MINOR_INJURY: "Minor injury",
+  ILLNESS: "Illness / symptoms",
+  ALLERGIC_REACTION: "Allergic reaction",
+  BEHAVIOURAL: "Behavioural issue",
+  BITING_SCRATCHING: "Biting / scratching",
+  CHOKING_RISK: "Choking risk",
+  OTHER: "Other",
+};
+
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** "3 years, 2 months" as at `asOf`, or null when there is no usable date of birth. */
+export function ageAt(dateOfBirth: Date | string | null | undefined, asOf: Date = new Date()): string | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return null;
+  let months = (asOf.getUTCFullYear() - dob.getUTCFullYear()) * 12 + (asOf.getUTCMonth() - dob.getUTCMonth());
+  if (asOf.getUTCDate() < dob.getUTCDate()) months -= 1;
+  if (months < 0) return null;
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  const y = `${years} year${years === 1 ? "" : "s"}`;
+  const m = `${rest} month${rest === 1 ? "" : "s"}`;
+  if (years === 0) return m;
+  return rest === 0 ? y : `${y}, ${m}`;
+}
+
 const baseReportFields = {
   childId: z.string().cuid(),
   type: z.enum(REPORT_TYPES),
@@ -59,9 +101,17 @@ const baseReportFields = {
   parentNotified: z.boolean().default(false),
   // INCIDENT
   injury: z.boolean().optional(),
-  firstAidGiven: z.boolean().optional(),
+  firstAidGiven: z.boolean().nullable().optional(),
   witnesses: z.string().trim().max(2_000).optional().or(z.literal("")),
   actionTaken: z.string().trim().max(5_000).optional().or(z.literal("")),
+  incidentTime: z.string().regex(TIME_RE, "Use a time like 14:30.").optional().or(z.literal("")),
+  location: z.string().trim().max(200).optional().or(z.literal("")),
+  incidentTypes: z.array(z.enum(INCIDENT_TYPES)).max(INCIDENT_TYPES.length).optional(),
+  incidentTypeOther: z.string().trim().max(200).optional().or(z.literal("")),
+  caregiver: z.string().trim().max(120).optional().or(z.literal("")),
+  emergencyCareRequired: z.boolean().nullable().optional(),
+  staffConsulted: z.boolean().nullable().optional(),
+  witnessesPresent: z.boolean().nullable().optional(),
   // ACADEMIC
   term: z.string().trim().max(100).optional().or(z.literal("")),
   developmentArea: z.string().trim().max(100).optional().or(z.literal("")),
@@ -71,7 +121,23 @@ const baseReportFields = {
   followUp: z.string().trim().max(5_000).optional().or(z.literal("")),
 };
 
-export const reportCreateSchema = z.object(baseReportFields);
+// A NEW incident report must carry what the paper template asks for; other
+// types, and edits to older reports, stay as they were.
+export const reportCreateSchema = z.object(baseReportFields).superRefine((v, ctx) => {
+  if (v.type !== "INCIDENT") return;
+  if (!v.incidentTime) {
+    ctx.addIssue({ code: "custom", path: ["incidentTime"], message: "Enter the time it happened." });
+  }
+  if (!v.incidentTypes || v.incidentTypes.length === 0) {
+    ctx.addIssue({ code: "custom", path: ["incidentTypes"], message: "Tick at least one type of incident." });
+  }
+  if (v.incidentTypes?.includes("OTHER") && !v.incidentTypeOther?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["incidentTypeOther"], message: "Say what the other type of incident was." });
+  }
+  if (!v.caregiver?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["caregiver"], message: "Enter the caregiver's name." });
+  }
+});
 export const reportUpdateSchema = z.object(baseReportFields).partial({ childId: true, type: true });
 
 // Empty-string optional text fields (from form inputs) should be stored as

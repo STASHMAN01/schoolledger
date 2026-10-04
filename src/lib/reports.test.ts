@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blankToNull, reportCreateSchema, resolveReportScope } from "./reports";
+import { ageAt, blankToNull, reportCreateSchema, resolveReportScope } from "./reports";
 
 describe("resolveReportScope", () => {
   it("TEACHER is always pinned to their own assigned class", () => {
@@ -38,6 +38,9 @@ describe("reportCreateSchema", () => {
     type: "INCIDENT" as const,
     occurredAt: "2026-10-01",
     summary: "Fell off the jungle gym.",
+    incidentTime: "10:15",
+    incidentTypes: ["MINOR_INJURY" as const],
+    caregiver: "Ms Naledi",
   };
 
   it("accepts a minimal valid incident report", () => {
@@ -52,5 +55,56 @@ describe("reportCreateSchema", () => {
 
   it("rejects an invalid type", () => {
     expect(() => reportCreateSchema.parse({ ...base, type: "OTHER" })).toThrow();
+  });
+});
+
+describe("incident template fields", () => {
+  const incident = {
+    childId: "clh1234567890123456789012",
+    type: "INCIDENT" as const,
+    occurredAt: "2026-10-01",
+    summary: "Fell off the jungle gym.",
+    incidentTime: "10:15",
+    incidentTypes: ["MINOR_INJURY" as const],
+    caregiver: "Ms Naledi",
+  };
+
+  it("accepts a complete new incident report", () => {
+    expect(reportCreateSchema.parse(incident).incidentTypes).toEqual(["MINOR_INJURY"]);
+  });
+
+  it("requires time, a type and the caregiver on a new incident", () => {
+    expect(() => reportCreateSchema.parse({ ...incident, incidentTime: "" })).toThrow();
+    expect(() => reportCreateSchema.parse({ ...incident, incidentTypes: [] })).toThrow();
+    expect(() => reportCreateSchema.parse({ ...incident, caregiver: " " })).toThrow();
+  });
+
+  it("needs a description when 'Other' is ticked", () => {
+    expect(() => reportCreateSchema.parse({ ...incident, incidentTypes: ["OTHER"] })).toThrow();
+    expect(
+      reportCreateSchema.parse({ ...incident, incidentTypes: ["OTHER"], incidentTypeOther: "Bee sting" }).incidentTypeOther
+    ).toBe("Bee sting");
+  });
+
+  it("rejects bad times and unknown types", () => {
+    expect(() => reportCreateSchema.parse({ ...incident, incidentTime: "25:00" })).toThrow();
+    expect(() => reportCreateSchema.parse({ ...incident, incidentTypes: ["NOPE"] })).toThrow();
+  });
+
+  it("does not demand the template fields of other report types", () => {
+    expect(() =>
+      reportCreateSchema.parse({ childId: incident.childId, type: "ACADEMIC", occurredAt: "2026-10-01", summary: "Good progress." })
+    ).not.toThrow();
+  });
+});
+
+describe("ageAt", () => {
+  it("works out years and months as at a date", () => {
+    expect(ageAt("2023-07-10", new Date("2026-10-04T00:00:00Z"))).toBe("3 years, 2 months");
+    expect(ageAt("2026-08-01", new Date("2026-10-04T00:00:00Z"))).toBe("2 months");
+  });
+  it("is null without a usable date of birth", () => {
+    expect(ageAt(null)).toBeNull();
+    expect(ageAt("2030-01-01", new Date("2026-10-04T00:00:00Z"))).toBeNull();
   });
 });

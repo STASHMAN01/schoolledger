@@ -11,7 +11,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { todayLocal } from "@/lib/date";
 import { useOrg, useHasPermission } from "../../OrgContext";
 import { Badge, Button, Card, EmptyState, Input, Label, PageHeader, Select, Textarea } from "@/components/ui";
-import { REPORT_TYPE_INFO, REPORT_TYPES, type ReportTypeValue } from "@/lib/reports";
+import {
+  INCIDENT_TYPE_LABELS,
+  INCIDENT_TYPES,
+  REPORT_TYPE_INFO,
+  REPORT_TYPES,
+  ageAt,
+  type IncidentTypeValue,
+  type ReportTypeValue,
+} from "@/lib/reports";
 
 type ReportRow = {
   id: string;
@@ -25,7 +33,15 @@ type ReportRow = {
   createdBy: { id: string; name: string };
 };
 
-type ChildOption = { id: string; firstName: string; lastName: string };
+type ChildOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth?: string | null;
+  category?: { name: string } | null;
+};
+
+type YesNo = boolean | null; // null = not answered
 
 type FormState = {
   id: string | null;
@@ -35,7 +51,15 @@ type FormState = {
   summary: string;
   parentNotified: boolean;
   injury: boolean;
-  firstAidGiven: boolean;
+  firstAidGiven: YesNo;
+  emergencyCareRequired: YesNo;
+  staffConsulted: YesNo;
+  witnessesPresent: YesNo;
+  incidentTime: string;
+  location: string;
+  incidentTypes: IncidentTypeValue[];
+  incidentTypeOther: string;
+  caregiver: string;
   witnesses: string;
   actionTaken: string;
   term: string;
@@ -60,7 +84,15 @@ function emptyForm(type: ReportTypeValue, childId = ""): FormState {
     summary: "",
     parentNotified: false,
     injury: false,
-    firstAidGiven: false,
+    firstAidGiven: null,
+    emergencyCareRequired: null,
+    staffConsulted: null,
+    witnessesPresent: null,
+    incidentTime: "",
+    location: "",
+    incidentTypes: [],
+    incidentTypeOther: "",
+    caregiver: "",
     witnesses: "",
     actionTaken: "",
     term: "",
@@ -69,6 +101,22 @@ function emptyForm(type: ReportTypeValue, childId = ""): FormState {
     behaviour: "",
     followUp: "",
   };
+}
+
+function YesNoRow({ label, value, onChange }: { label: string; value: YesNo; onChange: (v: YesNo) => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <span className="text-sm text-foreground">{label}</span>
+      <div className="flex gap-4">
+        {([true, false] as const).map((opt) => (
+          <label key={String(opt)} className="flex items-center gap-1.5 text-sm text-foreground">
+            <input type="radio" name={label} checked={value === opt} onChange={() => onChange(opt)} />
+            {opt ? "Yes" : "No"}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function ReportsPage() {
@@ -136,6 +184,25 @@ export default function ReportsPage() {
       setError("Choose a child first.");
       return;
     }
+    // A new incident report must be filled in like the paper form; older
+    // reports can still be edited without these.
+    if (form.type === "INCIDENT" && !form.id) {
+      const missing = !form.incidentTime
+        ? "Enter the time it happened."
+        : form.incidentTypes.length === 0
+          ? "Tick at least one type of incident."
+          : form.incidentTypes.includes("OTHER") && !form.incidentTypeOther.trim()
+            ? "Say what the other type of incident was."
+            : !form.caregiver.trim()
+              ? "Enter the caregiver's name."
+              : !form.summary.trim()
+                ? "Describe the incident."
+                : null;
+      if (missing) {
+        setError(missing);
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     const url = form.id ? `${base}/reports/${form.id}` : `${base}/reports`;
@@ -186,7 +253,15 @@ export default function ReportsPage() {
       summary: r.summary ?? "",
       parentNotified: r.parentNotified,
       injury: r.injury ?? false,
-      firstAidGiven: r.firstAidGiven ?? false,
+      firstAidGiven: r.firstAidGiven ?? null,
+      emergencyCareRequired: r.emergencyCareRequired ?? null,
+      staffConsulted: r.staffConsulted ?? null,
+      witnessesPresent: r.witnessesPresent ?? null,
+      incidentTime: r.incidentTime ?? "",
+      location: r.location ?? "",
+      incidentTypes: r.incidentTypes ?? [],
+      incidentTypeOther: r.incidentTypeOther ?? "",
+      caregiver: r.caregiver ?? "",
       witnesses: r.witnesses ?? "",
       actionTaken: r.actionTaken ?? "",
       term: r.term ?? "",
@@ -198,6 +273,7 @@ export default function ReportsPage() {
   }
 
   const info = REPORT_TYPE_INFO[activeType];
+  const chosenChild = form ? children.find((c) => c.id === form.childId) : undefined;
 
   return (
     <div className="animate-in">
@@ -336,6 +412,79 @@ export default function ReportsPage() {
                 />
               </div>
 
+              {form.type === "INCIDENT" && (
+                <>
+                  {chosenChild && (
+                    <p className="rounded-lg bg-surface px-3 py-2 text-sm text-muted-foreground">
+                      Class: {chosenChild.category?.name ?? "—"} · Age:{" "}
+                      {ageAt(chosenChild.dateOfBirth, form.occurredAt ? new Date(form.occurredAt) : undefined) ?? "not recorded"}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="rep-time">Time</Label>
+                      <Input
+                        id="rep-time"
+                        type="time"
+                        className="mt-1"
+                        value={form.incidentTime}
+                        onChange={(e) => setForm({ ...form, incidentTime: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="rep-location">Location</Label>
+                      <Input
+                        id="rep-location"
+                        className="mt-1"
+                        placeholder="e.g. Playground"
+                        value={form.location}
+                        onChange={(e) => setForm({ ...form, location: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="rep-caregiver">Caregiver (your name)</Label>
+                    <Input
+                      id="rep-caregiver"
+                      className="mt-1"
+                      value={form.caregiver}
+                      onChange={(e) => setForm({ ...form, caregiver: e.target.value })}
+                    />
+                  </div>
+                  <fieldset>
+                    <legend className="text-sm font-medium text-foreground">Type of incident (tick all that apply)</legend>
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {INCIDENT_TYPES.map((t) => (
+                        <label key={t} className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={form.incidentTypes.includes(t)}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                incidentTypes: e.target.checked
+                                  ? [...form.incidentTypes, t]
+                                  : form.incidentTypes.filter((x) => x !== t),
+                              })
+                            }
+                          />
+                          {INCIDENT_TYPE_LABELS[t]}
+                        </label>
+                      ))}
+                    </div>
+                    {form.incidentTypes.includes("OTHER") && (
+                      <Input
+                        aria-label="Other type of incident"
+                        className="mt-2"
+                        placeholder="What kind of incident?"
+                        value={form.incidentTypeOther}
+                        onChange={(e) => setForm({ ...form, incidentTypeOther: e.target.value })}
+                      />
+                    )}
+                  </fieldset>
+                </>
+              )}
+
               {form.type === "ACADEMIC" && (
                 <>
                   <div>
@@ -372,7 +521,7 @@ export default function ReportsPage() {
               )}
 
               <div>
-                <Label htmlFor="rep-summary">{form.type === "DISCIPLINARY" ? "What happened" : "Summary"}</Label>
+                <Label htmlFor="rep-summary">{form.type === "DISCIPLINARY" ? "What happened" : form.type === "INCIDENT" ? "Describe the incident" : "Summary"}</Label>
                 <Textarea
                   id="rep-summary"
                   className="mt-1"
@@ -384,43 +533,36 @@ export default function ReportsPage() {
 
               {form.type === "INCIDENT" && (
                 <>
-                  <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center gap-2 text-sm text-foreground">
-                      <input
-                        type="checkbox"
-                        checked={form.injury}
-                        onChange={(e) => setForm({ ...form, injury: e.target.checked })}
+                  <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+                    <p className="text-sm font-medium text-foreground">Care and response</p>
+                    <YesNoRow label="First aid provided?" value={form.firstAidGiven} onChange={(v) => setForm({ ...form, firstAidGiven: v })} />
+                    <YesNoRow label="Emergency care required?" value={form.emergencyCareRequired} onChange={(v) => setForm({ ...form, emergencyCareRequired: v })} />
+                    <YesNoRow label="Staff member or nurse consulted?" value={form.staffConsulted} onChange={(v) => setForm({ ...form, staffConsulted: v })} />
+                    <div>
+                      <Label htmlFor="rep-action">Describe the care or intervention provided</Label>
+                      <Textarea
+                        id="rep-action"
+                        className="mt-1"
+                        rows={2}
+                        value={form.actionTaken}
+                        onChange={(e) => setForm({ ...form, actionTaken: e.target.value })}
                       />
-                      Injury
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-foreground">
-                      <input
-                        type="checkbox"
-                        checked={form.firstAidGiven}
-                        onChange={(e) => setForm({ ...form, firstAidGiven: e.target.checked })}
-                      />
-                      First aid given
-                    </label>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="rep-witnesses">Witnesses</Label>
-                    <Textarea
-                      id="rep-witnesses"
-                      className="mt-1"
-                      rows={2}
-                      value={form.witnesses}
-                      onChange={(e) => setForm({ ...form, witnesses: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="rep-action">Action taken</Label>
-                    <Textarea
-                      id="rep-action"
-                      className="mt-1"
-                      rows={2}
-                      value={form.actionTaken}
-                      onChange={(e) => setForm({ ...form, actionTaken: e.target.value })}
-                    />
+                  <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+                    <YesNoRow label="Any witnesses?" value={form.witnessesPresent} onChange={(v) => setForm({ ...form, witnessesPresent: v })} />
+                    {form.witnessesPresent && (
+                      <div>
+                        <Label htmlFor="rep-witnesses">Witness names</Label>
+                        <Textarea
+                          id="rep-witnesses"
+                          className="mt-1"
+                          rows={2}
+                          value={form.witnesses}
+                          onChange={(e) => setForm({ ...form, witnesses: e.target.value })}
+                        />
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -460,6 +602,7 @@ export default function ReportsPage() {
               </label>
             </div>
 
+            {error && <p className="mt-4 text-sm text-danger">{error}</p>}
             <div className="mt-6 flex gap-2">
               <Button onClick={save} disabled={saving}>
                 {saving ? "Saving…" : "Save"}

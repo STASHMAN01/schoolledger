@@ -757,6 +757,16 @@ model ChildReport {
   firstAidGiven  Boolean?
   witnesses      String?    @db.Text
   actionTaken    String?    @db.Text
+  // Fields from the school's paper "Daycare Incident Report" (4 Oct 2026).
+  // All optional so reports written before they existed stay valid.
+  incidentTime          String? // "HH:MM" on the school's clock, kept apart from occurredAt (date only)
+  location              String?
+  incidentTypes         String[] @default([]) // codes from INCIDENT_TYPES in src/lib/reports.ts
+  incidentTypeOther     String?
+  caregiver             String?
+  emergencyCareRequired Boolean?
+  staffConsulted        Boolean?
+  witnessesPresent      Boolean?
 
   // ACADEMIC-only fields.
   term           String? // e.g. "Term 3 2026"

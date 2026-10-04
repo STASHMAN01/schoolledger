@@ -16,6 +16,14 @@ const detailSelect = {
   firstAidGiven: true,
   witnesses: true,
   actionTaken: true,
+  incidentTime: true,
+  location: true,
+  incidentTypes: true,
+  incidentTypeOther: true,
+  caregiver: true,
+  emergencyCareRequired: true,
+  staffConsulted: true,
+  witnessesPresent: true,
   term: true,
   developmentArea: true,
   rating: true,
@@ -26,7 +34,7 @@ const detailSelect = {
   createdAt: true,
   updatedAt: true,
   categoryId: true,
-  child: { select: { id: true, firstName: true, lastName: true, categoryId: true } },
+  child: { select: { id: true, firstName: true, lastName: true, categoryId: true, dateOfBirth: true } },
   category: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
 } as const;
@@ -75,7 +83,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           : {}),
         ...(type === "INCIDENT"
           ? {
-              ...(body.injury !== undefined ? { injury: body.injury } : {}),
+              ...(body.incidentTypes !== undefined
+                ? { injury: body.incidentTypes.includes("MINOR_INJURY") }
+                : body.injury !== undefined
+                  ? { injury: body.injury }
+                  : {}),
+              ...(body.incidentTime !== undefined ? { incidentTime: blankToNull(body.incidentTime) } : {}),
+              ...(body.location !== undefined ? { location: blankToNull(body.location) } : {}),
+              ...(body.incidentTypes !== undefined ? { incidentTypes: body.incidentTypes } : {}),
+              ...(body.incidentTypeOther !== undefined ? { incidentTypeOther: blankToNull(body.incidentTypeOther) } : {}),
+              ...(body.caregiver !== undefined ? { caregiver: blankToNull(body.caregiver) } : {}),
+              ...(body.emergencyCareRequired !== undefined ? { emergencyCareRequired: body.emergencyCareRequired } : {}),
+              ...(body.staffConsulted !== undefined ? { staffConsulted: body.staffConsulted } : {}),
+              ...(body.witnessesPresent !== undefined ? { witnessesPresent: body.witnessesPresent } : {}),
               ...(body.firstAidGiven !== undefined ? { firstAidGiven: body.firstAidGiven } : {}),
               ...(body.witnesses !== undefined ? { witnesses: blankToNull(body.witnesses) } : {}),
               ...(body.actionTaken !== undefined ? { actionTaken: blankToNull(body.actionTaken) } : {}),
