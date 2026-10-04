@@ -26,6 +26,8 @@ function inputToCents(value: string): number | null {
 export default function CategoriesPage() {
   const { organizationId, permissions, currencyCode } = useOrg();
   const canManage = permissions.includes("MANAGE_CLASSES");
+  // The server refuses a fee change without VIEW_MONEY, so only offer it then.
+  const canEditFee = permissions.includes("VIEW_MONEY");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,14 @@ export default function CategoriesPage() {
 
   const [name, setName] = useState("");
   const [fee, setFee] = useState("");
+
+  // Inline edit of one class's name and monthly fee. Before 4 Oct 2026 this
+  // page had no Edit at all, so a class added in Centre Management (which
+  // deliberately has no fee field) could never get a fee.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editFee, setEditFee] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +82,37 @@ export default function CategoriesPage() {
     await load();
   }
 
+  function startEdit(category: Category) {
+    setError(null);
+    setEditingId(category.id);
+    setEditName(category.name);
+    setEditFee(category.monthlyFeeCents === null ? "" : (category.monthlyFeeCents / 100).toString());
+  }
+
+  async function saveEdit(category: Category) {
+    setError(null);
+    if (canEditFee && editFee.trim() !== "" && inputToCents(editFee) === null) {
+      setError("Enter the fee as a number, e.g. 1400.");
+      return;
+    }
+    setSaving(true);
+    const res = await fetch(`/api/organizations/${organizationId}/categories/${category.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        canEditFee ? { name: editName, monthlyFeeCents: inputToCents(editFee) } : { name: editName }
+      ),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error ?? `"${category.name}" couldn't be saved. Please try again.`);
+      return;
+    }
+    setEditingId(null);
+    await load();
+  }
+
   async function toggleArchive(category: Category) {
     if (!category.archived) {
       const confirmed = await confirm({
@@ -96,6 +137,46 @@ export default function CategoriesPage() {
 
   function renderRow(category: Category) {
     if (category.archived && !showArchived) return null;
+    if (editingId === category.id) {
+      return (
+        <div key={category.id} className="border-b border-border px-4 py-3 last:border-b-0">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveEdit(category);
+            }}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <Label className="flex w-full flex-col gap-1 sm:w-auto">
+              Name
+              <Input required value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </Label>
+            {canEditFee && (
+              <Label className="flex flex-col gap-1">
+                Monthly fee
+                <Input
+                  className="w-32"
+                  value={editFee}
+                  onChange={(e) => setEditFee(e.target.value)}
+                  placeholder="e.g. 1400"
+                  inputMode="decimal"
+                />
+              </Label>
+            )}
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+              Cancel
+            </Button>
+          </form>
+          <p className="mt-2 text-xs text-muted-foreground">
+            A new fee applies to children added to this class from now on. Children already in
+            the class keep their current monthly charges.
+          </p>
+        </div>
+      );
+    }
     return (
       <div key={category.id}>
         <div className="flex items-center justify-between border-b border-border py-2 px-4 last:border-b-0">
@@ -111,6 +192,14 @@ export default function CategoriesPage() {
           </div>
           {canManage && (
             <div className="flex items-center gap-3">
+              {!category.archived && (
+                <button
+                  onClick={() => startEdit(category)}
+                  className="inline-flex min-h-11 items-center px-1 text-xs text-brand underline transition-standard hover:text-foreground sm:min-h-0 sm:px-0"
+                >
+                  Edit
+                </button>
+              )}
               <button
                 onClick={() => toggleArchive(category)}
                 className="inline-flex min-h-11 items-center px-1 text-xs text-muted-foreground underline transition-standard hover:text-foreground sm:min-h-0 sm:px-0"
