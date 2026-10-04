@@ -234,6 +234,7 @@ model Organization {
   subscriptionPayments SubscriptionPayment[]
   childDocuments       ChildDocument[]
   childReports         ChildReport[]
+  dailySummaries       DailySummary[]
 
   @@map("organizations")
 }
@@ -282,6 +283,7 @@ model User {
   parentSubmissionsReviewed ParentSubmission[] @relation("ParentSubmissionReviewedBy")
   attendanceRecordsMarked AttendanceRecord[]
   childReportsCreated ChildReport[]
+  dailySummariesSubmitted DailySummary[]
 
   @@map("users")
 }
@@ -387,6 +389,7 @@ model Category {
   scheduleItems ClassScheduleItem[]
   whatsappGroupChecks WhatsAppGroupCheck[]
   reports        ChildReport[]
+  dailySummaries DailySummary[]
 
   @@index([organizationId])
   @@index([parentId])
@@ -788,6 +791,35 @@ model ChildReport {
 // Teachers read their own class's timetable; MANAGE_CLASSES edits it.
 // "Timetable changed" teacher to-dos come from AuditLog
 // (schedule.updated vs schedule.acknowledged), so no extra column here.
+// The class teacher's end-of-day summary (Dylan, 4 Oct 2026). From 16:00
+// school time every weekday, each class with a teacher must answer: did
+// any child get hurt under your supervision today? If yes, either an
+// incident report exists for today or a reason is given. One per class
+// per school day; the admin sees which classes haven't submitted.
+model DailySummary {
+  id                String   @id @default(cuid())
+  organizationId    String
+  categoryId        String
+  // The school day, date-only (UTC midnight), same convention as
+  // AttendanceRecord.date.
+  date              DateTime
+  anyoneHurt        Boolean
+  // Only when anyoneHurt: true = incident report(s) filed for today
+  // (checked on submit), false = see noReportReason.
+  incidentReported  Boolean?
+  noReportReason    String?  @db.Text
+  submittedByUserId String
+  submittedAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id])
+  submittedBy  User         @relation(fields: [submittedByUserId], references: [id])
+
+  @@unique([categoryId, date])
+  @@index([organizationId, date])
+  @@map("daily_summaries")
+}
+
 model ClassScheduleItem {
   id             String   @id @default(cuid())
   organizationId String

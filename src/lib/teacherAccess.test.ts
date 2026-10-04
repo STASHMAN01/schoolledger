@@ -16,6 +16,8 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("GET", api("/reports/r1/pdf"))).toBe(true);
     expect(teacherMayCall("GET", api("/todos"))).toBe(true);
     expect(teacherMayCall("HEAD", api("/events/upcoming"))).toBe(true);
+    expect(teacherMayCall("GET", api("/daily-summary"))).toBe(true);
+    expect(teacherMayCall("POST", api("/daily-summary"))).toBe(true);
   });
 
   it("refuses changes, parent data and admin areas", () => {
@@ -34,6 +36,7 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("GET", api(""))).toBe(false); // school profile
     expect(teacherMayCall("GET", api("/staff"))).toBe(false);
     expect(teacherMayCall("GET", api("/audit"))).toBe(false);
+    expect(teacherMayCall("PATCH", api("/daily-summary"))).toBe(false);
   });
 
   it("ignores query strings and trailing slashes", () => {
@@ -58,6 +61,7 @@ describe("teacherMayOpen", () => {
       "/dashboard/centre/reports",
       "/dashboard/centre/schedule",
       "/dashboard/centre/events",
+      "/dashboard/centre/daily-summary",
     ]) {
       expect(teacherMayOpen(p)).toBe(true);
     }

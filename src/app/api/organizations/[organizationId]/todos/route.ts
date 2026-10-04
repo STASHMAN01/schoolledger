@@ -7,6 +7,7 @@ import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
 import { hasUnseenScheduleChange } from "@/lib/scheduleNotice";
 import { isProfileIncomplete } from "@/lib/childProfile";
 import { finalReviewWindow } from "@/lib/deletion";
+import { isSummaryDue, schoolClock, schoolDateValue } from "@/lib/dailySummary";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -251,6 +252,55 @@ export async function GET(req: NextRequest, { params }: Params) {
         count: 1,
         href: "/dashboard/centre/schedule",
       });
+    }
+
+    // Daily summary (Dylan, 4 Oct 2026), weekdays from 16:00 school time:
+    // the class teacher is asked to send it; admins/managers see how many
+    // classes haven't.
+    if (inCentre && permissions.includes("VIEW_CENTRE")) {
+      const org = await db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } });
+      const clock = schoolClock(org?.timezone ?? "Africa/Johannesburg");
+      if (isSummaryDue(clock)) {
+        const date = schoolDateValue(clock.date);
+        if (role === "TEACHER" && assignedCategoryId) {
+          const sent = await db.dailySummary.findUnique({
+            where: { categoryId_date: { categoryId: assignedCategoryId, date } },
+            select: { id: true },
+          });
+          if (!sent) {
+            todos.push({
+              id: "dailySummary.send",
+              label: "Send today's daily summary",
+              count: 1,
+              href: "/dashboard/centre/daily-summary",
+            });
+          }
+        } else if (role !== "TEACHER" && permissions.includes("MANAGE_CLASSES")) {
+          const classes = await db.membership.findMany({
+            where: {
+              organizationId,
+              role: "TEACHER",
+              assignedCategoryId: { not: null },
+              assignedCategory: { deletedAt: null, archived: false },
+            },
+            select: { assignedCategoryId: true },
+            distinct: ["assignedCategoryId"],
+          });
+          const ids = classes.map((c) => c.assignedCategoryId!);
+          const sent = ids.length
+            ? await db.dailySummary.count({ where: { organizationId, categoryId: { in: ids }, date } })
+            : 0;
+          const missing = ids.length - sent;
+          if (missing > 0) {
+            todos.push({
+              id: "dailySummary.missing",
+              label: `${missing === 1 ? "1 class hasn't" : `${missing} classes haven't`} sent today's daily summary`,
+              count: missing,
+              href: "/dashboard/centre/daily-summary",
+            });
+          }
+        }
+      }
     }
 
     // Final review (Dylan, 4 Oct 2026): deleting is one step now, so admins

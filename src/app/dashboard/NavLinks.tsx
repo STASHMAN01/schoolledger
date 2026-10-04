@@ -46,6 +46,8 @@ const CENTRE_LINKS: NavLink[] = [
   // "Routine" is the word the teachers use (Dylan, 4 Oct 2026); the URL
   // stays /schedule so old links keep working.
   { href: "/dashboard/centre/schedule", label: "Routine" },
+  // End-of-day summary: the teacher sends it, everyone else checks it.
+  { href: "/dashboard/centre/daily-summary", label: "Daily summary" },
   { href: "/dashboard/centre/events", label: "Events" },
   { href: "/dashboard/centre/staff", label: "Staff" },
 ];

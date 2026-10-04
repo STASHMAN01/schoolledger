@@ -135,6 +135,10 @@ export function describeAuditAction(row: AuditRow): string {
       return `generated a ${m.year ?? ""} statement`.trim();
     case "invite.created":
       return `invited ${m.email ?? "someone"} as ${m.role ?? "a team member"}`;
+    case "dailySummary.submitted":
+      return m.anyoneHurt
+        ? `sent the ${m.date ?? ""} daily summary (a child was hurt${m.incidentReported ? ", incident reported" : ", reason given"})`
+        : `sent the ${m.date ?? ""} daily summary (nobody hurt)`;
     case "profile.created":
       return `created the class profile "${m.profileName ?? ""}" (${m.username ?? ""})`;
     case "profile.passwordReset":

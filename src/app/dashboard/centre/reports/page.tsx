@@ -6,7 +6,9 @@
 // existing one. A Teacher only ever sees/writes reports for their own
 // class -- enforced server-side (src/lib/reports.ts), this page just
 // doesn't offer a class picker for one.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { todayLocal } from "@/lib/date";
 import { useOrg, useHasPermission } from "../../OrgContext";
 import { Badge, Button, Card, EmptyState, Input, Label, PageHeader, Select, Textarea } from "@/components/ui";
 import { REPORT_TYPE_INFO, REPORT_TYPES, type ReportTypeValue } from "@/lib/reports";
@@ -43,8 +45,10 @@ type FormState = {
   followUp: string;
 };
 
+// The viewer's own date: the UTC date is still yesterday in South Africa
+// until 02:00.
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return todayLocal();
 }
 
 function emptyForm(type: ReportTypeValue, childId = ""): FormState {
@@ -75,6 +79,13 @@ export default function ReportsPage() {
   const isTeacher = role === "TEACHER";
   const visibleTypes = isTeacher ? REPORT_TYPES.filter((t) => t === "INCIDENT") : REPORT_TYPES;
   const canChange = canManage && !isTeacher;
+  // ?new=INCIDENT opens a blank incident form straight away (the daily
+  // summary's "Make the report now"); &back=summary returns there after
+  // saving.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const backToSummary = searchParams.get("back") === "summary";
+  const openedFromLink = useRef(false);
   const base = `/api/organizations/${organizationId}`;
 
   const [activeType, setActiveType] = useState<ReportTypeValue>("INCIDENT");
@@ -110,6 +121,15 @@ export default function ReportsPage() {
     })();
   }, [base, canManage]);
 
+  useEffect(() => {
+    if (openedFromLink.current || !canManage) return;
+    if (searchParams.get("new") === "INCIDENT") {
+      openedFromLink.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- open the form once from the link
+      setForm(emptyForm("INCIDENT"));
+    }
+  }, [searchParams, canManage]);
+
   async function save() {
     if (!form) return;
     if (!form.childId) {
@@ -131,6 +151,10 @@ export default function ReportsPage() {
       return;
     }
     setForm(null);
+    if (backToSummary && !form.id) {
+      router.push("/dashboard/centre/daily-summary");
+      return;
+    }
     load();
   }
 

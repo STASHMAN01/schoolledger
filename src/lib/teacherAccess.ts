@@ -41,6 +41,8 @@ const ALLOWED: [string, RegExp][] = [
   ["GET", new RegExp(`^/reports/${ID}/pdf$`)],
   ["GET", /^\/todos$/],
   ["POST", /^\/tour$/], // "seen the walkthrough"
+  ["GET", /^\/daily-summary$/], // own class's end-of-day summary
+  ["POST", /^\/daily-summary$/],
 ];
 
 /** The part of an API path after /api/organizations/<orgId>, or null. */
@@ -68,6 +70,7 @@ export const TEACHER_PAGES = [
   "/dashboard/centre/reports",
   "/dashboard/centre/schedule",
   "/dashboard/centre/events",
+  "/dashboard/centre/daily-summary",
 ];
 
 export function teacherMayOpen(pathname: string): boolean {
