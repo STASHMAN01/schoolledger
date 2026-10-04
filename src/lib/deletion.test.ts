@@ -1,35 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { REQUIRED_DELETION_APPROVALS, requiredApprovalsFor } from "./deletion";
+import { TRASH_RETENTION_DAYS, finalReviewWindow, trashDaysRemaining, trashPurgeCutoff } from "./deletion";
 
-// Before 2 Oct 2026 the requirement was a flat 2, which a one-admin school
-// could never reach: it would request a deletion, approve once, and sit at
-// 1/2 forever with no way to delete anything -- including a payment entered
-// by mistake. Most crèches are run by one person, so this was most of the
-// target market. These cases pin the rule that replaced it.
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = Date.UTC(2026, 9, 4, 12, 0, 0);
 
-describe("requiredApprovalsFor", () => {
-  it("keeps the two-person check once a school has two or more approvers", () => {
-    expect(requiredApprovalsFor(2)).toBe(REQUIRED_DELETION_APPROVALS);
-    expect(requiredApprovalsFor(3)).toBe(REQUIRED_DELETION_APPROVALS);
-    expect(requiredApprovalsFor(25)).toBe(REQUIRED_DELETION_APPROVALS);
+function deletedDaysAgo(days: number) {
+  return new Date(NOW - days * DAY);
+}
+
+function inFinalReview(deletedAt: Date) {
+  const w = finalReviewWindow(NOW);
+  return deletedAt >= w.gte && deletedAt < w.lt;
+}
+
+describe("Trash timing", () => {
+  it("purges only after the full retention period", () => {
+    const cutoff = trashPurgeCutoff(NOW);
+    expect(deletedDaysAgo(TRASH_RETENTION_DAYS + 0.01) < cutoff).toBe(true);
+    expect(deletedDaysAgo(TRASH_RETENTION_DAYS - 0.01) < cutoff).toBe(false);
   });
 
-  it("lets a sole admin approve alone", () => {
-    expect(requiredApprovalsFor(1)).toBe(1);
+  it("shows the final review only on the last day", () => {
+    expect(inFinalReview(deletedDaysAgo(29.5))).toBe(true);
+    expect(inFinalReview(deletedDaysAgo(28.9))).toBe(false);
+    expect(inFinalReview(deletedDaysAgo(1))).toBe(false);
+    // Past 30 days (e.g. a child kept because of payment history): not on
+    // the to-do list forever.
+    expect(inFinalReview(deletedDaysAgo(31))).toBe(false);
   });
 
-  it("never requires zero approvals", () => {
-    // An org with nobody holding APPROVE_DELETION shouldn't resolve to 0,
-    // which would delete a record the instant a request was raised.
-    expect(requiredApprovalsFor(0)).toBe(1);
-    expect(requiredApprovalsFor(-1)).toBe(1);
-  });
-
-  it("never requires more approvals than there are people to give them", () => {
-    for (const approvers of [0, 1, 2, 3, 10]) {
-      const required = requiredApprovalsFor(approvers);
-      expect(required).toBeLessThanOrEqual(Math.max(1, approvers));
-      expect(required).toBeGreaterThanOrEqual(1);
-    }
+  it("counts the days left", () => {
+    expect(trashDaysRemaining(deletedDaysAgo(0), NOW)).toBe(TRASH_RETENTION_DAYS);
+    expect(trashDaysRemaining(deletedDaysAgo(29.5), NOW)).toBe(1);
+    expect(trashDaysRemaining(deletedDaysAgo(40), NOW)).toBe(0);
   });
 });

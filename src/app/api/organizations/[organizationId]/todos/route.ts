@@ -6,6 +6,7 @@ import { resolveAttendanceScope } from "@/lib/attendanceScope";
 import { getOutstandingReminders } from "@/lib/billing/outstandingReminders";
 import { hasUnseenScheduleChange } from "@/lib/scheduleNotice";
 import { isProfileIncomplete } from "@/lib/childProfile";
+import { finalReviewWindow } from "@/lib/deletion";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -250,6 +251,27 @@ export async function GET(req: NextRequest, { params }: Params) {
         count: 1,
         href: "/dashboard/centre/schedule",
       });
+    }
+
+    // Final review (Dylan, 4 Oct 2026): deleting is one step now, so admins
+    // get one last look on the day before a class or child in Trash is
+    // removed for good. Shown in both modes; opening Trash lets them
+    // restore anything. Clears itself once the day passes or it's restored.
+    if (permissions.includes("APPROVE_DELETION")) {
+      const window = finalReviewWindow();
+      const [classes, children] = await Promise.all([
+        db.category.count({ where: { organizationId, deletedAt: window } }),
+        db.child.count({ where: { organizationId, deletedAt: window } }),
+      ]);
+      const due = classes + children;
+      if (due > 0) {
+        todos.push({
+          id: "trash.finalReview",
+          label: `Final review: ${due === 1 ? "1 deleted record will be" : `${due} deleted records will be`} permanently removed within a day. Restore anything you still need`,
+          count: due,
+          href: inAccounting && !inCentre ? "/dashboard/accounting/settings/trash" : "/dashboard/centre/settings/trash",
+        });
+      }
     }
 
     return NextResponse.json({ todos });

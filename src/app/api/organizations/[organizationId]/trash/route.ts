@@ -2,58 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
-import { trashPurgeCutoff, TRASH_RETENTION_DAYS } from "@/lib/deletion";
+import { trashDaysRemaining } from "@/lib/deletion";
+import { purgeExpiredTrash } from "@/lib/trashPurge";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
-// Every read of the trash list first tries to purge anything past its
-// 30-day retention window — there's no cron job in this deployment, so
-// "whoever next opens the trash page" is what drives cleanup instead.
-// A category/child is only ever actually removed from the database if
-// nothing else still references it (a category with children left on it,
-// or a child with recorded payments, can't be hard-deleted without either
-// orphaning records or destroying financial history) — if the delete is
-// rejected by the database for that reason, the row is simply left
-// soft-deleted (still hidden everywhere, just not physically purged) and
-// tried again on the next visit.
-async function purgeExpired(organizationId: string) {
-  const cutoff = trashPurgeCutoff();
-
-  const expiredCategories = await db.category.findMany({
-    where: { organizationId, deletedAt: { lt: cutoff } },
-    select: { id: true },
-  });
-  for (const { id } of expiredCategories) {
-    try {
-      await db.category.delete({ where: { id } });
-    } catch {
-      // Still referenced (e.g. a child was somehow re-linked to it) —
-      // leave it soft-deleted, it stays hidden either way.
-    }
-  }
-
-  const expiredChildren = await db.child.findMany({
-    where: { organizationId, deletedAt: { lt: cutoff } },
-    select: { id: true },
-  });
-  for (const { id } of expiredChildren) {
-    try {
-      await db.child.delete({ where: { id } });
-    } catch {
-      // Has payments, charges or credit — the database refuses the delete
-      // (Restrict on FinancialPlanEntry/CreditBalance/Payment → Child, final
-      // inspection R7), so billing history is never lost; the child just
-      // stays soft-deleted (hidden) permanently.
-    }
-  }
-}
-
+// Opening Trash also purges anything past its 30 days (the daily cron does
+// the same for every school), so the list never shows an expired record.
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
     await requireMembership(organizationId, "APPROVE_DELETION");
 
-    await purgeExpired(organizationId);
+    await purgeExpiredTrash(organizationId);
 
     const [categories, children] = await Promise.all([
       db.category.findMany({
@@ -66,11 +27,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       }),
     ]);
 
-    const now = Date.now();
-    function daysRemaining(deletedAt: Date) {
-      const purgeAt = deletedAt.getTime() + TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-      return Math.max(0, Math.ceil((purgeAt - now) / (24 * 60 * 60 * 1000)));
-    }
+    const daysRemaining = (deletedAt: Date) => trashDaysRemaining(deletedAt);
 
     return NextResponse.json({
       items: [

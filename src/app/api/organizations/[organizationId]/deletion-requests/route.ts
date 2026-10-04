@@ -6,12 +6,13 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 // (isHighPositionRole retired — see src/lib/permissions.ts APPROVE_DELETION)
 import { formatCents } from "@/lib/formatMoney";
+import { entityTypeFor, executeDeletion } from "@/lib/deletionExecute";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
-// The Settings → "Pending deletions" queue, for admins to review and
-// approve/reject everything currently awaiting the second (or first)
-// approval, across both categories and children in one list.
+// Leftover requests from before 4 Oct 2026, when deleting needed
+// approvals. Settings -> Trash lists them so an admin can carry each one
+// out (the approve route) or cancel it. No new ones are ever created.
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
@@ -50,33 +51,28 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }
 }
 
-// Anyone who can manage children/classes can also request their deletion;
-// requesting a child's deletion (or a payment's) additionally needs a
-// permission most roles don't have by default — APPROVE_DELETION for a
-// child (only an admin, by default, per the org owner's original "no
-// other roles may delete records" rule) and VIEW_MONEY for a payment
-// (matches who can see the amount being deleted). Either way this only
-// ever creates a request: nothing is deleted here.
+// The Delete button (one step since 4 Oct 2026, Dylan): an admin deletes
+// straight away, no approvals. A class or child goes to Trash for 30
+// days (restorable; admins get a final-review to-do on the last day); a
+// payment is reversed immediately. The DeletionRequest row is still
+// written, already APPROVED, so the reason and who did it stay on record.
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId, permissions } = await requireMembership(
-      organizationId,
-      "REQUEST_DELETION"
-    );
+    // Admins only (APPROVE_DELETION) -- with no second person checking,
+    // deleting is limited to the people who used to do the approving.
+    const { userId, permissions } = await requireMembership(organizationId, "APPROVE_DELETION");
 
     const body = deletionRequestSchema.parse(await req.json());
 
-    if (body.targetType === "CHILD" && !permissions.includes("APPROVE_DELETION")) {
-      return NextResponse.json(
-        { error: "Only an admin can request deletion of a child's records." },
-        { status: 403 }
-      );
-    }
     if (body.targetType === "PAYMENT" && !permissions.includes("VIEW_MONEY")) {
+      return NextResponse.json({ error: "You can't delete payments." }, { status: 403 });
+    }
+    // A payment can't be restored, so it always needs a reason on record.
+    if (body.targetType === "PAYMENT" && !body.reason) {
       return NextResponse.json(
-        { error: "Only an admin or accountant can request deletion of a payment." },
-        { status: 403 }
+        { error: "Please explain why this payment is being deleted." },
+        { status: 400 }
       );
     }
 
@@ -90,7 +86,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
     if (existingPending) {
       return NextResponse.json(
-        { error: "A deletion request for this record is already pending." },
+        { error: "There's an older deletion request for this. Finish or cancel it in Settings → Trash." },
         { status: 400 }
       );
     }
@@ -135,26 +131,37 @@ export async function POST(req: NextRequest, { params }: Params) {
       targetLabel = `${child.firstName} ${child.lastName}`;
     }
 
-    const request = await db.deletionRequest.create({
-      data: {
-        organizationId,
-        targetType: body.targetType,
-        targetId: body.targetId,
-        targetLabel,
-        reason: body.reason,
-        requestedByUserId: userId,
-      },
+    const { request, paymentReversal } = await db.$transaction(async (tx) => {
+      const request = await tx.deletionRequest.create({
+        data: {
+          organizationId,
+          targetType: body.targetType,
+          targetId: body.targetId,
+          targetLabel,
+          reason: body.reason || "",
+          requestedByUserId: userId,
+          status: "APPROVED",
+          resolvedAt: new Date(),
+        },
+      });
+      await tx.deletionApproval.create({ data: { deletionRequestId: request.id, userId } });
+      const paymentReversal = await executeDeletion(tx, organizationId, body.targetType, body.targetId);
+      return { request, paymentReversal };
     });
 
-    const entityType =
-      body.targetType === "CATEGORY" ? "Category" : body.targetType === "CHILD" ? "Child" : "Payment";
+    const entityType = entityTypeFor(body.targetType);
     await logAudit({
       organizationId,
       userId,
-      action: `${entityType.toLowerCase()}.deletionRequested`,
+      action: `${entityType.toLowerCase()}.deleted`,
       entityType,
       entityId: body.targetId,
-      metadata: { targetLabel, reason: body.reason, deletionRequestId: request.id },
+      metadata: {
+        targetLabel,
+        reason: body.reason || undefined,
+        deletionRequestId: request.id,
+        ...(paymentReversal ? { paymentReversal } : {}),
+      },
     });
 
     return NextResponse.json({ deletionRequest: request }, { status: 201 });

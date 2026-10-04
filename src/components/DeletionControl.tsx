@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useOrg } from "@/app/dashboard/OrgContext";
 import { Button, Card, Textarea } from "@/components/ui";
 import type { ConfirmOptions } from "@/components/useConfirmDialog";
 
@@ -14,12 +13,14 @@ export type DeletionRequestInfo = {
 };
 
 /**
- * The "Delete" control for a category, child, or payment row: requests
- * deletion, or — while a request is pending — shows how many admins have
- * approved it and offers Approve/Cancel to whoever's allowed. No single
- * click ever deletes anything; see prisma/schema.prisma's DeletionRequest
- * comment. Requesting always requires a written reason — not optional,
- * per the org owner's own instruction.
+ * The "Delete" control for a class, child or payment row. One step for an
+ * admin since 4 Oct 2026 (Dylan): a class or child goes straight to Trash
+ * for 30 days (restorable, with a final-review to-do on the last day); a
+ * payment is reversed at once and needs a reason, because it can't be
+ * restored. Only shown to people with "Approve deletion" (admins).
+ *
+ * A request left over from the old two-approval flow shows as "Deletion
+ * requested" with Delete now / Cancel until someone finishes it.
  */
 export function DeletionControl({
   organizationId,
@@ -27,7 +28,6 @@ export function DeletionControl({
   targetId,
   targetLabel,
   deletionRequest,
-  canRequest,
   isAdmin,
   onChanged,
   confirm,
@@ -37,30 +37,29 @@ export function DeletionControl({
   targetId: string;
   targetLabel: string;
   deletionRequest: DeletionRequestInfo | null;
-  canRequest: boolean;
   isAdmin: boolean;
   onChanged: () => void | Promise<void>;
   confirm: (opts: ConfirmOptions) => Promise<boolean>;
 }) {
-  const { requiredDeletionApprovals } = useOrg();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promptOpen, setPromptOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const isPayment = targetType === "PAYMENT";
 
-  async function submitRequest() {
-    if (!reason.trim()) return;
+  async function submitDelete() {
+    if (isPayment && !reason.trim()) return;
     setBusy(true);
     setError(null);
     try {
       const res = await fetch(`/api/organizations/${organizationId}/deletion-requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetType, targetId, reason: reason.trim() }),
+        body: JSON.stringify({ targetType, targetId, reason: reason.trim() || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not request deletion.");
+        setError(data.error ?? "Could not delete.");
         return;
       }
       setPromptOpen(false);
@@ -71,7 +70,7 @@ export function DeletionControl({
     }
   }
 
-  async function approve() {
+  async function finishOldRequest() {
     setBusy(true);
     setError(null);
     try {
@@ -81,7 +80,7 @@ export function DeletionControl({
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not approve.");
+        setError(data.error ?? "Could not delete.");
         return;
       }
       await onChanged();
@@ -90,7 +89,7 @@ export function DeletionControl({
     }
   }
 
-  async function cancel() {
+  async function cancelOldRequest() {
     const confirmed = await confirm({
       title: "Cancel this deletion request?",
       description: `"${targetLabel}" will stay as-is — nothing will be deleted.`,
@@ -115,8 +114,9 @@ export function DeletionControl({
     }
   }
 
+  if (!isAdmin) return null;
+
   if (!deletionRequest) {
-    if (!canRequest) return null;
     return (
       <>
         <button
@@ -135,19 +135,19 @@ export function DeletionControl({
           >
             <Card className="animate-in w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
               <h2 className="font-display text-base font-semibold text-foreground">
-                Delete &quot;{targetLabel}&quot;?
+                {isPayment ? `Delete this payment?` : `Move "${targetLabel}" to Trash?`}
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                {requiredDeletionApprovals > 1
-                  ? `This needs approval from ${requiredDeletionApprovals} admins before anything happens.`
-                  : "You're the only admin, so your approval is all this needs. It goes to Trash for 30 days first."}
+                {isPayment
+                  ? `${targetLabel}. It's reversed straight away and can't be restored: anything it paid becomes owing again.`
+                  : "You can restore it from Settings → Trash for 30 days. On the last day you'll get a to-do to review it before it's removed for good."}
               </p>
               <label className="mt-4 block text-xs font-medium text-muted-foreground">
-                Reason for deleting (required)
+                {isPayment ? "Reason (required)" : "Reason (optional)"}
               </label>
               <Textarea
                 className="mt-1"
-                rows={3}
+                rows={2}
                 autoFocus
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -166,10 +166,10 @@ export function DeletionControl({
                 <Button
                   variant="danger"
                   size="sm"
-                  onClick={submitRequest}
-                  disabled={busy || !reason.trim()}
+                  onClick={submitDelete}
+                  disabled={busy || (isPayment && !reason.trim())}
                 >
-                  Request deletion
+                  {busy ? "Deleting…" : isPayment ? "Delete payment" : "Move to Trash"}
                 </Button>
               </div>
             </Card>
@@ -182,27 +182,21 @@ export function DeletionControl({
   return (
     <div className="flex flex-col items-end gap-0.5">
       <div className="flex items-center gap-2 text-xs">
-        <span className="text-accent-soft-foreground">
-          Deletion requested ({deletionRequest.approvalsCount}/{requiredDeletionApprovals})
-        </span>
-        {isAdmin && !deletionRequest.approvedByMe && (
-          <button
-            onClick={approve}
-            disabled={busy}
-            className="text-brand underline transition-standard hover:brightness-90 disabled:opacity-50 inline-flex min-h-11 items-center px-1 sm:min-h-0 sm:px-0"
-          >
-            Approve
-          </button>
-        )}
-        {(isAdmin || deletionRequest.requestedByMe) && (
-          <button
-            onClick={cancel}
-            disabled={busy}
-            className="text-muted-foreground underline transition-standard hover:text-foreground disabled:opacity-50 inline-flex min-h-11 items-center px-1 sm:min-h-0 sm:px-0"
-          >
-            Cancel
-          </button>
-        )}
+        <span className="text-accent-soft-foreground">Deletion requested</span>
+        <button
+          onClick={finishOldRequest}
+          disabled={busy}
+          className="text-danger underline transition-standard hover:brightness-90 disabled:opacity-50 inline-flex min-h-11 items-center px-1 sm:min-h-0 sm:px-0"
+        >
+          Delete now
+        </button>
+        <button
+          onClick={cancelOldRequest}
+          disabled={busy}
+          className="text-muted-foreground underline transition-standard hover:text-foreground disabled:opacity-50 inline-flex min-h-11 items-center px-1 sm:min-h-0 sm:px-0"
+        >
+          Cancel
+        </button>
       </div>
       {deletionRequest.reason && (
         <p className="max-w-[220px] text-right text-xs text-muted">

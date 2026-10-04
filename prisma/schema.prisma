@@ -1074,13 +1074,12 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-// A category or child record can only be permanently removed through this
-// two-person approval flow — no single person (not even one admin acting
-// alone) can delete either kind of record. Once REQUIRED_APPROVALS
-// (src/lib/deletion.ts) distinct admins have each recorded a
-// DeletionApproval, the target's `deletedAt` is set and it drops out of
-// every normal view (Settings → Trash lists it, restorable, until purged
-// 30 days later).
+// The record of every deletion: who deleted what, when, and why. Since
+// 4 Oct 2026 (Dylan) deleting is one step for an admin, so new rows are
+// written already APPROVED with one DeletionApproval (the admin who
+// deleted). A class or child gets `deletedAt` and sits in Settings → Trash,
+// restorable, until purged 30 days later; a payment is reversed at once.
+// PENDING rows are leftovers from the old two-approval flow.
 model DeletionRequest {
   id                String                 @id @default(cuid())
   organizationId    String
@@ -1090,11 +1089,8 @@ model DeletionRequest {
   // approval queue and trash list still read sensibly even though the
   // underlying row may itself be gone by the time someone looks.
   targetLabel       String
-  // Why this deletion was requested — mandatory going forward (enforced by
-  // deletionRequestSchema in validation.ts), never optional. The default
-  // "" only exists so this column can be added to the live table without a
-  // destructive migration; every request created after this field shipped
-  // always has a real, non-empty reason.
+  // Why it was deleted. Required for a payment (it can't be restored),
+  // optional for a class or child, which go to Trash ("" when not given).
   reason            String                 @default("") @db.Text
   status            DeletionRequestStatus  @default(PENDING)
   requestedByUserId String

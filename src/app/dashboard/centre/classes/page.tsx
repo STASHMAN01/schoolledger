@@ -241,7 +241,6 @@ export default function CentreClassesPage() {
                       targetId={c.id}
                       targetLabel={c.name}
                       deletionRequest={c.deletionRequest}
-                      canRequest={canManage}
                       isAdmin={permissions.includes("APPROVE_DELETION")}
                       onChanged={load}
                       confirm={confirm}

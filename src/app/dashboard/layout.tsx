@@ -16,7 +16,6 @@ import { db } from "@/lib/db";
 import { VerifyEmailGate } from "./VerifyEmailGate";
 import { DeletedSchoolScreen } from "./DeletedSchoolScreen";
 import { purgeDateFor } from "@/lib/orgDeletion";
-import { requiredApprovalsForOrg } from "@/lib/deletionApprovers";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function DashboardLayout({
@@ -52,8 +51,6 @@ export default async function DashboardLayout({
   const emailVerified = Boolean(currentUser?.emailVerified);
   // School in the 30-day trash: nothing is usable except the restore screen.
   const isDeleted = Boolean(org.deletedAt);
-  // Normally 2; 1 when this school has only one person who can approve.
-  const requiredDeletionApprovals = await requiredApprovalsForOrg(db, membership.organizationId);
   const showApp = emailVerified && !isDeleted;
 
   return (
@@ -63,7 +60,6 @@ export default async function DashboardLayout({
         organizationName: org.name,
         role: membership.role,
         permissions,
-        requiredDeletionApprovals,
         hasActiveAccess: hasActiveAccess(org),
         subscriptionStatus: org.subscriptionStatus,
         trialEndsAt: org.trialEndsAt ? org.trialEndsAt.toISOString() : null,

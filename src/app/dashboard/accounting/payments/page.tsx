@@ -339,7 +339,6 @@ export default function PaymentsPage() {
                   targetId={p.id}
                   targetLabel={`${formatCents(p.amountCents, currencyCode)} payment for ${p.child.firstName} ${p.child.lastName}`}
                   deletionRequest={p.deletionRequest}
-                  canRequest={canRequestDeletion}
                   isAdmin={isAdmin}
                   onChanged={loadPayments}
                   confirm={confirm}
@@ -379,7 +378,6 @@ export default function PaymentsPage() {
                       targetId={p.id}
                       targetLabel={`${formatCents(p.amountCents, currencyCode)} payment for ${p.child.firstName} ${p.child.lastName}`}
                       deletionRequest={p.deletionRequest}
-                      canRequest={canRequestDeletion}
                       isAdmin={isAdmin}
                       onChanged={loadPayments}
                       confirm={confirm}

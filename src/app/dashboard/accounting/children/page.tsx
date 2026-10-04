@@ -245,7 +245,6 @@ export default function ChildrenPage() {
                     targetId={c.id}
                     targetLabel={`${c.firstName} ${c.lastName}`}
                     deletionRequest={c.deletionRequest}
-                    canRequest={permissions.includes("APPROVE_DELETION")}
                     isAdmin={permissions.includes("APPROVE_DELETION")}
                     onChanged={loadChildren}
                     confirm={confirm}
@@ -297,7 +296,6 @@ export default function ChildrenPage() {
                           targetId={c.id}
                           targetLabel={`${c.firstName} ${c.lastName}`}
                           deletionRequest={c.deletionRequest}
-                          canRequest={permissions.includes("APPROVE_DELETION")}
                           isAdmin={permissions.includes("APPROVE_DELETION")}
                           onChanged={loadChildren}
                           confirm={confirm}

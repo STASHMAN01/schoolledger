@@ -37,7 +37,7 @@ const GUIDE_SECTIONS = [
   },
   {
     title: "5. Deleting things safely",
-    body: "Classes, children, and other records can't be deleted with a single click — deleting requires two admins to approve, and anything approved goes to Trash for 30 days before it's gone for good, so mistakes are always recoverable in time.",
+    body: "Only an admin can delete. A deleted class or child goes to Trash for 30 days, where it can be restored, and admins get a reminder to review it on the last day before it's gone for good. Deleting a payment reverses it straight away and needs a reason, which is kept in the activity log.",
   },
   {
     title: "6. Team & roles",

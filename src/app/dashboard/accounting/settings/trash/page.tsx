@@ -36,7 +36,7 @@ const TARGET_TYPE_BADGE: Record<PendingRequest["targetType"], "accent" | "brand"
 };
 
 export default function TrashPage() {
-  const { organizationId, permissions, requiredDeletionApprovals } = useOrg();
+  const { organizationId, permissions } = useOrg();
   const isAdmin = permissions.includes("APPROVE_DELETION");
   const [items, setItems] = useState<TrashItem[]>([]);
   const [pending, setPending] = useState<PendingRequest[]>([]);
@@ -113,7 +113,7 @@ export default function TrashPage() {
       <div className="animate-in max-w-3xl">
         <PageHeader title="Trash" />
         <Card className="p-4 text-sm text-muted-foreground">
-          Only an admin can view the trash and pending deletions.
+          Only an admin can view the trash.
         </Card>
       </div>
     );
@@ -123,7 +123,7 @@ export default function TrashPage() {
     <div className="animate-in max-w-3xl">
       <PageHeader
         title="Trash"
-        description={`Deleted classes and children are kept here for 30 days before they're gone for good. Deleting any record — including a payment — always needs ${requiredDeletionApprovals > 1 ? `${requiredDeletionApprovals} admins` : "an admin"} to approve first, with a reason on record.`}
+        description="Deleted classes and children stay here for 30 days and can be restored. On the last day you get a to-do to review them before they're gone for good."
       />
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
@@ -131,50 +131,54 @@ export default function TrashPage() {
 
       {!loading && (
         <>
-          <h2 className="font-display mb-3 text-sm font-semibold text-foreground">
-            Pending deletion requests
-          </h2>
-          {pending.length === 0 ? (
-            <p className="mb-8 text-sm text-muted-foreground">Nothing waiting on approval.</p>
-          ) : (
-            <Card className="mb-8 divide-y divide-border">
-              {pending.map((r) => (
-                <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm text-foreground">
-                      <Badge variant={TARGET_TYPE_BADGE[r.targetType]}>
-                        {TARGET_TYPE_LABEL[r.targetType]}
-                      </Badge>{" "}
-                      <span className="font-medium">{r.targetLabel}</span>
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Requested by {r.requestedBy} · {r.approvals.length}/
-                      {requiredDeletionApprovals} approved
-                      {r.approvals.length > 0 && ` (${r.approvals.join(", ")})`}
-                    </p>
-                    {r.reason && (
-                      <p className="mt-0.5 text-xs text-muted">Reason: &quot;{r.reason}&quot;</p>
-                    )}
+          {/* Only requests left over from the old two-approval flow (before
+              4 Oct 2026); deleting is one step now, so this disappears once
+              they're finished or cancelled. */}
+          {pending.length > 0 && (
+            <>
+              <h2 className="font-display mb-1 text-sm font-semibold text-foreground">
+                Older deletion requests
+              </h2>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Deleting no longer needs approval. Finish or cancel these.
+              </p>
+              <Card className="mb-8 divide-y divide-border">
+                {pending.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground">
+                        <Badge variant={TARGET_TYPE_BADGE[r.targetType]}>
+                          {TARGET_TYPE_LABEL[r.targetType]}
+                        </Badge>{" "}
+                        <span className="font-medium">{r.targetLabel}</span>
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Requested by {r.requestedBy}
+                      </p>
+                      {r.reason && (
+                        <p className="mt-0.5 text-xs text-muted">Reason: &quot;{r.reason}&quot;</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        onClick={() => approve(r.id)}
+                        disabled={busyId === r.id}
+                        className="text-xs text-danger underline transition-standard hover:brightness-90 disabled:opacity-50"
+                      >
+                        {r.targetType === "PAYMENT" ? "Delete now" : "Move to Trash"}
+                      </button>
+                      <button
+                        onClick={() => cancelRequest(r.id)}
+                        disabled={busyId === r.id}
+                        className="text-xs text-muted-foreground underline transition-standard hover:text-foreground disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <button
-                      onClick={() => approve(r.id)}
-                      disabled={busyId === r.id}
-                      className="text-xs text-brand underline transition-standard hover:brightness-90 disabled:opacity-50"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => cancelRequest(r.id)}
-                      disabled={busyId === r.id}
-                      className="text-xs text-muted-foreground underline transition-standard hover:text-foreground disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </Card>
+                ))}
+              </Card>
+            </>
           )}
 
           <h2 className="font-display mb-3 text-sm font-semibold text-foreground">
@@ -183,7 +187,7 @@ export default function TrashPage() {
           {items.length === 0 ? (
             <EmptyState
               title="Trash is empty"
-              description="Deleted classes and children (once approved) show up here for 30 days."
+              description="Deleted classes and children show up here for 30 days."
             />
           ) : (
             <Card className="divide-y divide-border">

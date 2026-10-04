@@ -366,14 +366,10 @@ export const attendanceNotifySchema = z.object({
 export const deletionRequestSchema = z.object({
   targetType: z.enum(["CATEGORY", "CHILD", "PAYMENT"]),
   targetId: z.string().cuid(),
-  // Not optional — every deletion request must say why, per the org
-  // owner's explicit instruction ("the user has to give a reason why they
-  // are deleting this is not optional").
-  reason: z
-    .string()
-    .trim()
-    .min(1, "Please explain why this is being deleted.")
-    .max(500, "Keep the reason under 500 characters."),
+  // Optional for a class or child (they go to Trash and can be restored);
+  // the route still requires one for a payment, which can't be (Dylan,
+  // 4 Oct 2026 -- deleting became one step).
+  reason: z.string().trim().max(500, "Keep the reason under 500 characters.").optional(),
 });
 
 // The three placeholder tokens below are enforced here (not just as a UI

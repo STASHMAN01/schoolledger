@@ -12,12 +12,6 @@ type OrgContextValue = {
   // UI should check THIS, never the role directly, so a permission
   // override actually changes what someone sees without a code change.
   permissions: Permission[];
-  // How many admins must approve before a deletion actually happens here.
-  // Normally 2, but 1 in a school with only one person who can approve —
-  // see requiredApprovalsFor in src/lib/deletion.ts. Carried in context so
-  // the delete dialogs can state the number that really applies rather
-  // than always claiming "2 admins".
-  requiredDeletionApprovals: number;
   hasActiveAccess: boolean;
   subscriptionStatus: string;
   trialEndsAt: string | null;

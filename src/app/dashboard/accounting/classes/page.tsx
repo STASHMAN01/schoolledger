@@ -212,7 +212,6 @@ export default function CategoriesPage() {
                 targetId={category.id}
                 targetLabel={category.name}
                 deletionRequest={category.deletionRequest}
-                canRequest={canManage}
                 isAdmin={permissions.includes("APPROVE_DELETION")}
                 onChanged={load}
                 confirm={confirm}

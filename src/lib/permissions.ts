@@ -64,14 +64,14 @@ export const PERMISSION_INFO: Record<Permission, { label: string; description: s
       "Can mark a payment reminder as sent. Combined with \"See money\", can also request/approve a bulk \"send all reminders\".",
   },
   REQUEST_DELETION: {
-    label: "Request deletion",
+    label: "Request deletion (no longer used)",
     description:
-      "Can request that a class, child, or payment be permanently deleted (still needs 2 approvals).",
+      "Deleting is one step for admins since 4 Oct 2026, so this no longer does anything. See \"Delete records\".",
   },
   APPROVE_DELETION: {
-    label: "Approve deletion",
+    label: "Delete records",
     description:
-      "Can approve a pending deletion request, restore something from Trash, and request a child's deletion.",
+      "Can delete a class or child (to Trash for 30 days), delete a payment (reversed at once, needs a reason), and restore from Trash.",
   },
   MANAGE_TEAM: {
     label: "Manage team",
