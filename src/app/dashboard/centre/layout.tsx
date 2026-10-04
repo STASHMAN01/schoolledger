@@ -17,7 +17,9 @@ export default async function CentreLayout({
   const membership = await getPrimaryMembership(session.user.id);
   if (!membership) redirect("/register");
 
-  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides);
+  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides, {
+    isProfile: membership.user.isProfile,
+  });
   if (!permissions.includes("VIEW_CENTRE")) {
     redirect(permissions.includes("VIEW_ACCOUNTING") ? "/dashboard/accounting" : "/dashboard");
   }

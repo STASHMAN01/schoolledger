@@ -17,7 +17,11 @@ export async function getPrimaryMembership(userId: string) {
   const memberships = await db.membership.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },
-    include: { organization: true, permissionOverrides: true },
+    include: {
+      organization: true,
+      permissionOverrides: true,
+      user: { select: { isProfile: true } },
+    },
   });
   return memberships.find((m) => !m.organization.deletedAt) ?? memberships[0] ?? null;
 }

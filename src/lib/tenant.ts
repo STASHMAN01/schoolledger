@@ -61,7 +61,7 @@ export async function requireMembership(
 
   const membership = await db.membership.findUnique({
     where: { userId_organizationId: { userId, organizationId } },
-    include: { permissionOverrides: true, user: { select: { emailVerified: true } } },
+    include: { permissionOverrides: true, user: { select: { emailVerified: true, isProfile: true } } },
   });
 
   if (!membership) {
@@ -70,7 +70,15 @@ export async function requireMembership(
     throw new TenantAccessError("Not found.", 404);
   }
 
-  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides);
+  // A class profile (shared classroom tablet) is only ever a TEACHER and
+  // never gets the sensitive permissions, enforced here on every request
+  // so no stale override row or role edit can widen it.
+  if (membership.user.isProfile && membership.role !== "TEACHER") {
+    throw new TenantAccessError("Not allowed for your role.", 403);
+  }
+  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides, {
+    isProfile: membership.user.isProfile,
+  });
 
   if (!options?.allowDeletedOrganization) {
     const org = await db.organization.findUnique({

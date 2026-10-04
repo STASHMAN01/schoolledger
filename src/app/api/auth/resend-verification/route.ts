@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     }
 
     await issueAndSendVerificationEmail(
-      { id: user.id, email: user.email, name: user.name },
+      { id: user.id, email, name: user.name },
       req.nextUrl.origin,
       membership.organizationId
     );

@@ -36,13 +36,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const existing = await db.membership.findFirst({
       where: { id: membershipId, organizationId },
-      include: { user: { select: { name: true, email: true } }, permissionOverrides: true },
+      include: { user: { select: { name: true, email: true, username: true, isProfile: true } }, permissionOverrides: true },
     });
     if (!existing) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
     const nextRole: Role = body.role ?? existing.role;
+
+    // A class profile (shared tablet) is only ever a Teacher. Its sensitive
+    // permissions are stripped on every request anyway (see
+    // getEffectivePermissions), but refuse the change outright so the Team
+    // page never shows an admin something that won't take effect.
+    if (existing.user.isProfile && nextRole !== "TEACHER") {
+      return NextResponse.json(
+        { error: "A class profile can only be a Teacher." },
+        { status: 400 }
+      );
+    }
 
     let nextAssignedCategoryId: string | null | undefined = undefined;
     if (nextRole !== "TEACHER") {
@@ -106,7 +117,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       entityId: membershipId,
       metadata: {
         memberName: existing.user.name,
-        memberEmail: existing.user.email,
+        memberEmail: existing.user.email ?? existing.user.username,
         previousRole: existing.role,
         newRole: nextRole,
       },
@@ -117,7 +128,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         membershipId: result.updated.id,
         role: result.updated.role,
         assignedCategoryId: result.updated.assignedCategoryId,
-        permissions: getEffectivePermissions(result.updated.role, result.overrides),
+        permissions: getEffectivePermissions(result.updated.role, result.overrides, {
+          isProfile: existing.user.isProfile,
+        }),
       },
     });
   } catch (err) {

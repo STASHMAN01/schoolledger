@@ -31,7 +31,7 @@ export async function GET() {
       where: { email: { in: (process.env.PLATFORM_ADMIN_EMAILS ?? "").split(",").map((e) => e.trim()).filter(Boolean) } },
       select: { id: true, name: true, email: true, createdAt: true },
     });
-    type AdminRow = { id: string; name: string; email: string; createdAt: Date };
+    type AdminRow = { id: string; name: string; email: string | null; createdAt: Date };
     const byId = new Map<string, AdminRow>(admins.map((a) => [a.id, a]));
     for (const o of ownerUsers) byId.set(o.id, o);
 

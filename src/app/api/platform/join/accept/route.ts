@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     if (session?.user?.id) {
       const signedInUser = await db.user.findUnique({ where: { id: session.user.id } });
-      if (!signedInUser || signedInUser.email.toLowerCase() !== invite.email.toLowerCase()) {
+      if (!signedInUser?.email || signedInUser.email.toLowerCase() !== invite.email.toLowerCase()) {
         return NextResponse.json(
           {
             error:

@@ -15,7 +15,9 @@ function ownerEmails(): string[] {
     .filter(Boolean);
 }
 
-export function isOwnerEmail(email: string): boolean {
+export function isOwnerEmail(email: string | null | undefined): boolean {
+  // Class profiles have no email, so they are never an owner.
+  if (!email) return false;
   return ownerEmails().includes(email.toLowerCase());
 }
 

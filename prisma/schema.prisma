@@ -240,7 +240,18 @@ model Organization {
 
 model User {
   id            String   @id @default(cuid())
-  email         String   @unique
+  // Null only for class profiles (isProfile) -- a shared tablet login that
+  // has no inbox. Postgres allows many NULLs under a unique index.
+  email         String?  @unique
+  // Class profiles log in with this instead of an email, e.g.
+  // "dees.butterfly". Null for every normal email account. Never contains
+  // "@", which is how the login form tells the two apart.
+  username      String?  @unique
+  // A class profile (Dylan, 4 Oct 2026): created by a school admin under
+  // Settings -> Team for a classroom tablet, no email, always TEACHER of
+  // one class, and never allowed the sensitive permissions in
+  // PROFILE_BLOCKED_PERMISSIONS (src/lib/profiles.ts).
+  isProfile     Boolean  @default(false)
   // bcrypt hash only, never plaintext or reversibly encrypted.
   passwordHash  String
   name          String

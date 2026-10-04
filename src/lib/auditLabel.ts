@@ -135,6 +135,14 @@ export function describeAuditAction(row: AuditRow): string {
       return `generated a ${m.year ?? ""} statement`.trim();
     case "invite.created":
       return `invited ${m.email ?? "someone"} as ${m.role ?? "a team member"}`;
+    case "profile.created":
+      return `created the class profile "${m.profileName ?? ""}" (${m.username ?? ""})`;
+    case "profile.passwordReset":
+      return `reset the password of the class profile "${m.profileName ?? ""}"`;
+    case "profile.signedOut":
+      return `signed out the class profile "${m.profileName ?? ""}" on every device`;
+    case "profile.removed":
+      return `removed the class profile "${m.profileName ?? ""}"`;
     case "invite.revoked":
       return "revoked a pending invite";
     case "invite.accepted":

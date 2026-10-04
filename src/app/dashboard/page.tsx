@@ -18,7 +18,9 @@ export default async function DashboardIndexPage() {
   const session = await auth();
   const membership = session?.user?.id ? await getPrimaryMembership(session.user.id) : null;
   const permissions = membership
-    ? getEffectivePermissions(membership.role, membership.permissionOverrides)
+    ? getEffectivePermissions(membership.role, membership.permissionOverrides, {
+    isProfile: membership.user.isProfile,
+  })
     : [];
   const canCentre = permissions.includes("VIEW_CENTRE");
   const canAccounting = permissions.includes("VIEW_ACCOUNTING");

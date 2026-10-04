@@ -5,6 +5,7 @@ import { verifyPassword } from "@/lib/password";
 import { emailSchema } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { isTokenStillValid } from "@/lib/tokenVersion";
+import { parseLoginIdentifier } from "@/lib/profiles";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
@@ -24,19 +25,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, request) {
-        const emailResult = emailSchema.safeParse(credentials?.email);
-        if (!emailResult.success || typeof credentials?.password !== "string") {
+        // One box, two kinds of login: an email for normal accounts, or a
+        // username like "dees.butterfly" for a class profile (no email).
+        const identifier = parseLoginIdentifier(credentials?.email);
+        if (!identifier || typeof credentials?.password !== "string") {
           return null;
         }
-        const email = emailResult.data;
+        if (identifier.kind === "email" && !emailSchema.safeParse(identifier.value).success) {
+          return null;
+        }
 
         // Rate limit on two dimensions, both generic-failure (no "which
-        // one tripped" signal to the client): per email, so credential
-        // stuffing against one account from a shared/rotating IP is
-        // still capped; and per IP, so spraying one password across many
-        // emails from one source doesn't fly under the per-email limit.
+        // one tripped" signal to the client): per account (email or
+        // username), so credential stuffing against one account from a
+        // shared/rotating IP is still capped -- this matters most for
+        // profile usernames, which are easy to guess; and per IP, so
+        // spraying one password across many accounts from one source
+        // doesn't fly under the per-account limit.
         const ip = clientIp(request?.headers);
-        const byEmail = rateLimit(`login:email:${email}`, {
+        const byAccount = rateLimit(`login:${identifier.kind}:${identifier.value}`, {
           limit: 10,
           windowMs: 15 * 60 * 1000,
         });
@@ -44,17 +51,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           limit: 20,
           windowMs: 15 * 60 * 1000,
         });
-        if (!byEmail.allowed || !byIp.allowed) return null;
+        if (!byAccount.allowed || !byIp.allowed) return null;
 
-        const user = await db.user.findUnique({ where: { email } });
-        if (!user) return null;
+        const user =
+          identifier.kind === "email"
+            ? await db.user.findUnique({ where: { email: identifier.value } })
+            : await db.user.findUnique({ where: { username: identifier.value } });
+        // A username only ever logs in a profile, and an email never does.
+        if (!user || (identifier.kind === "username") !== user.isProfile) return null;
 
         const valid = await verifyPassword(credentials.password, user.passwordHash);
         if (!valid) return null;
 
         return {
           id: user.id,
-          email: user.email,
+          email: user.email ?? user.username,
           name: user.name,
           tokenVersion: user.tokenVersion,
         };

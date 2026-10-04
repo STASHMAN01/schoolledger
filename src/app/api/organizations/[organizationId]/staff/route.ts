@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const members = await db.membership.findMany({
       where: { organizationId },
       include: {
-        user: { select: { name: true, email: true } },
+        user: { select: { name: true, email: true, username: true } },
         assignedCategory: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: "asc" },
@@ -30,7 +30,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       staff: members.map((m) => ({
         id: m.id,
         name: m.user.name,
-        email: m.user.email,
+        // A class profile has a username instead of an email.
+        email: m.user.email ?? m.user.username,
         role: m.role,
         assignedClass: m.assignedCategory,
         joinedAt: m.createdAt.toISOString(),

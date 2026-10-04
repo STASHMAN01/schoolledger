@@ -63,7 +63,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       take: PAGE_SIZE + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
-        user: { select: { name: true, email: true } },
+        user: { select: { name: true, email: true, username: true } },
       },
     });
 
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         // Amounts only for VIEW_MONEY (final inspection R2).
         metadata: canViewMoney ? e.metadata : redactMoneyMetadata(e).metadata,
         createdAt: e.createdAt.toISOString(),
-        actor: e.user ? { name: e.user.name, email: e.user.email } : null,
+        actor: e.user ? { name: e.user.name, email: e.user.email ?? e.user.username } : null,
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       ...(members ? { members: members.map((m) => ({ id: m.user.id, name: m.user.name })) } : {}),

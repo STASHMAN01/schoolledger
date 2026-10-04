@@ -28,11 +28,12 @@ export async function countDeletionApprovers(
     select: {
       role: true,
       permissionOverrides: { select: { permission: true, granted: true } },
+      user: { select: { isProfile: true } },
     },
   });
 
   return members.filter((m) =>
-    getEffectivePermissions(m.role, m.permissionOverrides).includes("APPROVE_DELETION")
+    getEffectivePermissions(m.role, m.permissionOverrides, { isProfile: m.user.isProfile }).includes("APPROVE_DELETION")
   ).length;
 }
 

@@ -67,7 +67,8 @@ export async function POST(req: NextRequest) {
     // Public site address, never the request's Host header (final inspection R11).
     const resetUrl = `${publicBaseUrl(req.nextUrl.origin)}/reset-password/${token}`;
     await sendMail({
-      to: user.email,
+      // Found by email above, so this is that same address.
+      to: email,
       subject: "Reset your Crechely password",
       text: `We got a request to reset your Crechely password. This link works once and expires in ${RESET_EXPIRY_MINUTES} minutes:\n\n${resetUrl}\n\nIf you didn't ask for this, you can ignore this email — your password hasn't been changed.`,
       html: `

@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
   // its own resend button for exactly this case.
   try {
     await issueAndSendVerificationEmail(
-      { id: result.user.id, email: result.user.email, name: result.user.name },
+      { id: result.user.id, email: result.user.email ?? "", name: result.user.name },
       req.nextUrl.origin,
       result.organization.id
     );

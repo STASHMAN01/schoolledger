@@ -19,7 +19,9 @@ export default async function AccountingLayout({
   const membership = await getPrimaryMembership(session.user.id);
   if (!membership) redirect("/register");
 
-  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides);
+  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides, {
+    isProfile: membership.user.isProfile,
+  });
   if (!permissions.includes("VIEW_ACCOUNTING")) {
     redirect(permissions.includes("VIEW_CENTRE") ? "/dashboard/centre" : "/dashboard");
   }

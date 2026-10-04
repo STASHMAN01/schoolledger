@@ -49,6 +49,10 @@ export default function ForgotPasswordPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           We&apos;ll email you a link to choose a new one.
         </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Using a class tablet with a username? Ask your school&apos;s admin to reset its
+          password under Settings → Team.
+        </p>
       </div>
 
       <Card className="animate-in p-6">

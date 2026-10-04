@@ -190,10 +190,43 @@ export type PermissionOverride = { permission: Permission; granted: boolean };
 // has each override row applied on top (granted: true adds it even if the
 // role default doesn't include it, granted: false removes it even if the
 // role default does).
+// Class profiles (shared classroom tablets, see src/lib/profiles.ts) never
+// get these, whatever their role or override rows say: a tablet sits where
+// anyone can pick it up.
+export const PROFILE_BLOCKED_PERMISSIONS: Permission[] = [
+  "VIEW_ACCOUNTING",
+  "VIEW_MONEY",
+  "RECORD_PAYMENTS",
+  "MANAGE_TEAM",
+  "MANAGE_BILLING",
+  "MANAGE_SETTINGS",
+  "EXPORT_DATA",
+  "APPROVE_DELETION",
+  "REQUEST_DELETION",
+  "SEND_REMINDERS",
+  "MANAGE_EVENTS",
+  "MANAGE_CLASSES",
+  // The activity feed names every staff member and what they did, money
+  // included -- not for a shared screen.
+  "VIEW_ACTIVITY_LOG",
+];
+
+/** Strip anything a class profile must never have. */
+export function limitProfilePermissions(permissions: Permission[]): Permission[] {
+  const blocked = new Set(PROFILE_BLOCKED_PERMISSIONS);
+  return permissions.filter((p) => !blocked.has(p));
+}
+
 export function getEffectivePermissions(
   role: Role,
-  overrides: PermissionOverride[] = []
+  overrides: PermissionOverride[] = [],
+  options: { isProfile?: boolean } = {}
 ): Permission[] {
+  if (options.isProfile) {
+    // A profile is only ever a TEACHER; anything else gets nothing.
+    if (role !== "TEACHER") return [];
+    return limitProfilePermissions(getEffectivePermissions(role, overrides));
+  }
   if (role === "ADMIN") return [...ALL_PERMISSIONS];
 
   const effective = new Set<Permission>(ROLE_DEFAULT_PERMISSIONS[role]);

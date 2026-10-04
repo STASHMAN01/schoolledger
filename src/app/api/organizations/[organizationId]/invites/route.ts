@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       db.membership.findMany({
         where: { organizationId },
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, name: true, email: true, username: true, isProfile: true } },
           permissionOverrides: true,
         },
         orderBy: { createdAt: "asc" },
@@ -47,9 +47,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
         userId: m.user.id,
         name: m.user.name,
         email: m.user.email,
+        username: m.user.username,
+        isProfile: m.user.isProfile,
         role: m.role,
         assignedCategoryId: m.assignedCategoryId,
-        permissions: getEffectivePermissions(m.role, m.permissionOverrides),
+        permissions: getEffectivePermissions(m.role, m.permissionOverrides, {
+          isProfile: m.user.isProfile,
+        }),
       })),
     });
   } catch (err) {

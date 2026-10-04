@@ -36,7 +36,9 @@ export default async function DashboardLayout({
 
   const org = membership.organization;
   const isPlatformAdmin = await checkIsPlatformAdmin(session.user.id);
-  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides);
+  const permissions = getEffectivePermissions(membership.role, membership.permissionOverrides, {
+    isProfile: membership.user.isProfile,
+  });
 
   // Gate: registration isn't "done" until this admin has clicked the link
   // sent to their email (see /api/auth/register + /api/auth/verify-email).

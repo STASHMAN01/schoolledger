@@ -32,7 +32,7 @@ export function LoginForm() {
       });
       if (result?.error) {
         // Deliberately vague: never say "wrong password" vs "no such user".
-        setError("Incorrect email or password.");
+        setError("Incorrect email, username or password.");
         return;
       }
       if (explicitCallbackUrl) {
@@ -71,12 +71,18 @@ export function LoginForm() {
       <Card className="animate-in p-6">
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <div>
-            <Label htmlFor="email">Email</Label>
+            {/* Class tablets log in with a username like "dees.butterfly"
+                instead of an email (see src/lib/profiles.ts). */}
+            <Label htmlFor="email">Email or username</Label>
             <Input
               id="email"
               required
-              type="email"
-              autoComplete="email"
+              type="text"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1"
