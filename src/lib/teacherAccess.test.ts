@@ -18,6 +18,9 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("HEAD", api("/events/upcoming"))).toBe(true);
     expect(teacherMayCall("GET", api("/daily-summary"))).toBe(true);
     expect(teacherMayCall("POST", api("/daily-summary"))).toBe(true);
+    expect(teacherMayCall("GET", api("/lesson-plans"))).toBe(true);
+    expect(teacherMayCall("GET", api("/classwork"))).toBe(true);
+    expect(teacherMayCall("POST", api("/classwork"))).toBe(true);
   });
 
   it("refuses changes, parent data and admin areas", () => {
@@ -37,6 +40,10 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("GET", api("/staff"))).toBe(false);
     expect(teacherMayCall("GET", api("/audit"))).toBe(false);
     expect(teacherMayCall("PATCH", api("/daily-summary"))).toBe(false);
+    // Lesson plans are written by the admin; classwork is add-only.
+    expect(teacherMayCall("PUT", api("/lesson-plans"))).toBe(false);
+    expect(teacherMayCall("DELETE", api("/classwork/abc123"))).toBe(false);
+    expect(teacherMayCall("PATCH", api("/classwork/abc123"))).toBe(false);
   });
 
   it("ignores query strings and trailing slashes", () => {
@@ -62,6 +69,8 @@ describe("teacherMayOpen", () => {
       "/dashboard/centre/schedule",
       "/dashboard/centre/events",
       "/dashboard/centre/daily-summary",
+      "/dashboard/centre/lesson-plan",
+      "/dashboard/centre/classwork",
     ]) {
       expect(teacherMayOpen(p)).toBe(true);
     }

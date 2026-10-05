@@ -8,6 +8,7 @@ import { hasUnseenScheduleChange } from "@/lib/scheduleNotice";
 import { isProfileIncomplete } from "@/lib/childProfile";
 import { finalReviewWindow } from "@/lib/deletion";
 import { isSummaryDue, schoolClock, schoolDateValue } from "@/lib/dailySummary";
+import { CLASSWORK_REMINDER_HOUR } from "@/lib/lessonPlan";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -299,6 +300,26 @@ export async function GET(req: NextRequest, { params }: Params) {
               href: "/dashboard/centre/daily-summary",
             });
           }
+        }
+      }
+    }
+
+    // Classwork (Dylan, 5 Oct 2026): from 15:00 school time on weekdays a
+    // class teacher is reminded to record what the class did today.
+    if (inCentre && role === "TEACHER" && assignedCategoryId && permissions.includes("VIEW_CENTRE")) {
+      const org = await db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } });
+      const clock = schoolClock(org?.timezone ?? "Africa/Johannesburg");
+      if (clock.weekday <= 5 && clock.minutes >= CLASSWORK_REMINDER_HOUR * 60) {
+        const recorded = await db.classworkEntry.count({
+          where: { categoryId: assignedCategoryId, date: schoolDateValue(clock.date) },
+        });
+        if (recorded === 0) {
+          todos.push({
+            id: "classwork.record",
+            label: "Record today's classwork",
+            count: 1,
+            href: "/dashboard/centre/classwork",
+          });
         }
       }
     }

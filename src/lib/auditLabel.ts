@@ -139,6 +139,12 @@ export function describeAuditAction(row: AuditRow): string {
       return m.anyoneHurt
         ? `sent the ${m.date ?? ""} daily summary (a child was hurt${m.incidentReported ? ", incident reported" : ", reason given"})`
         : `sent the ${m.date ?? ""} daily summary (nobody hurt)`;
+    case "lessonPlan.updated":
+      return `updated the lesson plan for ${m.className ?? "a class"} (week of ${m.weekStart ?? ""})`;
+    case "classwork.added":
+      return `recorded classwork for ${m.date ?? "today"}`;
+    case "classwork.deleted":
+      return `removed a classwork entry for ${m.className ?? "a class"} (${m.date ?? ""})`;
     case "profile.created":
       return `created the class profile "${m.profileName ?? ""}" (${m.username ?? ""})`;
     case "profile.passwordReset":

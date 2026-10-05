@@ -1,6 +1,6 @@
 // What a Teacher may do in the app (Dylan, 4 Oct 2026). A teacher's job
-// here is: mark the register, look at the routine, write incident
-// reports, and see the children in their own class -- name, class,
+// here is: mark the register, look at the routine and lesson plan,
+// record classwork, write incident reports, and see the children in their own class -- name, class,
 // gender, age, allergies and emergency contact only. Everything else
 // (forms, admissions, documents, files, classes, staff, communication,
 // settings, money, parent details) is admin work.
@@ -43,6 +43,9 @@ const ALLOWED: [string, RegExp][] = [
   ["POST", /^\/tour$/], // "seen the walkthrough"
   ["GET", /^\/daily-summary$/], // own class's end-of-day summary
   ["POST", /^\/daily-summary$/],
+  ["GET", /^\/lesson-plans$/], // own class's lesson plan, read-only
+  ["GET", /^\/classwork$/], // own class's classwork
+  ["POST", /^\/classwork$/], // add an entry for today
 ];
 
 /** The part of an API path after /api/organizations/<orgId>, or null. */
@@ -71,6 +74,8 @@ export const TEACHER_PAGES = [
   "/dashboard/centre/schedule",
   "/dashboard/centre/events",
   "/dashboard/centre/daily-summary",
+  "/dashboard/centre/lesson-plan",
+  "/dashboard/centre/classwork",
 ];
 
 export function teacherMayOpen(pathname: string): boolean {

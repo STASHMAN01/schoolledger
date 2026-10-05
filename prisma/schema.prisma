@@ -235,6 +235,8 @@ model Organization {
   childDocuments       ChildDocument[]
   childReports         ChildReport[]
   dailySummaries       DailySummary[]
+  lessonPlans          LessonPlan[]
+  classworkEntries     ClassworkEntry[]
 
   @@map("organizations")
 }
@@ -284,6 +286,8 @@ model User {
   attendanceRecordsMarked AttendanceRecord[]
   childReportsCreated ChildReport[]
   dailySummariesSubmitted DailySummary[]
+  lessonPlansCreated      LessonPlan[]
+  classworkEntriesCreated ClassworkEntry[]
 
   @@map("users")
 }
@@ -390,6 +394,8 @@ model Category {
   whatsappGroupChecks WhatsAppGroupCheck[]
   reports        ChildReport[]
   dailySummaries DailySummary[]
+  lessonPlans    LessonPlan[]
+  classworkEntries ClassworkEntry[]
 
   @@index([organizationId])
   @@index([parentId])
@@ -1264,4 +1270,50 @@ model SubscriptionPayment {
 
   @@index([organizationId, paidAt])
   @@map("subscription_payments")
+}
+
+// What each class is learning on a given school day (Dylan, 5 Oct 2026).
+// The admin writes it a week at a time; the class teacher reads it. One
+// topic per class per day.
+model LessonPlan {
+  id              String   @id @default(cuid())
+  organizationId  String
+  categoryId      String
+  // The school day, date-only (UTC midnight), same convention as
+  // AttendanceRecord.date.
+  date            DateTime
+  topic           String
+  notes           String?  @db.Text
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id])
+  createdBy    User         @relation(fields: [createdByUserId], references: [id])
+
+  @@unique([categoryId, date])
+  @@index([organizationId, date])
+  @@map("lesson_plans")
+}
+
+// What the class teacher did with the children today (Dylan, 5 Oct 2026).
+// Teachers only add, for today; they never edit or delete. Photos can
+// attach to these later.
+model ClassworkEntry {
+  id              String   @id @default(cuid())
+  organizationId  String
+  categoryId      String
+  date            DateTime
+  description     String   @db.Text
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id])
+  createdBy    User         @relation(fields: [createdByUserId], references: [id])
+
+  @@index([organizationId, date])
+  @@index([categoryId, date])
+  @@map("classwork_entries")
 }
