@@ -41,6 +41,8 @@ const CENTRE_LINKS: NavLink[] = [
   { href: "/dashboard/centre/documents", label: "Documents" },
   { href: "/dashboard/centre/attendance", label: "Attendance" },
   { href: "/dashboard/centre/reports", label: "Reports" },
+  // Medicine brought in by parents, with their signed permission.
+  { href: "/dashboard/centre/medicine", label: "Medicine" },
   { href: "/dashboard/centre/files", label: "Files" },
   { href: "/dashboard/centre/classes", label: "Classes" },
   // "Routine" is the word the teachers use (Dylan, 4 Oct 2026); the URL
@@ -98,6 +100,7 @@ const LINK_REQUIRES: Record<string, string[]> = {
   "/dashboard/centre/forms": ["MANAGE_CHILDREN"],
   "/dashboard/centre/attendance": ["MANAGE_ATTENDANCE"],
   "/dashboard/centre/reports": ["MANAGE_REPORTS"],
+  "/dashboard/centre/medicine": ["MANAGE_REPORTS"],
   "/dashboard/centre/staff": ["MANAGE_CLASSES", "MANAGE_TEAM"],
   "/dashboard/centre/communication": ["MANAGE_CHILDREN"],
 };

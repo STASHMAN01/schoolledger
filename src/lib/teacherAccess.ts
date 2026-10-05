@@ -50,6 +50,12 @@ const ALLOWED: [string, RegExp][] = [
   ["GET", /^\/tasks$/], // tasks assigned to their own class
   ["POST", new RegExp(`^/tasks/${ID}/acknowledge$`)],
   ["POST", new RegExp(`^/tasks/${ID}/complete$`)],
+  ["GET", /^\/medicine$/], // own class's medicine register
+  ["POST", /^\/medicine$/], // take in a medicine (own class, checked in the route)
+  ["POST", new RegExp(`^/medicine/${ID}/sign$`)],
+  ["POST", new RegExp(`^/medicine/${ID}/dose$`)],
+  ["POST", new RegExp(`^/medicine/${ID}/return$`)],
+  ["GET", new RegExp(`^/medicine/${ID}/pdf$`)],
 ];
 
 /** The part of an API path after /api/organizations/<orgId>, or null. */
@@ -81,6 +87,7 @@ export const TEACHER_PAGES = [
   "/dashboard/centre/lesson-plan",
   "/dashboard/centre/classwork",
   "/dashboard/centre/tasks",
+  "/dashboard/centre/medicine",
 ];
 
 export function teacherMayOpen(pathname: string): boolean {

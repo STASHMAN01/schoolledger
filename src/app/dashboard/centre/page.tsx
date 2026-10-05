@@ -85,10 +85,12 @@ export default function CentreManagementHomePage() {
   const canSeeSubmissions = permissions.includes("MANAGE_CHILDREN");
   const canSeeStaff = permissions.includes("MANAGE_CLASSES") || permissions.includes("MANAGE_TEAM");
   const canSeeActivity = permissions.includes("VIEW_ACTIVITY_LOG");
+  const canSeeMedicine = permissions.includes("MANAGE_REPORTS");
 
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState<ChildStat[] | null>(null);
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
+  const [medicine, setMedicine] = useState<{ summary: { children: number; unsigned: number } } | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [staffCount, setStaffCount] = useState<number | null>(null);
   const [unassignedTeachers, setUnassignedTeachers] = useState(0);
@@ -104,7 +106,7 @@ export default function CentreManagementHomePage() {
     setLoading(true);
     const base = `/api/organizations/${organizationId}`;
     const activityQs = new URLSearchParams({ entityTypes: CENTRE_ENTITY_TYPES.join(",") }).toString();
-    const [kids, att, subs, staff, events, classes, sched, activity, docs, plan] = await Promise.all([
+    const [kids, att, subs, staff, events, classes, sched, activity, docs, plan, med] = await Promise.all([
       getJson<{ children: ChildStat[] }>(`${base}/children`),
       canSeeAttendance ? getJson<AttendanceSummary>(`${base}/attendance/summary?date=${todayLocal()}`) : null,
       canSeeSubmissions ? getJson<{ submissions: unknown[] }>(`${base}/parent-submissions`) : null,
@@ -117,7 +119,9 @@ export default function CentreManagementHomePage() {
       canSeeActivity ? getJson<{ entries: AuditEntry[] }>(`${base}/audit?${activityQs}`) : null,
       isTeacher ? null : getJson<{ required: string[]; children: unknown[] }>(`${base}/documents/missing`),
       isTeacher ? getJson<{ today: string; days: TodayLesson[] }>(`${base}/lesson-plans`) : null,
+      canSeeMedicine ? getJson<{ summary: { children: number; unsigned: number } }>(`${base}/medicine`) : null,
     ]);
+    setMedicine(med);
     setMissingDocs(docs);
     setChildren(kids?.children ?? null);
     setAttendance(att);
@@ -132,7 +136,7 @@ export default function CentreManagementHomePage() {
     setLesson(plan);
     setEntries(activity ? activity.entries.slice(0, 10) : null);
     setLoading(false);
-  }, [organizationId, canSeeAttendance, canSeeSubmissions, canSeeStaff, isTeacher, canSeeActivity]);
+  }, [organizationId, canSeeAttendance, canSeeSubmissions, canSeeStaff, isTeacher, canSeeActivity, canSeeMedicine]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
@@ -170,12 +174,20 @@ export default function CentreManagementHomePage() {
         description="Enrolment, attendance and the day-to-day running of your centre."
         actions={
           isTeacher ? (
-            <Link
-              href="/dashboard/centre/reports?new=INCIDENT"
-              className="inline-flex min-h-11 items-center rounded-lg bg-danger px-4 text-sm font-semibold text-white shadow-sm hover:opacity-90"
-            >
-              Report an incident
-            </Link>
+            <>
+              <Link
+                href="/dashboard/centre/reports?new=INCIDENT"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-danger px-4 text-sm font-semibold text-white shadow-sm hover:opacity-90 sm:flex-none"
+              >
+                Report an incident
+              </Link>
+              <Link
+                href="/dashboard/centre/medicine?new=1"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-brand px-4 text-sm font-semibold text-brand-foreground shadow-sm hover:bg-brand-hover sm:flex-none"
+              >
+                Medicine brought in
+              </Link>
+            </>
           ) : undefined
         }
       />
@@ -232,6 +244,22 @@ export default function CentreManagementHomePage() {
                   </div>
                 )}
               </div>
+            )}
+
+            {canSeeMedicine && (
+              <Tile
+                title="Medicine today"
+                href="/dashboard/centre/medicine"
+                value={num(medicine ? medicine.summary.children : null)}
+                hint={
+                  medicine && medicine.summary.unsigned > 0
+                    ? `${medicine.summary.unsigned} not signed by a parent`
+                    : medicine && medicine.summary.children === 0
+                      ? "No medicine today"
+                      : `Child${medicine?.summary.children === 1 ? "" : "ren"} with medicine`
+                }
+                warn={Boolean(medicine && medicine.summary.unsigned > 0)}
+              />
             )}
 
             {canSeeSubmissions && (

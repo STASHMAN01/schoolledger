@@ -993,3 +993,11 @@ in MRR/ARR.
 - **Permissions:** each folder needs the permission of the page its documents come from (Statements: VIEW_MONEY; forms: MANAGE_CHILDREN; reports: MANAGE_REPORTS; attendance: MANAGE_ATTENDANCE). A Teacher only sees their own class. Form rows are listed without their PDF column.
 - **Installable app (Phase 1):** `src/app/manifest.ts` (start `/dashboard`, standalone, scope `/`), `public/sw.js` (only shows `public/offline.html` when a page can't load; caches nothing else), offline page, `themeColor`, iPhone home-screen tag, maskable icon `public/brand/icon-maskable-512.png`. `/manifest.webmanifest`, `/sw.js`, `/offline.html` and `/.well-known` are in `PUBLIC_PATHS` (tested by name in `pwa.test.ts` / `assetlinks.test.ts`).
 - **Android APK (Phase 2):** steps and the signing-key warning are in `docs/ANDROID_APP.md`; `scripts/set-assetlinks.mjs` writes `public/.well-known/assetlinks.json` once the app is signed. The APK itself can't be built in Claude's workspace (the Android SDK host is blocked), so it's built with pwabuilder.com on Dylan's side.
+
+## Medicine register (5 Oct 2026)
+- New tables `medicine_records` and `medicine_doses` (additive; apply with `npx prisma db push`).
+- Page /dashboard/centre/medicine: "Medicine brought in" is a two-step full-screen form (staff details with the three arrival checks, then the parent reads the consent wording and signs with a finger). A parent who isn't there can sign later ("Parent signs now").
+- Doses are recorded per form (given, refused, vomited, not given, with an optional second staff member) and only once the parent has signed, inside the course dates, in date and before the medicine is handed back.
+- Home: "Medicine today" tile, "Medicine brought in" button for teachers, to-do "Get a parent's signature for N medicines". PDF per form includes the signature and dose log.
+- Consent wording lives in src/lib/medicine.ts (CONSENT_VERSION); change the words, bump the version.
+- Not built: emailing the parent a link to sign remotely (needs a public page; see middleware-public-paths-trap).

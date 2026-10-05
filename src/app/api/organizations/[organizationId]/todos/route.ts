@@ -356,6 +356,34 @@ export async function GET(req: NextRequest, { params }: Params) {
       }
     }
 
+    // Medicine a parent brought in but hasn't signed for yet (Dylan, 5 Oct 2026).
+    if (inCentre && permissions.includes("VIEW_CENTRE") && permissions.includes("MANAGE_REPORTS")) {
+      const clock = schoolClock(
+        (await db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } }))?.timezone ??
+          "Africa/Johannesburg"
+      );
+      const day = schoolDateValue(clock.date);
+      const unsigned = await db.medicineRecord.count({
+        where: {
+          organizationId,
+          signedAt: null,
+          returnedAt: null,
+          startDate: { lte: day },
+          endDate: { gte: day },
+          child: { archived: false },
+          ...(role === "TEACHER" ? { categoryId: assignedCategoryId ?? "none" } : {}),
+        },
+      });
+      if (unsigned > 0) {
+        todos.push({
+          id: "medicine.unsigned",
+          label: `Get a parent's signature for ${unsigned === 1 ? "1 medicine" : `${unsigned} medicines`}`,
+          count: unsigned,
+          href: "/dashboard/centre/medicine",
+        });
+      }
+    }
+
     // Tasks an admin assigned to this teacher's class and nobody has done.
     if (inCentre && role === "TEACHER" && assignedCategoryId && permissions.includes("VIEW_CENTRE")) {
       const open = await db.teacherTask.count({

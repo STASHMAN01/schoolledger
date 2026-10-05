@@ -238,6 +238,8 @@ model Organization {
   lessonPlans          LessonPlan[]
   teacherTasks         TeacherTask[]
   classworkEntries     ClassworkEntry[]
+  medicineRecords      MedicineRecord[]
+  medicineDoses        MedicineDose[]
 
   @@map("organizations")
 }
@@ -290,6 +292,8 @@ model User {
   lessonPlansCreated      LessonPlan[]
   teacherTasksCreated     TeacherTask[]
   classworkEntriesCreated ClassworkEntry[]
+  medicineRecordsCreated  MedicineRecord[]
+  medicineDosesGiven      MedicineDose[]
 
   @@map("users")
 }
@@ -399,6 +403,7 @@ model Category {
   lessonPlans    LessonPlan[]
   teacherTasks   TeacherTask[]
   classworkEntries ClassworkEntry[]
+  medicineRecords MedicineRecord[]
 
   @@index([organizationId])
   @@index([parentId])
@@ -481,6 +486,8 @@ model Child {
   @@index([organizationId, lastName])
   // Class registers / enrolled lists filter on all of these together.
   @@index([organizationId, categoryId, archived, deletedAt])
+  medicineRecords MedicineRecord[]
+
   @@map("children")
 }
 
@@ -1359,4 +1366,83 @@ model TeacherTask {
   @@index([organizationId, completedAt])
   @@index([categoryId, completedAt])
   @@map("teacher_tasks")
+}
+
+// Medicine register (Dylan, 5 Oct 2026). One row per medicine a parent
+// brings in, with the parent's signed permission. The consent wording the
+// parent agreed to is versioned in src/lib/medicine.ts (consentVersion).
+// The signature is a small PNG data URL; it is health-related data under
+// POPIA, so it is only ever read through the scoped medicine routes.
+model MedicineRecord {
+  id                String    @id @default(cuid())
+  organizationId    String
+  childId           String
+  categoryId        String
+  medicineName      String
+  reason            String
+  isPrescribed      Boolean   @default(false)
+  prescriberName    String?
+  dose              String // "5 ml", "1 tablet"
+  route             String // ORAL, TOPICAL, INHALER, EYE_EAR_NOSE, OTHER
+  frequency         String // "Twice a day, after food"
+  scheduledTimes    String[]  @default([]) // "HH:MM" on the school's clock
+  startDate         DateTime // school date, UTC midnight
+  endDate           DateTime
+  lastDoseAtHome    String?
+  storage           String // ROOM, FRIDGE, CHILD_CARRIES
+  expiryDate        DateTime?
+  originalContainer Boolean   @default(false)
+  labelMatches      Boolean   @default(false)
+  notExpired        Boolean   @default(false)
+  specialInstructions String? @db.Text
+
+  // Parent permission. Null until the parent signs.
+  consentVersion    Int       @default(1)
+  parentName        String?
+  parentRelationship String?
+  parentPhone       String?
+  signatureImage    String?   @db.Text
+  signedAt          DateTime?
+  signedWitnessUserId String? // the staff member who handed over the tablet
+
+  // Finished, or the unused medicine went back to the parent.
+  returnedAt        DateTime?
+  returnedNote      String?
+
+  createdByUserId   String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  child        Child          @relation(fields: [childId], references: [id], onDelete: Cascade)
+  category     Category       @relation(fields: [categoryId], references: [id])
+  createdBy    User           @relation(fields: [createdByUserId], references: [id])
+  doses        MedicineDose[]
+
+  @@index([organizationId, startDate, endDate])
+  @@index([categoryId, startDate, endDate])
+  @@index([childId])
+  @@map("medicine_records")
+}
+
+// One entry per time staff gave (or tried to give) a dose: the
+// "administration record" childcare regulators ask for.
+model MedicineDose {
+  id               String   @id @default(cuid())
+  organizationId   String
+  medicineRecordId String
+  givenAt          DateTime @default(now())
+  outcome          String // GIVEN, REFUSED, VOMITED, NOT_GIVEN
+  doseGiven        String?
+  note             String?  @db.Text
+  witnessName      String? // second staff member who checked, when there was one
+  givenByUserId    String
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  medicineRecord MedicineRecord @relation(fields: [medicineRecordId], references: [id], onDelete: Cascade)
+  givenBy        User           @relation(fields: [givenByUserId], references: [id])
+
+  @@index([medicineRecordId, givenAt])
+  @@index([organizationId, givenAt])
+  @@map("medicine_doses")
 }

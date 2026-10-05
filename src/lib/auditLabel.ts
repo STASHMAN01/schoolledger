@@ -157,6 +157,16 @@ export function describeAuditAction(row: AuditRow): string {
       return `approved the lesson plan for ${m.className ?? "a class"}`;
     case "lessonPlan.returned":
       return `sent the lesson plan for ${m.className ?? "a class"} back for changes`;
+    case "medicine.created":
+      return `took in ${m.medicineName ?? "medicine"} for ${m.childFirstName ?? "a child"}${m.signed ? "" : " (not signed yet)"}`;
+    case "medicine.signed":
+      return `got a parent's signature for ${m.medicineName ?? "medicine"} (${m.childFirstName ?? "a child"})`;
+    case "medicine.dose":
+      return `recorded ${m.medicineName ?? "medicine"} for ${m.childFirstName ?? "a child"}: ${String(m.outcome ?? "given").toLowerCase().replace("_", " ")}`;
+    case "medicine.returned":
+      return `handed back ${m.medicineName ?? "medicine"} for ${m.childFirstName ?? "a child"}`;
+    case "medicine.pdf_generated":
+      return `printed the medicine record for ${m.medicineName ?? "a medicine"}`;
     case "classwork.added":
       return `recorded classwork for ${m.date ?? "today"}`;
     case "classwork.deleted":
