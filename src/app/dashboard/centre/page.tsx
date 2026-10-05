@@ -31,7 +31,14 @@ type AttendanceSummary = {
 };
 type UpcomingEvent = { id: string; name: string; eventDate: string };
 type TodayItem = { id: string; dayOfWeek: number; startTime: string; endTime: string | null; activity: string };
-type TodayLesson = { date: string; topic: string; notes: string; status?: string };
+type TodayLesson = {
+  date: string;
+  topic: string;
+  notes: string;
+  guide?: string;
+  status?: string;
+  theme?: { id: string; title: string } | null;
+};
 type AuditEntry = {
   id: string;
   action: string;
@@ -335,14 +342,25 @@ export default function CentreManagementHomePage() {
               <Card as="div" className="p-4 transition-colors hover:bg-background">
                 <p className="text-xs font-medium uppercase tracking-wide text-brand">Today&apos;s lesson</p>
                 {(() => {
-                  const plan = lesson.days.find((d) => d.date === lesson.today && (d.status ?? "APPROVED") === "APPROVED");
-                  return plan?.topic ? (
+                  const day = lesson.days.find((d) => d.date === lesson.today);
+                  const plan = day && (day.status ?? "APPROVED") === "APPROVED" ? day : undefined;
+                  return (
                     <>
-                      <p className="font-display mt-1 text-base font-semibold text-foreground">{plan.topic}</p>
-                      {plan.notes && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{plan.notes}</p>}
+                      {day?.theme && <p className="mt-1 text-sm text-muted-foreground">Theme: {day.theme.title}</p>}
+                      {plan?.topic ? (
+                        <>
+                          <p className="font-display mt-1 text-base font-semibold text-foreground">{plan.topic}</p>
+                          {plan.guide ? (
+                            <p className="mt-1 line-clamp-3 text-sm text-foreground">{plan.guide}</p>
+                          ) : (
+                            plan.notes && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{plan.notes}</p>
+                          )}
+                          {plan.guide && <p className="mt-1 text-xs font-medium text-brand">Open the full teaching guide →</p>}
+                        </>
+                      ) : (
+                        <p className="mt-1 text-sm text-muted-foreground">No lesson plan for today. Tap to plan one.</p>
+                      )}
                     </>
-                  ) : (
-                    <p className="mt-1 text-sm text-muted-foreground">No lesson plan for today. Tap to plan one.</p>
                   );
                 })()}
               </Card>

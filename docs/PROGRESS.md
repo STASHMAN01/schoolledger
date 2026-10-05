@@ -1001,3 +1001,10 @@ in MRR/ARR.
 - Home: "Medicine today" tile, "Medicine brought in" button for teachers, to-do "Get a parent's signature for N medicines". PDF per form includes the signature and dose log.
 - Consent wording lives in src/lib/medicine.ts (CONSENT_VERSION); change the words, bump the version.
 - Not built: emailing the parent a link to sign remotely (needs a public page; see middleware-public-paths-trap).
+
+## Lesson themes, teaching guides and import (5 Oct 2026)
+- New table `lesson_themes`; `lesson_plans` gets `guide` and `themeId` (additive; `npx prisma db push`).
+- A theme ("Numbers and shapes", 5 to 9 Oct) covers a date range for all classes or chosen ones (`categoryIds` empty = all). Each class still has one LessonPlan row per day: the day's topic for that age group, an optional admin-only teaching guide, and notes.
+- Admin: New theme / Edit / Remove (keep or delete its days), Edit this week now has a teaching guide box, "Themes coming up" list, Import (xlsx/csv, preview then import; a class-day that already has a plan is replaced). Template download is a CSV.
+- Teacher: theme banner, today's topic with the guide open, home card shows theme + guide. Teachers still propose topics for empty days; they never see or write the guide field in edit mode.
+- Import columns: Theme, Start date, End date, Class (name, "a; b", or All), Date (date or weekday), Topic for the day, Teaching guide. Parser in src/lib/lessonImport.ts (tested).

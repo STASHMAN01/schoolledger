@@ -240,6 +240,7 @@ model Organization {
   classworkEntries     ClassworkEntry[]
   medicineRecords      MedicineRecord[]
   medicineDoses        MedicineDose[]
+  lessonThemes         LessonTheme[]
 
   @@map("organizations")
 }
@@ -294,6 +295,7 @@ model User {
   classworkEntriesCreated ClassworkEntry[]
   medicineRecordsCreated  MedicineRecord[]
   medicineDosesGiven      MedicineDose[]
+  lessonThemesCreated     LessonTheme[]
 
   @@map("users")
 }
@@ -1302,6 +1304,10 @@ model LessonPlan {
   date            DateTime
   topic           String
   notes           String?  @db.Text
+  // How to teach it (Dylan, 5 Oct 2026): written by an admin only, optional.
+  guide           String?  @db.Text
+  // The week's theme this day belongs to ("Numbers and shapes"), if any.
+  themeId         String?
   // Teachers can propose a plan; the admin approves it or sends it back.
   // "APPROVED" (what an admin writes), "PENDING", "RETURNED".
   status           String    @default("APPROVED")
@@ -1315,10 +1321,36 @@ model LessonPlan {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category     Category     @relation(fields: [categoryId], references: [id])
   createdBy    User         @relation(fields: [createdByUserId], references: [id])
+  theme        LessonTheme? @relation(fields: [themeId], references: [id], onDelete: SetNull)
 
   @@unique([categoryId, date])
   @@index([organizationId, date])
+  @@index([themeId])
   @@map("lesson_plans")
+}
+
+// A theme for a stretch of school days (Dylan, 5 Oct 2026): "Numbers and
+// shapes", 5 to 9 Oct, for every class or chosen ones. Each class then gets
+// its own topic and teaching guide per day (LessonPlan), pitched at its age.
+model LessonTheme {
+  id              String   @id @default(cuid())
+  organizationId  String
+  title           String
+  description     String?  @db.Text
+  startDate       DateTime // school date, UTC midnight
+  endDate         DateTime
+  // Empty means every class.
+  categoryIds     String[] @default([])
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdByUserId], references: [id])
+  plans        LessonPlan[]
+
+  @@index([organizationId, startDate, endDate])
+  @@map("lesson_themes")
 }
 
 // What the class teacher did with the children today (Dylan, 5 Oct 2026).

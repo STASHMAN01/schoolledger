@@ -167,6 +167,14 @@ export function describeAuditAction(row: AuditRow): string {
       return `handed back ${m.medicineName ?? "medicine"} for ${m.childFirstName ?? "a child"}`;
     case "medicine.pdf_generated":
       return `printed the medicine record for ${m.medicineName ?? "a medicine"}`;
+    case "lessonTheme.created":
+      return `added the lesson theme "${m.title ?? ""}"`;
+    case "lessonTheme.updated":
+      return `changed the lesson theme "${m.title ?? ""}"`;
+    case "lessonTheme.deleted":
+      return `removed the lesson theme "${m.title ?? ""}"`;
+    case "lessonPlan.imported":
+      return `imported lesson plans (${m.themes ?? 0} theme${m.themes === 1 ? "" : "s"}, ${m.days ?? 0} days)`;
     case "classwork.added":
       return `recorded classwork for ${m.date ?? "today"}`;
     case "classwork.deleted":

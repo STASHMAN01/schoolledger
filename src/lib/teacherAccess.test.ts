@@ -60,6 +60,10 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("POST", api("/tasks"))).toBe(false);
     expect(teacherMayCall("DELETE", api("/tasks/abc"))).toBe(false);
     expect(teacherMayCall("DELETE", api("/medicine/abc"))).toBe(false);
+    expect(teacherMayCall("GET", api("/lesson-themes"))).toBe(false);
+    expect(teacherMayCall("POST", api("/lesson-themes"))).toBe(false);
+    expect(teacherMayCall("PATCH", api("/lesson-themes/abc"))).toBe(false);
+    expect(teacherMayCall("POST", api("/lesson-plans/import"))).toBe(false);
     expect(teacherMayCall("PUT", api("/medicine/abc"))).toBe(false);
   });
 
