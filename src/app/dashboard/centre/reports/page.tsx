@@ -7,6 +7,7 @@
 // class -- enforced server-side (src/lib/reports.ts), this page just
 // doesn't offer a class picker for one.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { todayLocal } from "@/lib/date";
 import { useOrg, useHasPermission } from "../../OrgContext";
@@ -368,7 +369,8 @@ export default function ReportsPage() {
         </Card>
       )}
 
-      {form && (
+      {form &&
+        createPortal(
         <div
           role="dialog"
           aria-modal="true"
@@ -379,7 +381,7 @@ export default function ReportsPage() {
               scrolling in the middle and Save/Cancel always in reach at the
               bottom. Larger screens: a centred card. */}
           <div
-            className="animate-in flex h-[100dvh] w-full max-w-lg flex-col overflow-hidden bg-surface sm:h-auto sm:max-h-[90vh] sm:rounded-xl sm:border sm:border-border sm:shadow-xl"
+            className="animate-in flex h-[100dvh] w-full max-w-lg flex-col overflow-hidden bg-surface sm:h-auto sm:max-h-[90dvh] sm:rounded-xl sm:border sm:border-border sm:shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pt-3">
@@ -626,7 +628,7 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
-      )}
+        , document.body)}
     </div>
   );
 }

@@ -199,7 +199,10 @@ h1, h2, h3, h4, h5, h6 {
  * Respect reduced-motion preferences unconditionally. */
 @media (prefers-reduced-motion: no-preference) {
   .animate-in {
-    animation: fade-slide-in 0.28s ease-out both;
+    /* backwards, not both: a transform kept after the animation turns the
+       page into the containing block for position:fixed pop-ups, which
+       clipped the incident form on tablets (Dylan, 5 Oct 2026). */
+    animation: fade-slide-in 0.28s ease-out backwards;
   }
   .transition-standard {
     transition: all 0.15s ease;
