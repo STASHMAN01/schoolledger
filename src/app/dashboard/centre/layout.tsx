@@ -4,6 +4,7 @@ import { getPrimaryMembership } from "@/lib/org";
 import { getEffectivePermissions } from "@/lib/permissions";
 import { TeacherPageGuard } from "./TeacherPageGuard";
 import { DailySummaryPrompt } from "./DailySummaryPrompt";
+import { RoutineSounds } from "./RoutineSounds";
 
 // Mirrors accounting/layout.tsx -- blocks direct URL access to
 // /dashboard/centre/* for anyone without VIEW_CENTRE (e.g. an Accountant
@@ -30,6 +31,7 @@ export default async function CentreLayout({
     <TeacherPageGuard>
       {children}
       <DailySummaryPrompt />
+      <RoutineSounds />
     </TeacherPageGuard>
   );
 }

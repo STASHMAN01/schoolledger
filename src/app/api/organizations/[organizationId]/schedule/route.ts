@@ -37,7 +37,15 @@ export async function GET(req: NextRequest, { params }: Params) {
       select: { id: true, dayOfWeek: true, startTime: true, endTime: true, activity: true, notes: true, updatedAt: true },
     });
 
-    return NextResponse.json({ category, items: sortScheduleItems(items) });
+    // The school's time zone lets a tablet chime on school time even if its
+    // own clock is set elsewhere.
+    const org = await db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } });
+
+    return NextResponse.json({
+      category,
+      items: sortScheduleItems(items),
+      timezone: org?.timezone ?? "Africa/Johannesburg",
+    });
   } catch (err) {
     return handleApiError(err);
   }
