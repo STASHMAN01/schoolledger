@@ -6,13 +6,19 @@ import { useOrg } from "../../OrgContext";
 import { Badge, Button, Card, Input, Label, PageHeader, Textarea } from "@/components/ui";
 
 // Daily summary (Dylan, 4 Oct 2026). A class teacher answers it once a day
-// from 16:00; everyone else sees which classes have and haven't.
+// from 12:00; everyone else sees which classes have and haven't.
 
 type Summary = {
   id: string;
   anyoneHurt: boolean;
   incidentReported: boolean | null;
   noReportReason: string | null;
+  anyoneIll?: boolean | null;
+  illDetails?: string | null;
+  routineFollowed?: "YES" | "MOSTLY" | "NO" | null;
+  routineNote?: string | null;
+  childrenNote?: string | null;
+  needsNote?: string | null;
   submittedAt: string;
   submittedBy: { name: string } | null;
 };
@@ -39,13 +45,52 @@ function timeOf(iso: string) {
   return new Date(iso).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" });
 }
 
-function SummaryAnswer({ s }: { s: Summary }) {
-  if (!s.anyoneHurt) return <span className="text-success">Nobody was hurt</span>;
-  if (s.incidentReported) return <span className="text-foreground">A child was hurt · incident report made</span>;
+const ROUTINE_TEXT = { YES: "Yes, as planned", MOSTLY: "Mostly", NO: "No" } as const;
+
+function Answer({ q, children }: { q: string; children: React.ReactNode }) {
   return (
-    <span className="text-foreground">
-      A child was hurt · no report. Reason: &ldquo;{s.noReportReason}&rdquo;
-    </span>
+    <div className="py-1">
+      <p className="text-xs text-muted-foreground">{q}</p>
+      <p className="text-sm text-foreground">{children}</p>
+    </div>
+  );
+}
+
+/** All five answers, as the teacher gave them (older summaries only have the first). */
+function SummaryAnswer({ s }: { s: Summary }) {
+  return (
+    <div className="divide-y divide-border">
+      <Answer q="Was any child hurt?">
+        {!s.anyoneHurt ? (
+          <span className="text-success">Nobody was hurt</span>
+        ) : s.incidentReported ? (
+          "A child was hurt · incident report made"
+        ) : (
+          <>A child was hurt · no report. Reason: &ldquo;{s.noReportReason}&rdquo;</>
+        )}
+      </Answer>
+      {s.anyoneIll != null && (
+        <Answer q="Did any child fall ill or show symptoms?">
+          {s.anyoneIll ? <>Yes: {s.illDetails}</> : <span className="text-success">No</span>}
+        </Answer>
+      )}
+      {s.routineFollowed && (
+        <Answer q="Did the day follow the routine and lesson plan?">
+          {ROUTINE_TEXT[s.routineFollowed]}
+          {s.routineNote ? ` · ${s.routineNote}` : ""}
+        </Answer>
+      )}
+      {s.anyoneIll != null && (
+        <Answer q="Anything about a child's behaviour, mood or progress?">
+          {s.childrenNote || <span className="text-muted-foreground">Nothing to report</span>}
+        </Answer>
+      )}
+      {s.anyoneIll != null && (
+        <Answer q="Anything that needs attention (supplies, repairs, safety, a parent)?">
+          {s.needsNote || <span className="text-muted-foreground">Nothing to report</span>}
+        </Answer>
+      )}
+    </div>
   );
 }
 
@@ -55,6 +100,12 @@ function TeacherSummary({ organizationId }: { organizationId: string }) {
   const [anyoneHurt, setAnyoneHurt] = useState<boolean | null>(null);
   const [reported, setReported] = useState<boolean | null>(null);
   const [reason, setReason] = useState("");
+  const [anyoneIll, setAnyoneIll] = useState<boolean | null>(null);
+  const [illDetails, setIllDetails] = useState("");
+  const [routine, setRoutine] = useState<"YES" | "MOSTLY" | "NO" | null>(null);
+  const [routineNote, setRoutineNote] = useState("");
+  const [childrenNote, setChildrenNote] = useState("");
+  const [needsNote, setNeedsNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -79,6 +130,12 @@ function TeacherSummary({ organizationId }: { organizationId: string }) {
         anyoneHurt,
         ...(anyoneHurt ? { incidentReported: reported ?? undefined } : {}),
         ...(anyoneHurt && reported === false ? { noReportReason: reason } : {}),
+        anyoneIll,
+        ...(anyoneIll ? { illDetails } : {}),
+        routineFollowed: routine,
+        ...(routine && routine !== "YES" ? { routineNote } : {}),
+        childrenNote,
+        needsNote,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -105,10 +162,8 @@ function TeacherSummary({ organizationId }: { organizationId: string }) {
   if (status.summary) {
     return (
       <Card className="p-5">
-        <p className="mb-1 text-sm font-medium text-success">Sent ✓</p>
-        <p className="text-sm text-foreground">
-          <SummaryAnswer s={status.summary} />
-        </p>
+        <p className="mb-2 text-sm font-medium text-success">Sent ✓</p>
+        <SummaryAnswer s={status.summary} />
         <p className="mt-2 text-xs text-muted-foreground">
           {status.className} · {day} · sent at {timeOf(status.summary.submittedAt)}
           {status.summary.submittedBy ? ` by ${status.summary.submittedBy.name}` : ""}
@@ -118,21 +173,24 @@ function TeacherSummary({ organizationId }: { organizationId: string }) {
   }
 
   const incidents = status.incidentsToday ?? 0;
-  const ready =
+  const hurtReady =
     anyoneHurt === false ||
     (anyoneHurt === true && reported === true && incidents > 0) ||
     (anyoneHurt === true && reported === false && reason.trim().length >= 3);
+  const illReady = anyoneIll === false || (anyoneIll === true && illDetails.trim().length >= 3);
+  const routineReady = routine === "YES" || (routine !== null && routineNote.trim().length >= 3);
+  const ready = hurtReady && illReady && routineReady;
 
   return (
     <Card className="max-w-xl p-5">
       <p className="mb-4 text-xs text-muted-foreground">
         {status.className} · {day}
-        {!status.isDue && ` · due from ${status.dueFrom ?? "16:00"}, but you can send it now`}
+        {!status.isDue && ` · due from ${status.dueFrom ?? "12:00"}, but you can send it now`}
       </p>
 
       <fieldset className="mb-5">
         <legend className="mb-2 text-sm font-medium text-foreground">
-          Did any child get hurt today under your supervision?
+          1. Did any child get hurt today under your supervision?
         </legend>
         <div className="flex gap-2">
           <Button
@@ -202,6 +260,79 @@ function TeacherSummary({ organizationId }: { organizationId: string }) {
         </fieldset>
       )}
 
+      <fieldset className="mb-5">
+        <legend className="mb-2 text-sm font-medium text-foreground">
+          2. Did any child fall ill or show symptoms today (fever, vomiting, rash, a cough…)?
+        </legend>
+        <div className="flex gap-2">
+          <Button variant={anyoneIll === true ? "primary" : "secondary"} onClick={() => setAnyoneIll(true)}>
+            Yes
+          </Button>
+          <Button variant={anyoneIll === false ? "primary" : "secondary"} onClick={() => setAnyoneIll(false)}>
+            No
+          </Button>
+        </div>
+        {anyoneIll === true && (
+          <Textarea
+            className="mt-3"
+            rows={2}
+            value={illDetails}
+            onChange={(e) => setIllDetails(e.target.value)}
+            placeholder="Who was unwell, what you noticed, and what you did (e.g. parent called, sent home)"
+          />
+        )}
+      </fieldset>
+
+      <fieldset className="mb-5">
+        <legend className="mb-2 text-sm font-medium text-foreground">
+          3. Did the day follow the routine and lesson plan?
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          <Button variant={routine === "YES" ? "primary" : "secondary"} onClick={() => setRoutine("YES")}>
+            Yes
+          </Button>
+          <Button variant={routine === "MOSTLY" ? "primary" : "secondary"} onClick={() => setRoutine("MOSTLY")}>
+            Mostly
+          </Button>
+          <Button variant={routine === "NO" ? "primary" : "secondary"} onClick={() => setRoutine("NO")}>
+            No
+          </Button>
+        </div>
+        {routine !== null && routine !== "YES" && (
+          <Textarea
+            className="mt-3"
+            rows={2}
+            value={routineNote}
+            onChange={(e) => setRoutineNote(e.target.value)}
+            placeholder="What changed or was missed, and why (e.g. rain, no outdoor play)"
+          />
+        )}
+      </fieldset>
+
+      <Label className="mb-5 flex flex-col gap-1">
+        <span className="text-sm font-medium text-foreground">
+          4. Anything about a child&apos;s behaviour, mood or progress we should know? (optional)
+        </span>
+        <Textarea
+          rows={2}
+          value={childrenNote}
+          onChange={(e) => setChildrenNote(e.target.value)}
+          placeholder="e.g. a child was very tearful, or took their first steps on the balance beam"
+        />
+      </Label>
+
+      <Label className="mb-5 flex flex-col gap-1">
+        <span className="text-sm font-medium text-foreground">
+          5. Does anything need attention — supplies, repairs, safety or a parent matter? (optional)
+        </span>
+        <Textarea
+          rows={2}
+          value={needsNote}
+          onChange={(e) => setNeedsNote(e.target.value)}
+          placeholder="e.g. we are running low on paint, the gate latch is loose"
+        />
+      </Label>
+
       {error && <p className="mb-3 text-sm text-danger">{error}</p>}
       <Button onClick={submit} disabled={!ready || saving}>
         {saving ? "Sending…" : "Send today's summary"}
@@ -247,7 +378,7 @@ function AdminSummaries({ organizationId }: { organizationId: string }) {
               : missing === 0
                 ? "Every class has sent its summary."
                 : data.date === data.today && !data.isDue
-                  ? `Due from 16:00. ${missing} not sent yet.`
+                  ? `Due from 12:00. ${missing} not sent yet.`
                   : `${missing} of ${data.classes.length} not sent.`}
           </p>
         )}
@@ -262,13 +393,16 @@ function AdminSummaries({ organizationId }: { organizationId: string }) {
                   {c.name}{" "}
                   <span className="font-normal text-muted-foreground">· {c.teachers.join(", ")}</span>
                 </p>
-                <p className="text-sm">
-                  {c.summary ? (
-                    <SummaryAnswer s={c.summary} />
-                  ) : (
-                    <span className="text-muted-foreground">Not sent</span>
-                  )}
-                </p>
+                {c.summary ? (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-sm text-brand">Read the report</summary>
+                    <div className="mt-1">
+                      <SummaryAnswer s={c.summary} />
+                    </div>
+                  </details>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Not sent</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {c.incidents} incident report{c.incidents === 1 ? "" : "s"} that day
                   {c.summary ? ` · sent ${timeOf(c.summary.submittedAt)}` : ""}
@@ -276,8 +410,8 @@ function AdminSummaries({ organizationId }: { organizationId: string }) {
               </div>
               <div className="shrink-0">
                 {c.summary ? (
-                  <Badge variant={c.summary.anyoneHurt ? "danger" : "success"}>
-                    {c.summary.anyoneHurt ? "Child hurt" : "All fine"}
+                  <Badge variant={c.summary.anyoneHurt || c.summary.anyoneIll ? "danger" : "success"}>
+                    {c.summary.anyoneHurt ? "Child hurt" : c.summary.anyoneIll ? "Child unwell" : "All fine"}
                   </Badge>
                 ) : (
                   <Badge variant="neutral">Waiting</Badge>
@@ -297,11 +431,11 @@ export default function DailySummaryPage() {
   return (
     <div className="animate-in">
       <PageHeader
-        title={isTeacher ? "Today's summary" : "Daily summaries"}
+        title={isTeacher ? "Daily report" : "Daily reports"}
         description={
           isTeacher
-            ? "Every day from 4 pm: tell us if any child got hurt under your supervision."
-            : "Each class teacher answers this every weekday from 4 pm: was any child hurt, and was it reported?"
+            ? "Every school day from 12 noon: five quick questions about how the day went."
+            : "Each class teacher answers five questions every weekday from 12 noon: injuries, illness, the routine, the children and anything that needs attention."
         }
       />
       {isTeacher ? <TeacherSummary organizationId={organizationId} /> : <AdminSummaries organizationId={organizationId} />}

@@ -7,7 +7,7 @@ import { z } from "zod";
 // Submitted once per class per day, and never changed afterwards (teachers
 // add, they don't edit).
 
-export const DUE_HOUR = 16;
+export const DUE_HOUR = 12;
 
 export type SchoolClock = {
   /** The school's date, "YYYY-MM-DD". */
@@ -45,7 +45,7 @@ export function schoolClock(timeZone: string, now: Date = new Date()): SchoolClo
   };
 }
 
-/** Whether today's summary should be asked for yet: weekdays from 16:00. */
+/** Whether today's summary should be asked for yet: weekdays from 12:00. */
 export function isSummaryDue(clock: SchoolClock): boolean {
   return clock.weekday <= 5 && clock.minutes >= DUE_HOUR * 60;
 }
@@ -61,24 +61,49 @@ export function schoolDateRange(date: string): { gte: Date; lt: Date } {
   return { gte, lt: new Date(gte.getTime() + 24 * 60 * 60 * 1000) };
 }
 
+export const ROUTINE_ANSWERS = ["YES", "MOSTLY", "NO"] as const;
+export type RoutineAnswer = (typeof ROUTINE_ANSWERS)[number];
+
+// The five questions (Dylan, 5 Oct 2026):
+//  1. Was any child hurt under your supervision?  (+ incident report logic)
+//  2. Did any child fall ill or show symptoms?    (+ details)
+//  3. Did the day follow the routine and lesson plan? (+ what changed)
+//  4. Anything about a child's behaviour, mood or progress? (optional)
+//  5. Anything that needs attention: supplies, repairs, safety, a parent? (optional)
 export const dailySummarySchema = z.object({
   anyoneHurt: z.boolean(),
   incidentReported: z.boolean().optional(),
   noReportReason: z.string().trim().max(2000).optional(),
+  anyoneIll: z.boolean(),
+  illDetails: z.string().trim().max(2000).optional(),
+  routineFollowed: z.enum(ROUTINE_ANSWERS),
+  routineNote: z.string().trim().max(2000).optional(),
+  childrenNote: z.string().trim().max(3000).optional(),
+  needsNote: z.string().trim().max(3000).optional(),
 });
 
 export type DailySummaryInput = z.infer<typeof dailySummarySchema>;
 
 export type DailySummaryDecision =
+  | {
+      ok: true;
+      anyoneHurt: boolean;
+      incidentReported: boolean | null;
+      noReportReason: string | null;
+      anyoneIll: boolean;
+      illDetails: string | null;
+      routineFollowed: RoutineAnswer;
+      routineNote: string | null;
+      childrenNote: string | null;
+      needsNote: string | null;
+    }
+  | { ok: false; error: string };
+
+type HurtPart =
   | { ok: true; anyoneHurt: boolean; incidentReported: boolean | null; noReportReason: string | null }
   | { ok: false; error: string };
 
-/**
- * The rules for one submission, given how many incident reports the class
- * already has for today. "Yes, I made a report" is only accepted if a
- * report really exists; "no report" needs a reason.
- */
-export function decideDailySummary(input: DailySummaryInput, incidentsToday: number): DailySummaryDecision {
+function decideHurt(input: DailySummaryInput, incidentsToday: number): HurtPart {
   if (!input.anyoneHurt) {
     return { ok: true, anyoneHurt: false, incidentReported: null, noReportReason: null };
   }
@@ -99,4 +124,32 @@ export function decideDailySummary(input: DailySummaryInput, incidentsToday: num
     return { ok: false, error: "Give a reason why no incident report was made." };
   }
   return { ok: true, anyoneHurt: true, incidentReported: false, noReportReason: reason };
+}
+
+const blank = (v: string | undefined) => (v && v.trim() ? v.trim() : null);
+
+/**
+ * The rules for one submission, given how many incident reports the class
+ * already has for today. "Yes, I made a report" is only accepted if a
+ * report really exists; "no report" needs a reason; an illness needs
+ * details; a day that didn't fully follow the routine needs a note.
+ */
+export function decideDailySummary(input: DailySummaryInput, incidentsToday: number): DailySummaryDecision {
+  const hurt = decideHurt(input, incidentsToday);
+  if (!hurt.ok) return hurt;
+  if (input.anyoneIll && (input.illDetails?.trim().length ?? 0) < 3) {
+    return { ok: false, error: "Say who was unwell and what you noticed." };
+  }
+  if (input.routineFollowed !== "YES" && (input.routineNote?.trim().length ?? 0) < 3) {
+    return { ok: false, error: "Say what changed or was missed in today's routine." };
+  }
+  return {
+    ...hurt,
+    anyoneIll: input.anyoneIll,
+    illDetails: input.anyoneIll ? blank(input.illDetails) : null,
+    routineFollowed: input.routineFollowed,
+    routineNote: input.routineFollowed === "YES" ? null : blank(input.routineNote),
+    childrenNote: blank(input.childrenNote),
+    needsNote: blank(input.needsNote),
+  };
 }

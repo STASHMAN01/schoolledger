@@ -137,8 +137,10 @@ export function describeAuditAction(row: AuditRow): string {
       return `invited ${m.email ?? "someone"} as ${m.role ?? "a team member"}`;
     case "dailySummary.submitted":
       return m.anyoneHurt
-        ? `sent the ${m.date ?? ""} daily summary (a child was hurt${m.incidentReported ? ", incident reported" : ", reason given"})`
-        : `sent the ${m.date ?? ""} daily summary (nobody hurt)`;
+        ? `sent the ${m.date ?? ""} daily report (a child was hurt${m.incidentReported ? ", incident reported" : ", reason given"})`
+        : m.anyoneIll
+          ? `sent the ${m.date ?? ""} daily report (a child was unwell)`
+          : `sent the ${m.date ?? ""} daily report (nobody hurt)`;
     case "lessonPlan.updated":
       return `updated the lesson plan for ${m.className ?? "a class"} (week of ${m.weekStart ?? ""})`;
     case "task.assigned":
@@ -149,6 +151,12 @@ export function describeAuditAction(row: AuditRow): string {
       return `opened the task "${m.title ?? ""}"`;
     case "task.completed":
       return `marked the task "${m.title ?? ""}" done`;
+    case "lessonPlan.submitted":
+      return `submitted ${m.days ?? ""} lesson plan day(s) for review (week of ${m.weekStart ?? ""})`;
+    case "lessonPlan.approved":
+      return `approved the lesson plan for ${m.className ?? "a class"}`;
+    case "lessonPlan.returned":
+      return `sent the lesson plan for ${m.className ?? "a class"} back for changes`;
     case "classwork.added":
       return `recorded classwork for ${m.date ?? "today"}`;
     case "classwork.deleted":

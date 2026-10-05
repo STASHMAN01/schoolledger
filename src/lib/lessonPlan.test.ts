@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  isWeekendDate,
   classworkSchema,
   lessonPlanPutSchema,
   mondayOf,
@@ -23,6 +24,15 @@ describe("week helpers", () => {
     expect(weekdayOf("2026-10-04")).toBe(7);
     expect(weekdayOf("2026-10-05")).toBe(1);
     expect(addDays("2026-10-05", -7)).toBe("2026-09-28");
+  });
+});
+
+describe("isWeekendDate", () => {
+  it("is true for Saturday and Sunday only", () => {
+    expect(isWeekendDate("2026-10-03")).toBe(true);
+    expect(isWeekendDate("2026-10-04")).toBe(true);
+    expect(isWeekendDate("2026-10-05")).toBe(false);
+    expect(isWeekendDate("2026-10-09")).toBe(false);
   });
 });
 

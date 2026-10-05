@@ -25,6 +25,11 @@ export function mondayOf(date: string): string {
   return fmt(d);
 }
 
+/** Saturday or Sunday: no school, no register. */
+export function isWeekendDate(date: string): boolean {
+  return weekdayOf(date) > 5;
+}
+
 export function addDays(date: string, days: number): string {
   const d = utc(date);
   d.setUTCDate(d.getUTCDate() + days);
@@ -61,3 +66,23 @@ export const CLASSWORK_HISTORY_DAYS = 30;
 
 /** From this hour (school time) a teacher is reminded to record classwork. */
 export const CLASSWORK_REMINDER_HOUR = 15;
+
+export const PLAN_STATUSES = ["APPROVED", "PENDING", "RETURNED"] as const;
+export type PlanStatus = (typeof PLAN_STATUSES)[number];
+
+/** A teacher proposes topics for days that have no approved plan yet. */
+export const lessonPlanSubmitSchema = z.object({
+  weekStart: z.string().regex(DATE_RE),
+  days: z.array(lessonPlanDaySchema).max(5),
+});
+
+export const lessonPlanReviewSchema = z
+  .object({
+    categoryId: z.string().min(1),
+    action: z.enum(["approve", "return"]),
+    note: z.string().trim().max(1_000).optional().or(z.literal("")),
+  })
+  .refine((v) => v.action === "approve" || (v.note?.trim().length ?? 0) >= 3, {
+    message: "Tell the teacher what to change.",
+    path: ["note"],
+  });

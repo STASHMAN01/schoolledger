@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     const rows = await db.lessonPlan.findMany({
       where: { organizationId, categoryId: category.id, date: { in: dates.map(schoolDateValue) } },
-      select: { date: true, topic: true, notes: true },
+      select: { date: true, topic: true, notes: true, status: true, reviewNote: true },
     });
     const byDate = new Map(rows.map((r) => [r.date.toISOString().slice(0, 10), r]));
 
@@ -52,6 +52,8 @@ export async function GET(req: NextRequest, { params }: Params) {
         date,
         topic: byDate.get(date)?.topic ?? "",
         notes: byDate.get(date)?.notes ?? "",
+        status: byDate.get(date)?.status ?? "APPROVED",
+        reviewNote: byDate.get(date)?.reviewNote ?? "",
       })),
     });
   } catch (err) {
@@ -96,8 +98,19 @@ export async function PUT(req: NextRequest, { params }: Params) {
             topic: d.topic,
             notes: d.notes?.trim() || null,
             createdByUserId: userId,
+            status: "APPROVED",
+            reviewedAt: new Date(),
+            reviewedByUserId: userId,
           },
-          update: { topic: d.topic, notes: d.notes?.trim() || null },
+          // An admin's own edit is final: it replaces a pending or returned proposal.
+          update: {
+            topic: d.topic,
+            notes: d.notes?.trim() || null,
+            status: "APPROVED",
+            reviewNote: null,
+            reviewedAt: new Date(),
+            reviewedByUserId: userId,
+          },
         });
       })
     );

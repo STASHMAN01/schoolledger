@@ -827,6 +827,14 @@ model DailySummary {
   // (checked on submit), false = see noReportReason.
   incidentReported  Boolean?
   noReportReason    String?  @db.Text
+  // Questions 2-5 of the daily report (5 Oct 2026). Null on summaries sent
+  // before they existed.
+  anyoneIll         Boolean?
+  illDetails        String?  @db.Text
+  routineFollowed   String?  // "YES" | "MOSTLY" | "NO"
+  routineNote       String?  @db.Text
+  childrenNote      String?  @db.Text
+  needsNote         String?  @db.Text
   submittedByUserId String
   submittedAt       DateTime @default(now())
 
@@ -1287,6 +1295,12 @@ model LessonPlan {
   date            DateTime
   topic           String
   notes           String?  @db.Text
+  // Teachers can propose a plan; the admin approves it or sends it back.
+  // "APPROVED" (what an admin writes), "PENDING", "RETURNED".
+  status           String    @default("APPROVED")
+  reviewNote       String?   @db.Text
+  reviewedAt       DateTime?
+  reviewedByUserId String?
   createdByUserId String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

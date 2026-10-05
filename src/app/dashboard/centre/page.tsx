@@ -15,7 +15,8 @@ import { Tile, TileHeader } from "../DashboardTile";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { CENTRE_ENTITY_TYPES } from "@/lib/activityArea";
 import { describeAuditAction } from "@/lib/auditLabel";
-import { isoWeekday } from "@/lib/schedule";
+import { schoolClock } from "@/lib/dailySummary";
+import { aroundNow, markProgress } from "@/lib/routineAlerts";
 import { todayLocal } from "@/lib/date";
 
 type ChildStat = { enrollmentDate: string; exitDate: string | null; archived: boolean };
@@ -26,9 +27,11 @@ type AttendanceSummary = {
   present: number;
   absent: number;
   notTaken: number;
+  weekend?: boolean;
 };
 type UpcomingEvent = { id: string; name: string; eventDate: string };
 type TodayItem = { id: string; dayOfWeek: number; startTime: string; endTime: string | null; activity: string };
+type TodayLesson = { date: string; topic: string; notes: string; status?: string };
 type AuditEntry = {
   id: string;
   action: string;
@@ -91,7 +94,9 @@ export default function CentreManagementHomePage() {
   const [unassignedTeachers, setUnassignedTeachers] = useState(0);
   const [upcoming, setUpcoming] = useState<{ total: number; events: UpcomingEvent[] } | null>(null);
   const [classCount, setClassCount] = useState<number | null>(null);
-  const [todayItems, setTodayItems] = useState<TodayItem[] | null>(null);
+  const [routine, setRoutine] = useState<{ items: TodayItem[]; timezone: string } | null>(null);
+  const [lesson, setLesson] = useState<{ today: string; days: TodayLesson[] } | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
   const [missingDocs, setMissingDocs] = useState<{ required: string[]; children: unknown[] } | null>(null);
 
@@ -99,7 +104,7 @@ export default function CentreManagementHomePage() {
     setLoading(true);
     const base = `/api/organizations/${organizationId}`;
     const activityQs = new URLSearchParams({ entityTypes: CENTRE_ENTITY_TYPES.join(",") }).toString();
-    const [kids, att, subs, staff, events, classes, sched, activity, docs] = await Promise.all([
+    const [kids, att, subs, staff, events, classes, sched, activity, docs, plan] = await Promise.all([
       getJson<{ children: ChildStat[] }>(`${base}/children`),
       canSeeAttendance ? getJson<AttendanceSummary>(`${base}/attendance/summary?date=${todayLocal()}`) : null,
       canSeeSubmissions ? getJson<{ submissions: unknown[] }>(`${base}/parent-submissions`) : null,
@@ -108,9 +113,10 @@ export default function CentreManagementHomePage() {
         : null,
       getJson<{ total: number; events: UpcomingEvent[] }>(`${base}/events/upcoming?from=${todayLocal()}`),
       isTeacher ? null : getJson<{ categories: { archived: boolean }[] }>(`${base}/categories`),
-      isTeacher ? getJson<{ items: TodayItem[] }>(`${base}/schedule`) : null,
+      isTeacher ? getJson<{ items: TodayItem[]; timezone?: string }>(`${base}/schedule`) : null,
       canSeeActivity ? getJson<{ entries: AuditEntry[] }>(`${base}/audit?${activityQs}`) : null,
       isTeacher ? null : getJson<{ required: string[]; children: unknown[] }>(`${base}/documents/missing`),
+      isTeacher ? getJson<{ today: string; days: TodayLesson[] }>(`${base}/lesson-plans`) : null,
     ]);
     setMissingDocs(docs);
     setChildren(kids?.children ?? null);
@@ -122,10 +128,8 @@ export default function CentreManagementHomePage() {
     }
     setUpcoming(events);
     setClassCount(classes ? classes.categories.filter((c) => !c.archived).length : null);
-    if (sched) {
-      const today = isoWeekday(new Date());
-      setTodayItems(sched.items.filter((i) => i.dayOfWeek === today));
-    }
+    if (sched) setRoutine({ items: sched.items, timezone: sched.timezone ?? "Africa/Johannesburg" });
+    setLesson(plan);
     setEntries(activity ? activity.entries.slice(0, 10) : null);
     setLoading(false);
   }, [organizationId, canSeeAttendance, canSeeSubmissions, canSeeStaff, isTeacher, canSeeActivity]);
@@ -134,6 +138,13 @@ export default function CentreManagementHomePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
   }, [load]);
+
+  // Keep "now" fresh so the routine card moves on through the day.
+  useEffect(() => {
+    if (!isTeacher) return;
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, [isTeacher]);
 
   // First-time guided walkthrough: auto-opens once (centreTourSeenAt is
   // null until it's finished/skipped), or on demand via the header's
@@ -154,7 +165,20 @@ export default function CentreManagementHomePage() {
 
   return (
     <div className="animate-in">
-      <PageHeader title="Centre Management" description="Enrolment, attendance and the day-to-day running of your centre." />
+      <PageHeader
+        title="Centre Management"
+        description="Enrolment, attendance and the day-to-day running of your centre."
+        actions={
+          isTeacher ? (
+            <Link
+              href="/dashboard/centre/reports?new=INCIDENT"
+              className="inline-flex min-h-11 items-center rounded-lg bg-danger px-4 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+            >
+              Report an incident
+            </Link>
+          ) : undefined
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         {/* Left: tiles, then activity */}
@@ -179,6 +203,8 @@ export default function CentreManagementHomePage() {
                   <p className="font-display p-3 text-2xl font-semibold text-foreground">…</p>
                 ) : !attendance ? (
                   <p className="p-3 text-xs text-danger">Couldn&apos;t load attendance.</p>
+                ) : attendance.weekend ? (
+                  <p className="p-3 text-sm text-muted-foreground">No school on weekends</p>
                 ) : attendance.total === 0 ? (
                   <p className="p-3 text-sm text-muted-foreground">No children yet</p>
                 ) : attendance.notTaken === attendance.total ? (
@@ -276,31 +302,77 @@ export default function CentreManagementHomePage() {
             )}
           </div>
 
-          {isTeacher && todayItems !== null && (
-            <Card as="div" className="mb-8 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-display text-sm font-semibold text-foreground">Today&apos;s routine</h2>
-                <Link href="/dashboard/centre/schedule" className="text-xs font-medium text-brand hover:underline">
-                  Full week →
-                </Link>
-              </div>
-              {todayItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nothing scheduled for today.</p>
-              ) : (
-                <div className="divide-y divide-border">
-                  {todayItems.map((i) => (
-                    <div key={i.id} className="flex gap-4 py-2 text-sm">
-                      <span className="w-28 shrink-0 tabular-nums text-muted-foreground">
-                        {i.startTime}
-                        {i.endTime ? `–${i.endTime}` : ""}
-                      </span>
-                      <span className="text-foreground">{i.activity}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
+          {isTeacher && lesson !== null && (
+            <Link href="/dashboard/centre/lesson-plan" className="mb-4 block">
+              <Card as="div" className="p-4 transition-colors hover:bg-background">
+                <p className="text-xs font-medium uppercase tracking-wide text-brand">Today&apos;s lesson</p>
+                {(() => {
+                  const plan = lesson.days.find((d) => d.date === lesson.today && (d.status ?? "APPROVED") === "APPROVED");
+                  return plan?.topic ? (
+                    <>
+                      <p className="font-display mt-1 text-base font-semibold text-foreground">{plan.topic}</p>
+                      {plan.notes && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{plan.notes}</p>}
+                    </>
+                  ) : (
+                    <p className="mt-1 text-sm text-muted-foreground">No lesson plan for today. Tap to plan one.</p>
+                  );
+                })()}
+              </Card>
+            </Link>
           )}
+
+          {isTeacher && routine !== null && (() => {
+            const clock = schoolClock(routine.timezone, now);
+            const rows = markProgress(routine.items, clock.weekday, clock.minutes);
+            const { earlier, now: current, later } = aroundNow(rows);
+            const show = [...earlier, ...current, ...later];
+            return (
+              <Card as="div" className="mb-8 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="font-display text-sm font-semibold text-foreground">Today&apos;s routine</h2>
+                  <Link
+                    href="/dashboard/centre/schedule"
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-brand hover:bg-background"
+                  >
+                    View full routine
+                  </Link>
+                </div>
+                {rows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nothing scheduled for today.</p>
+                ) : show.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">That&apos;s the routine done for today.</p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {show.map((i) => (
+                      <div
+                        key={i.id}
+                        className={`flex gap-4 py-2 text-sm transition-all duration-700 ${
+                          i.status === "past" ? "opacity-40" : ""
+                        } ${i.status === "current" ? "-mx-2 rounded-lg bg-brand-soft px-2" : ""}`}
+                      >
+                        <span
+                          className={`w-28 shrink-0 tabular-nums text-muted-foreground ${
+                            i.status === "past" ? "line-through" : ""
+                          }`}
+                        >
+                          {i.startTime}
+                          {i.endTime ? `–${i.endTime}` : ""}
+                        </span>
+                        <span className={`text-foreground ${i.status === "past" ? "line-through" : ""}`}>
+                          {i.activity}
+                          {i.status === "current" && (
+                            <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-white">
+                              Now
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            );
+          })()}
 
           {canSeeActivity && (
             <Card as="div" data-tour="recent-activity" className="p-4">

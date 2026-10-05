@@ -5,6 +5,7 @@ import { useOrg } from "../OrgContext";
 import { Button } from "@/components/ui";
 import { schoolClock } from "@/lib/dailySummary";
 import { alertsForDay, dueAlert, type RoutineAlert, type RoutineItem } from "@/lib/routineAlerts";
+import { playSound } from "@/lib/routineSounds";
 
 const TICK_MS = 5_000;
 const REFRESH_MS = 10 * 60 * 1000;
@@ -15,26 +16,6 @@ type WakeLockSentinelLike = { release: () => Promise<void> };
 type WakeLockNavigator = Navigator & {
   wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinelLike> };
 };
-
-function playChime(ctx: AudioContext, kind: RoutineAlert["kind"]) {
-  // Soft two-note chime for "next activity"; a falling three-note one for
-  // the end of the day. Made in the browser, so there are no sound files.
-  const notes = kind === "start" ? [659.25, 880] : [880, 659.25, 523.25];
-  const t0 = ctx.currentTime + 0.02;
-  notes.forEach((freq, i) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    const start = t0 + i * 0.28;
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.4, start + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.9);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(start);
-    osc.stop(start + 1);
-  });
-}
 
 /**
  * Chimes on a class tablet whenever its routine moves on (Dylan, 4 Oct
@@ -127,7 +108,7 @@ export function RoutineSounds() {
       const ctx = audioRef.current;
       if (ctx && !mutedRef.current) {
         ctx.resume().catch(() => {});
-        playChime(ctx, due.kind);
+        playSound(ctx, due.sound);
       }
     }, TICK_MS);
     return () => clearInterval(id);
@@ -167,7 +148,7 @@ export function RoutineSounds() {
       if (Ctor && !audioRef.current) audioRef.current = new Ctor();
       audioRef.current?.resume().catch(() => {});
       // A short test chime so the teacher knows it works.
-      if (audioRef.current && !mutedRef.current) playChime(audioRef.current, "start");
+      if (audioRef.current && !mutedRef.current) playSound(audioRef.current, "chime");
     } catch {
       // No audio support: the on-screen banner still works.
     }

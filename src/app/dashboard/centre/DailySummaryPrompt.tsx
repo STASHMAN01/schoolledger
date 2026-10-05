@@ -10,7 +10,7 @@ const CHECK_EVERY_MS = 5 * 60 * 1000;
 const SNOOZE_MS = 30 * 60 * 1000;
 
 /**
- * From 16:00 school time on weekdays, pops up on a class teacher's screen
+ * From 12:00 school time on weekdays, pops up on a class teacher's screen
  * until today's daily summary is sent (Dylan, 4 Oct 2026). "Later" hides
  * it for 30 minutes; it never blocks the register or an incident report.
  */
@@ -49,10 +49,10 @@ export function DailySummaryPrompt() {
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <Card className="animate-in w-full max-w-sm p-6">
-        <h2 className="font-display text-lg font-semibold text-foreground">Time for today&apos;s summary</h2>
+        <h2 className="font-display text-lg font-semibold text-foreground">Time for today&apos;s daily report</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Did any child get hurt today under your supervision? It takes a minute, and every class sends one before
-          going home.
+          Five quick questions about how the day went: injuries, illness, the routine, the children and anything that
+          needs attention. It takes a couple of minutes.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button

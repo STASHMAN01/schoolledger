@@ -17,10 +17,10 @@ describe("schoolClock", () => {
 });
 
 describe("isSummaryDue", () => {
-  it("is due on weekdays from 16:00", () => {
-    expect(isSummaryDue({ date: "x", minutes: 15 * 60 + 59, weekday: 2 })).toBe(false);
-    expect(isSummaryDue({ date: "x", minutes: 16 * 60, weekday: 2 })).toBe(true);
-    expect(isSummaryDue({ date: "x", minutes: 17 * 60, weekday: 5 })).toBe(true);
+  it("is due on weekdays from 12:00", () => {
+    expect(isSummaryDue({ date: "x", minutes: 11 * 60 + 59, weekday: 2 })).toBe(false);
+    expect(isSummaryDue({ date: "x", minutes: 12 * 60, weekday: 2 })).toBe(true);
+    expect(isSummaryDue({ date: "x", minutes: 13 * 60, weekday: 5 })).toBe(true);
   });
 
   it("is never due at the weekend", () => {
@@ -38,32 +38,72 @@ describe("schoolDateRange", () => {
 });
 
 describe("decideDailySummary", () => {
-  it("accepts 'nobody was hurt'", () => {
-    expect(decideDailySummary({ anyoneHurt: false }, 0)).toEqual({
+  // The other four answers, all "fine".
+  const fine = { anyoneIll: false, routineFollowed: "YES" as const };
+
+  it("accepts 'nobody was hurt' and a fine day", () => {
+    expect(decideDailySummary({ anyoneHurt: false, ...fine }, 0)).toEqual({
       ok: true,
       anyoneHurt: false,
       incidentReported: null,
       noReportReason: null,
+      anyoneIll: false,
+      illDetails: null,
+      routineFollowed: "YES",
+      routineNote: null,
+      childrenNote: null,
+      needsNote: null,
     });
   });
 
   it("asks whether a report was made when someone was hurt", () => {
-    expect(decideDailySummary({ anyoneHurt: true }, 0).ok).toBe(false);
+    expect(decideDailySummary({ anyoneHurt: true, ...fine }, 0).ok).toBe(false);
   });
 
   it("only accepts 'I made a report' if one exists for today", () => {
-    expect(decideDailySummary({ anyoneHurt: true, incidentReported: true }, 0).ok).toBe(false);
-    expect(decideDailySummary({ anyoneHurt: true, incidentReported: true }, 1)).toMatchObject({
+    expect(decideDailySummary({ anyoneHurt: true, incidentReported: true, ...fine }, 0).ok).toBe(false);
+    expect(decideDailySummary({ anyoneHurt: true, incidentReported: true, ...fine }, 1)).toMatchObject({
       ok: true,
       incidentReported: true,
     });
   });
 
   it("needs a reason when no report was made", () => {
-    expect(decideDailySummary({ anyoneHurt: true, incidentReported: false }, 0).ok).toBe(false);
-    expect(decideDailySummary({ anyoneHurt: true, incidentReported: false, noReportReason: "  " }, 0).ok).toBe(false);
+    expect(decideDailySummary({ anyoneHurt: true, incidentReported: false, ...fine }, 0).ok).toBe(false);
     expect(
-      decideDailySummary({ anyoneHurt: true, incidentReported: false, noReportReason: "Small scrape, parent saw it" }, 0)
+      decideDailySummary({ anyoneHurt: true, incidentReported: false, noReportReason: "  ", ...fine }, 0).ok
+    ).toBe(false);
+    expect(
+      decideDailySummary(
+        { anyoneHurt: true, incidentReported: false, noReportReason: "Small scrape, parent saw it", ...fine },
+        0
+      )
     ).toMatchObject({ ok: true, incidentReported: false, noReportReason: "Small scrape, parent saw it" });
+  });
+
+  it("needs details when a child was unwell", () => {
+    expect(decideDailySummary({ anyoneHurt: false, anyoneIll: true, routineFollowed: "YES" }, 0).ok).toBe(false);
+    expect(
+      decideDailySummary(
+        { anyoneHurt: false, anyoneIll: true, illDetails: "Warm, sent home at 10:30", routineFollowed: "YES" },
+        0
+      )
+    ).toMatchObject({ ok: true, anyoneIll: true, illDetails: "Warm, sent home at 10:30" });
+  });
+
+  it("needs a note when the routine wasn't fully followed", () => {
+    expect(decideDailySummary({ anyoneHurt: false, anyoneIll: false, routineFollowed: "MOSTLY" }, 0).ok).toBe(false);
+    expect(
+      decideDailySummary(
+        { anyoneHurt: false, anyoneIll: false, routineFollowed: "NO", routineNote: "Rain: no outdoor play" },
+        0
+      )
+    ).toMatchObject({ ok: true, routineFollowed: "NO", routineNote: "Rain: no outdoor play" });
+  });
+
+  it("keeps the optional notes, trimmed, and drops blanks", () => {
+    expect(
+      decideDailySummary({ anyoneHurt: false, ...fine, childrenNote: "  Sam was very tearful  ", needsNote: " " }, 0)
+    ).toMatchObject({ childrenNote: "Sam was very tearful", needsNote: null });
   });
 });

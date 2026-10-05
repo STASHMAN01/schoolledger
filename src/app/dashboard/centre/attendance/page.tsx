@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useOrg } from "../../OrgContext";
 import { Badge, Button, Card, EmptyState, PageHeader, Select } from "@/components/ui";
 import { todayLocal } from "@/lib/date";
+import { isWeekendDate } from "@/lib/lessonPlan";
 
 type Category = { id: string; name: string; archived: boolean };
 type ChildRow = {
@@ -26,6 +27,7 @@ export default function AttendancePage() {
   const { organizationId, role } = useOrg();
   const isTeacher = role === "TEACHER";
   const [date] = useState(todayLocal);
+  const weekend = isWeekendDate(date);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [pickedCategoryId, setPickedCategoryId] = useState("");
@@ -84,15 +86,17 @@ export default function AttendancePage() {
   );
 
   useEffect(() => {
-    if (isTeacher) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
+    if (weekend) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no register on weekends
+      setLoading(false);
+    } else if (isTeacher) {
       loadRegister();
     } else if (pickedCategoryId) {
       loadRegister(pickedCategoryId);
     } else {
       setLoading(false);
     }
-  }, [isTeacher, pickedCategoryId, loadRegister]);
+  }, [weekend, isTeacher, pickedCategoryId, loadRegister]);
 
   function toggle(childId: string) {
     setSavedAt(null);
@@ -137,11 +141,15 @@ export default function AttendancePage() {
     <div className="animate-in">
       <PageHeader
         title="Attendance"
-        description={`Today, ${new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-          weekday: "long",
-          month: "short",
-          day: "numeric",
-        })}. Everyone defaults to Present -- tap a child to mark them Absent.`}
+        description={
+          weekend
+            ? "Attendance is taken Monday to Friday."
+            : `Today, ${new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+                weekday: "long",
+                month: "short",
+                day: "numeric",
+              })}. Everyone defaults to Present -- tap a child to mark them Absent.`
+        }
         actions={
           // Contacting parents is admin work (Dylan, 4 Oct 2026).
           isTeacher ? undefined : (
@@ -179,7 +187,12 @@ export default function AttendancePage() {
         </p>
       )}
 
-      {loading ? (
+      {weekend ? (
+        <EmptyState
+          title="No school today"
+          description="Attendance is taken Monday to Friday. Come back on the next school day."
+        />
+      ) : loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : !loadedCategory ? (
         isTeacher ? (

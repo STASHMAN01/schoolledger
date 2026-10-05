@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
-import { Button, Card, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { addDays } from "@/lib/lessonPlan";
 
 // Lesson plan (Dylan, 5 Oct 2026): the admin writes a topic for each class
 // for each school day; the class teacher reads today's.
 
-type Day = { date: string; topic: string; notes: string };
+type Day = { date: string; topic: string; notes: string; status?: string; reviewNote?: string };
+type PendingClass = { id: string; name: string; days: { date: string; topic: string; notes: string; by: string }[] };
 type Category = { id: string; name: string; archived: boolean };
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -36,6 +37,10 @@ export default function LessonPlanPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [pending, setPending] = useState<PendingClass[]>([]);
+  const [returning, setReturning] = useState<string | null>(null);
+  const [returnNote, setReturnNote] = useState("");
+  const [sent, setSent] = useState("");
 
   useEffect(() => {
     if (isTeacher) return;
@@ -78,6 +83,59 @@ export default function LessonPlanPage() {
     load();
   }, [isTeacher, categoryId, load]);
 
+  const loadPending = useCallback(async () => {
+    if (!canEdit) return;
+    const res = await fetch(`/api/organizations/${organizationId}/lesson-plans/pending`);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) setPending(data.classes);
+  }, [organizationId, canEdit]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load the review list on mount
+    loadPending();
+  }, [loadPending]);
+
+  async function review(id: string, action: "approve" | "return") {
+    setError("");
+    const res = await fetch(`/api/organizations/${organizationId}/lesson-plans/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryId: id, action, note: returnNote }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Could not save your decision.");
+      return;
+    }
+    setReturning(null);
+    setReturnNote("");
+    loadPending();
+    load();
+  }
+
+  async function submitForReview() {
+    if (!weekStart) return;
+    setSaving(true);
+    setError("");
+    setSent("");
+    const res = await fetch(`/api/organizations/${organizationId}/lesson-plans/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        weekStart,
+        days: days.filter((d) => d.status !== "APPROVED").map((d) => ({ date: d.date, topic: d.topic, notes: d.notes })),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error ?? "Could not send your plan.");
+      return;
+    }
+    setSent(data.submitted > 0 ? "Sent to the office for review." : "Nothing to send.");
+    load();
+  }
+
   function update(date: string, patch: Partial<Day>) {
     setDays(days.map((d) => (d.date === date ? { ...d, ...patch } : d)));
   }
@@ -108,13 +166,13 @@ export default function LessonPlanPage() {
         title="Lesson plan"
         description={
           isTeacher
-            ? "What your class is learning today, and the rest of the week."
+            ? "What your class is learning today. You can also plan a week and send it to the office for review."
             : "What each class is learning each day. Teachers see their own class's plan."
         }
         actions={
-          canEdit && !editing && days.length > 0 ? (
+          !editing && days.length > 0 ? (
             <Button size="sm" onClick={() => setEditing(true)}>
-              Edit this week
+              {canEdit ? "Edit this week" : "Plan this week"}
             </Button>
           ) : undefined
         }
@@ -141,11 +199,64 @@ export default function LessonPlanPage() {
         </Card>
       )}
 
+      {canEdit && pending.length > 0 && (
+        <Card as="div" className="mb-4 border-brand p-4">
+          <h2 className="font-display mb-3 text-sm font-semibold text-foreground">Waiting for your review</h2>
+          <div className="space-y-4">
+            {pending.map((c) => (
+              <div key={c.id} className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-foreground">
+                  {c.name}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">from {c.days[0]?.by}</span>
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {c.days.map((d) => (
+                    <li key={d.date} className="text-sm text-foreground">
+                      <span className="text-muted-foreground">{prettyDate(d.date)}:</span> {d.topic}
+                      {d.notes && <span className="block text-xs text-muted-foreground">{d.notes}</span>}
+                    </li>
+                  ))}
+                </ul>
+                {returning === c.id ? (
+                  <div className="mt-3 space-y-2">
+                    <Textarea
+                      rows={2}
+                      value={returnNote}
+                      onChange={(e) => setReturnNote(e.target.value)}
+                      placeholder="What should the teacher change?"
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => review(c.id, "return")}>
+                        Send back
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => setReturning(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex gap-2">
+                    <Button size="sm" onClick={() => review(c.id, "approve")}>
+                      Approve
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => setReturning(c.id)}>
+                      Send back…
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {sent && <p className="mb-4 rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-success">{sent}</p>}
+
       {error && (
         <p className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>
       )}
 
-      {isTeacher && !loading && todayPlan && weekStart && days.some((d) => d.date === today) && (
+      {isTeacher && !loading && todayPlan && todayPlan.status === "APPROVED" && weekStart && days.some((d) => d.date === today) && (
         <Card as="div" className="mb-4 border-brand p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-brand">Today · {className}</p>
           {todayPlan.topic ? (
@@ -181,7 +292,17 @@ export default function LessonPlanPage() {
                 {DAY_NAMES[i]} · {prettyDate(d.date)}
                 {d.date === today && <span className="ml-2 text-xs font-normal text-brand">Today</span>}
               </h2>
-              {editing ? (
+              {d.status === "PENDING" && (
+                <Badge variant="neutral" className="mb-2">
+                  Waiting for review
+                </Badge>
+              )}
+              {d.status === "RETURNED" && (
+                <p className="mb-2 rounded-lg border border-danger/30 bg-danger/5 p-2 text-xs text-danger">
+                  Sent back: {d.reviewNote || "please change and send again"}
+                </p>
+              )}
+              {editing && (canEdit || d.status !== "APPROVED") ? (
                 <div className="space-y-2">
                   <Input
                     value={d.topic}
@@ -211,8 +332,8 @@ export default function LessonPlanPage() {
           ))}
           {editing && (
             <div className="flex gap-2">
-              <Button onClick={save} disabled={saving}>
-                {saving ? "Saving…" : "Save week"}
+              <Button onClick={canEdit ? save : submitForReview} disabled={saving}>
+                {saving ? (canEdit ? "Saving…" : "Sending…") : canEdit ? "Save week" : "Submit for review"}
               </Button>
               <Button variant="secondary" onClick={load} disabled={saving}>
                 Cancel

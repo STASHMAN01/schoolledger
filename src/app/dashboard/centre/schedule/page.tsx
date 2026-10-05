@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, Input, PageHeader, Select } from "@/components/ui";
-import { SCHOOL_DAYS, isoWeekday, scheduleItemProblem, sortScheduleItems } from "@/lib/schedule";
+import { SCHOOL_DAYS, scheduleItemProblem, sortScheduleItems } from "@/lib/schedule";
+import { schoolClock } from "@/lib/dailySummary";
+import { markProgress } from "@/lib/routineAlerts";
 
 type Category = { id: string; name: string; archived: boolean };
 
@@ -43,8 +45,6 @@ export default function SchedulePage() {
   const { organizationId, role, permissions } = useOrg();
   const isTeacher = role === "TEACHER";
   const canEdit = permissions.includes("MANAGE_CLASSES");
-  const today = isoWeekday(new Date());
-
   const [categories, setCategories] = useState<Category[]>([]);
   const [pickedCategoryId, setPickedCategoryId] = useState("");
   const [loadedCategory, setLoadedCategory] = useState<{ id: string; name: string } | null>(null);
@@ -54,6 +54,20 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // The school's own clock, refreshed every 30 seconds, so finished items
+  // can cross out and fade as the day goes on.
+  const [timezone, setTimezone] = useState("Africa/Johannesburg");
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const clock = schoolClock(timezone, now);
+  const today = clock.weekday;
+  const progress = new Map(
+    markProgress(items, today, clock.minutes).map((r) => [r.id, r.status])
+  );
 
   useEffect(() => {
     if (isTeacher) return;
@@ -80,6 +94,7 @@ export default function SchedulePage() {
       if (res.ok) {
         setLoadedCategory(data.category);
         setItems(data.items);
+        if (data.timezone) setTimezone(data.timezone);
         // Opening their own class's timetable clears a teacher's
         // "timetable changed" to-do. Fire-and-forget.
         if (isTeacher) {
@@ -275,18 +290,37 @@ export default function SchedulePage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {dayItems.map((i) => (
-                      <div key={i.id} className="flex gap-4 py-2 text-sm">
-                        <span className="w-28 shrink-0 tabular-nums text-muted-foreground">
-                          {i.startTime}
-                          {i.endTime ? `–${i.endTime}` : ""}
-                        </span>
-                        <span className="min-w-0 flex-1 text-foreground">
-                          {i.activity}
-                          {i.notes && <span className="block text-xs text-muted-foreground">{i.notes}</span>}
-                        </span>
-                      </div>
-                    ))}
+                    {dayItems.map((i) => {
+                      // Only today's items cross out and fade, so what is
+                      // left of the day stands out.
+                      const status = d.day === today ? progress.get(i.id) : undefined;
+                      const past = status === "past";
+                      const current = status === "current";
+                      return (
+                        <div
+                          key={i.id}
+                          className={`flex gap-4 py-2 text-sm transition-all duration-700 ${
+                            past ? "opacity-40" : ""
+                          } ${current ? "-mx-2 rounded-lg bg-brand-soft px-2" : ""}`}
+                        >
+                          <span
+                            className={`w-28 shrink-0 tabular-nums text-muted-foreground ${past ? "line-through" : ""}`}
+                          >
+                            {i.startTime}
+                            {i.endTime ? `–${i.endTime}` : ""}
+                          </span>
+                          <span className={`min-w-0 flex-1 text-foreground ${past ? "line-through" : ""}`}>
+                            {i.activity}
+                            {current && (
+                              <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-white">
+                                Now
+                              </span>
+                            )}
+                            {i.notes && <span className="block text-xs text-muted-foreground">{i.notes}</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </Card>

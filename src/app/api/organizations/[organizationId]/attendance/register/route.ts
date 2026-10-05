@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
 import { todayInTimeZone } from "@/lib/date";
+import { isWeekendDate } from "@/lib/lessonPlan";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -97,6 +98,11 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     if (role === "TEACHER" && body.categoryId !== assignedCategoryId) {
       return NextResponse.json({ error: "Not allowed for your class." }, { status: 403 });
+    }
+
+    // No school on weekends (Dylan, 5 Oct 2026): no register for anyone.
+    if (isWeekendDate(body.date.toISOString().slice(0, 10))) {
+      return NextResponse.json({ error: "There is no school on weekends, so no register to take." }, { status: 400 });
     }
 
     // Teachers can fix today's register but not earlier days (Dylan,

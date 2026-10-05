@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
+import { isWeekendDate } from "@/lib/lessonPlan";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -23,6 +24,11 @@ export async function GET(req: NextRequest, { params }: Params) {
     const date = new Date(dateParam);
     if (Number.isNaN(date.getTime())) {
       return NextResponse.json({ error: "Invalid date." }, { status: 400 });
+    }
+
+    // No school on weekends: nothing to count, and nothing "not taken".
+    if (isWeekendDate(dateParam.slice(0, 10))) {
+      return NextResponse.json({ scope: "none", weekend: true, className: null, total: 0, present: 0, absent: 0, notTaken: 0 });
     }
 
     const requestedCategoryId = req.nextUrl.searchParams.get("categoryId");

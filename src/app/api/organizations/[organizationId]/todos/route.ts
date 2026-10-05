@@ -8,7 +8,7 @@ import { hasUnseenScheduleChange } from "@/lib/scheduleNotice";
 import { isProfileIncomplete } from "@/lib/childProfile";
 import { finalReviewWindow } from "@/lib/deletion";
 import { isSummaryDue, schoolClock, schoolDateValue } from "@/lib/dailySummary";
-import { CLASSWORK_REMINDER_HOUR } from "@/lib/lessonPlan";
+import { CLASSWORK_REMINDER_HOUR, isWeekendDate } from "@/lib/lessonPlan";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       permissions.includes("SEND_REMINDERS") &&
       permissions.includes("VIEW_MONEY");
 
-    if (canAttendance && hasValidDate) {
+    if (canAttendance && hasValidDate && !isWeekendDate(dateParam!.slice(0, 10))) {
       const scope = resolveAttendanceScope(role, assignedCategoryId, null);
 
       if (scope.mode === "single") {
@@ -255,7 +255,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       });
     }
 
-    // Daily summary (Dylan, 4 Oct 2026), weekdays from 16:00 school time:
+    // Daily summary (Dylan, 4 Oct 2026), weekdays from 12:00 school time:
     // the class teacher is asked to send it; admins/managers see how many
     // classes haven't.
     if (inCentre && permissions.includes("VIEW_CENTRE")) {
@@ -271,7 +271,7 @@ export async function GET(req: NextRequest, { params }: Params) {
           if (!sent) {
             todos.push({
               id: "dailySummary.send",
-              label: "Send today's daily summary",
+              label: "Send today's daily report",
               count: 1,
               href: "/dashboard/centre/daily-summary",
             });
@@ -295,7 +295,7 @@ export async function GET(req: NextRequest, { params }: Params) {
           if (missing > 0) {
             todos.push({
               id: "dailySummary.missing",
-              label: `${missing === 1 ? "1 class hasn't" : `${missing} classes haven't`} sent today's daily summary`,
+              label: `${missing === 1 ? "1 class hasn't" : `${missing} classes haven't`} sent today's daily report`,
               count: missing,
               href: "/dashboard/centre/daily-summary",
             });
@@ -319,6 +319,38 @@ export async function GET(req: NextRequest, { params }: Params) {
             label: "Record today's classwork",
             count: 1,
             href: "/dashboard/centre/classwork",
+          });
+        }
+      }
+    }
+
+    // Lesson plans (Dylan, 5 Oct 2026): teachers propose them, an admin
+    // reviews them; a plan sent back shows on that teacher's list.
+    if (inCentre && permissions.includes("VIEW_CENTRE")) {
+      if (role !== "TEACHER" && permissions.includes("MANAGE_CLASSES")) {
+        const waiting = await db.lessonPlan.findMany({
+          where: { organizationId, status: "PENDING", category: { deletedAt: null } },
+          distinct: ["categoryId"],
+          select: { categoryId: true },
+        });
+        if (waiting.length > 0) {
+          todos.push({
+            id: "lessonPlan.review",
+            label: `Review lesson plans for ${waiting.length === 1 ? "1 class" : `${waiting.length} classes`}`,
+            count: waiting.length,
+            href: "/dashboard/centre/lesson-plan",
+          });
+        }
+      } else if (role === "TEACHER" && assignedCategoryId) {
+        const returned = await db.lessonPlan.count({
+          where: { organizationId, categoryId: assignedCategoryId, status: "RETURNED" },
+        });
+        if (returned > 0) {
+          todos.push({
+            id: "lessonPlan.returned",
+            label: "Your lesson plan was sent back — fix it and send it again",
+            count: returned,
+            href: "/dashboard/centre/lesson-plan",
           });
         }
       }

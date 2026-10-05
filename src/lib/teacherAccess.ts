@@ -43,7 +43,8 @@ const ALLOWED: [string, RegExp][] = [
   ["POST", /^\/tour$/], // "seen the walkthrough"
   ["GET", /^\/daily-summary$/], // own class's end-of-day summary
   ["POST", /^\/daily-summary$/],
-  ["GET", /^\/lesson-plans$/], // own class's lesson plan, read-only
+  ["GET", /^\/lesson-plans$/], // own class's lesson plan
+  ["POST", /^\/lesson-plans\/submit$/], // propose topics for review
   ["GET", /^\/classwork$/], // own class's classwork
   ["POST", /^\/classwork$/], // add an entry for today
   ["GET", /^\/tasks$/], // tasks assigned to their own class

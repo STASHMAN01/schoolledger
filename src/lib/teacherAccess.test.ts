@@ -19,6 +19,7 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("GET", api("/daily-summary"))).toBe(true);
     expect(teacherMayCall("POST", api("/daily-summary"))).toBe(true);
     expect(teacherMayCall("GET", api("/lesson-plans"))).toBe(true);
+    expect(teacherMayCall("POST", api("/lesson-plans/submit"))).toBe(true);
     expect(teacherMayCall("GET", api("/classwork"))).toBe(true);
     expect(teacherMayCall("POST", api("/classwork"))).toBe(true);
     expect(teacherMayCall("GET", api("/tasks"))).toBe(true);
@@ -45,6 +46,8 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("PATCH", api("/daily-summary"))).toBe(false);
     // Lesson plans are written by the admin; classwork is add-only.
     expect(teacherMayCall("PUT", api("/lesson-plans"))).toBe(false);
+    expect(teacherMayCall("GET", api("/lesson-plans/pending"))).toBe(false);
+    expect(teacherMayCall("POST", api("/lesson-plans/review"))).toBe(false);
     expect(teacherMayCall("DELETE", api("/classwork/abc123"))).toBe(false);
     expect(teacherMayCall("PATCH", api("/classwork/abc123"))).toBe(false);
     // Only an admin hands out or takes back tasks.
