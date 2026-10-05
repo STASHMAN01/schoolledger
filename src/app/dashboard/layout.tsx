@@ -116,7 +116,7 @@ export default async function DashboardLayout({
             </div>
           )}
         </header>
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 sm:py-8">
           {isDeleted && org.deletedAt ? (
             <DeletedSchoolScreen
               organizationId={membership.organizationId}

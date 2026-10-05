@@ -52,7 +52,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         date,
         topic: byDate.get(date)?.topic ?? "",
         notes: byDate.get(date)?.notes ?? "",
-        status: byDate.get(date)?.status ?? "APPROVED",
+        status: byDate.get(date)?.status ?? "NONE",
         reviewNote: byDate.get(date)?.reviewNote ?? "",
       })),
     });

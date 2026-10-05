@@ -57,7 +57,7 @@ export function TaskPopup() {
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <Card className="animate-in w-full max-w-sm p-6">
+      <Card className="animate-in max-h-[85dvh] w-full max-w-sm overflow-y-auto p-5 sm:p-6">
         <p className="text-xs font-medium uppercase tracking-wide text-brand">New task from the office</p>
         <h2 className="font-display mt-1 text-lg font-semibold text-foreground">
           Admin has assigned you to: {task.title}

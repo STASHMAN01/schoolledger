@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useOrg } from "../../OrgContext";
 import { Badge, Button, Card, Input, PageHeader, Select, Textarea } from "@/components/ui";
-import { addDays } from "@/lib/lessonPlan";
+import { addDays, mondayOf } from "@/lib/lessonPlan";
 
 // Lesson plan (Dylan, 5 Oct 2026): the admin writes a topic for each class
 // for each school day; the class teacher reads today's.
@@ -41,6 +41,7 @@ export default function LessonPlanPage() {
   const [returning, setReturning] = useState<string | null>(null);
   const [returnNote, setReturnNote] = useState("");
   const [sent, setSent] = useState("");
+  const planNext = useRef(false);
 
   useEffect(() => {
     if (isTeacher) return;
@@ -70,6 +71,10 @@ export default function LessonPlanPage() {
       setClassName(data.category.name);
       setToday(data.today);
       if (!weekStart) setWeekStart(data.weekStart);
+      if (planNext.current) {
+        planNext.current = false;
+        setEditing(true);
+      }
     } else {
       setDays([]);
       setError(data.error ?? "Could not load the lesson plan.");
@@ -113,7 +118,7 @@ export default function LessonPlanPage() {
     load();
   }
 
-  async function submitForReview() {
+  async function submitForReview(andNext = false) {
     if (!weekStart) return;
     setSaving(true);
     setError("");
@@ -133,7 +138,12 @@ export default function LessonPlanPage() {
       return;
     }
     setSent(data.submitted > 0 ? "Sent to the office for review." : "Nothing to send.");
-    load();
+    if (andNext) {
+      planNext.current = true;
+      setWeekStart(addDays(weekStart, 7));
+    } else {
+      load();
+    }
   }
 
   function update(date: string, patch: Partial<Day>) {
@@ -256,7 +266,7 @@ export default function LessonPlanPage() {
         <p className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>
       )}
 
-      {isTeacher && !loading && todayPlan && todayPlan.status === "APPROVED" && weekStart && days.some((d) => d.date === today) && (
+      {isTeacher && !loading && todayPlan && (todayPlan.status === "APPROVED" || todayPlan.status === "NONE") && weekStart && days.some((d) => d.date === today) && (
         <Card as="div" className="mb-4 border-brand p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-brand">Today · {className}</p>
           {todayPlan.topic ? (
@@ -271,14 +281,34 @@ export default function LessonPlanPage() {
       )}
 
       {weekStart && (
-        <div className="mb-3 flex items-center gap-2">
-          <Button variant="secondary" size="sm" disabled={editing || loading} onClick={() => setWeekStart(addDays(weekStart, -7))}>
-            ← Previous week
-          </Button>
-          <span className="text-sm text-muted-foreground">Week of {prettyDate(weekStart)}</span>
-          <Button variant="secondary" size="sm" disabled={editing || loading} onClick={() => setWeekStart(addDays(weekStart, 7))}>
-            Next week →
-          </Button>
+        <div className="mb-3 space-y-2">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+            <Button variant="secondary" size="sm" disabled={editing || loading} onClick={() => setWeekStart(addDays(weekStart, -7))}>
+              ← Prev
+            </Button>
+            <span className="text-center text-sm text-muted-foreground">Week of {prettyDate(weekStart)}</span>
+            <Button variant="secondary" size="sm" disabled={editing || loading} onClick={() => setWeekStart(addDays(weekStart, 7))}>
+              Next →
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="jump-date" className="text-xs font-medium text-muted-foreground">
+              Jump to a date
+            </label>
+            <Input
+              id="jump-date"
+              type="date"
+              className="w-auto"
+              disabled={editing || loading}
+              value=""
+              onChange={(e) => e.target.value && setWeekStart(mondayOf(e.target.value))}
+            />
+          </div>
+          {isTeacher && (
+            <p className="text-xs text-muted-foreground">
+              You can plan as far ahead as you like: use Next, or jump to a date, then fill in the days and send.
+            </p>
+          )}
         </div>
       )}
 
@@ -331,10 +361,15 @@ export default function LessonPlanPage() {
             </Card>
           ))}
           {editing && (
-            <div className="flex gap-2">
-              <Button onClick={canEdit ? save : submitForReview} disabled={saving}>
+            <div className="sticky bottom-0 -mx-4 flex flex-wrap gap-2 border-t border-border bg-surface/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+              <Button onClick={canEdit ? save : () => submitForReview(false)} disabled={saving}>
                 {saving ? (canEdit ? "Saving…" : "Sending…") : canEdit ? "Save week" : "Submit for review"}
               </Button>
+              {!canEdit && (
+                <Button variant="secondary" onClick={() => submitForReview(true)} disabled={saving}>
+                  Submit and plan next week
+                </Button>
+              )}
               <Button variant="secondary" onClick={load} disabled={saving}>
                 Cancel
               </Button>

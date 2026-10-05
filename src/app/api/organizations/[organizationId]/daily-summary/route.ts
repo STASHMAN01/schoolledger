@@ -109,13 +109,30 @@ export async function GET(req: NextRequest, { params }: Params) {
     const summaryBy = new Map(summaries.map((s) => [s.categoryId, s]));
     const incidentsBy = new Map(incidents.map((i) => [i.categoryId, i._count._all]));
 
+    // Incident reports filed after a class's daily report was sent.
+    const sinceBy = new Map<string, number>();
+    await Promise.all(
+      summaries.map(async (sm) => {
+        const n = await db.childReport.count({
+          where: {
+            organizationId,
+            categoryId: sm.categoryId,
+            type: "INCIDENT",
+            occurredAt: schoolDateRange(date),
+            createdAt: { gt: sm.submittedAt },
+          },
+        });
+        sinceBy.set(sm.categoryId, n);
+      })
+    );
+
     return NextResponse.json({
       date,
       today: clock.date,
       isDue: date === clock.date ? isSummaryDue(clock) : true,
       classes: [...classes.values()]
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map((c) => ({ ...c, summary: summaryBy.get(c.id) ?? null, incidents: incidentsBy.get(c.id) ?? 0 })),
+        .map((c) => ({ ...c, summary: summaryBy.get(c.id) ?? null, incidents: incidentsBy.get(c.id) ?? 0, incidentsSince: sinceBy.get(c.id) ?? 0 })),
     });
   } catch (err) {
     return handleApiError(err);

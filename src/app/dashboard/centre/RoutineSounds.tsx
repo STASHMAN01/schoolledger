@@ -171,8 +171,8 @@ export function RoutineSounds() {
   if (!on) {
     if (!hasToday) return null;
     return (
-      <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3 shadow-lg">
-        <p className="text-sm text-foreground">Turn on routine sounds so you hear when it&apos;s time for the next activity.</p>
+      <div className="fixed inset-x-0 bottom-0 z-40 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg">
+        <p className="min-w-0 flex-1 text-sm text-foreground">Turn on routine sounds so you hear when it&apos;s time for the next activity.</p>
         <Button onClick={startDay}>Start the day</Button>
       </div>
     );
@@ -183,12 +183,12 @@ export function RoutineSounds() {
       {banner && (
         <div
           role="status"
-          className="fixed inset-x-0 top-0 z-40 bg-brand px-4 py-3 text-center text-sm font-medium text-white shadow-lg"
+          className="fixed inset-x-0 top-0 z-40 bg-brand px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center text-sm font-medium text-white shadow-lg"
         >
           {banner.kind === "end" ? banner.label : `Now: ${banner.label}`}
         </div>
       )}
-      <div className="fixed bottom-3 left-3 z-40 flex items-center gap-3 rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground shadow-md">
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 z-40 flex max-w-[calc(100vw-1.5rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground shadow-md">
         <span>Routine sounds {muted ? "muted" : "on"}</span>
         <button type="button" onClick={toggleMute} className="font-medium text-brand underline underline-offset-2">
           {muted ? "Unmute" : "Mute"}

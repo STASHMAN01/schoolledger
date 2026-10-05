@@ -48,7 +48,7 @@ export function DailySummaryPrompt() {
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <Card className="animate-in w-full max-w-sm p-6">
+      <Card className="animate-in max-h-[85dvh] w-full max-w-sm overflow-y-auto p-5 sm:p-6">
         <h2 className="font-display text-lg font-semibold text-foreground">Time for today&apos;s daily report</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Five quick questions about how the day went: injuries, illness, the routine, the children and anything that

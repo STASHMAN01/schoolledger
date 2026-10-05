@@ -39,6 +39,7 @@ type ClassRow = {
   teachers: string[];
   summary: Summary | null;
   incidents: number;
+  incidentsSince?: number;
 };
 
 function timeOf(iso: string) {
@@ -407,6 +408,11 @@ function AdminSummaries({ organizationId }: { organizationId: string }) {
                   {c.incidents} incident report{c.incidents === 1 ? "" : "s"} that day
                   {c.summary ? ` · sent ${timeOf(c.summary.submittedAt)}` : ""}
                 </p>
+                {c.summary && (c.incidentsSince ?? 0) > 0 && (
+                  <p className="mt-0.5 text-xs font-medium text-danger">
+                    {c.incidentsSince} incident report{c.incidentsSince === 1 ? "" : "s"} filed after this report was sent
+                  </p>
+                )}
               </div>
               <div className="shrink-0">
                 {c.summary ? (

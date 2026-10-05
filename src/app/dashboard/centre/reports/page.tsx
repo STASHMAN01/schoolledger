@@ -10,7 +10,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { todayLocal } from "@/lib/date";
 import { useOrg, useHasPermission } from "../../OrgContext";
-import { Badge, Button, Card, EmptyState, Input, Label, PageHeader, Select, Textarea } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, Label, PageHeader, Textarea } from "@/components/ui";
+import { ChildPicker } from "@/components/ChildPicker";
 import {
   INCIDENT_TYPE_LABELS,
   INCIDENT_TYPES,
@@ -371,34 +372,43 @@ export default function ReportsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-6"
           onClick={() => !saving && setForm(null)}
         >
-          <Card
-            className="animate-in max-h-[90vh] w-full max-w-lg overflow-y-auto p-6"
+          {/* Phones: a full-screen sheet with the title on top, the fields
+              scrolling in the middle and Save/Cancel always in reach at the
+              bottom. Larger screens: a centred card. */}
+          <div
+            className="animate-in flex h-[100dvh] w-full max-w-lg flex-col overflow-hidden bg-surface sm:h-auto sm:max-h-[90vh] sm:rounded-xl sm:border sm:border-border sm:shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="font-display text-base font-semibold text-foreground">
-              {form.id ? `Edit ${REPORT_TYPE_INFO[form.type].label.toLowerCase()}` : `New ${REPORT_TYPE_INFO[form.type].label.toLowerCase()}`}
-            </h2>
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pt-3">
+              <h2 className="font-display text-base font-semibold text-foreground">
+                {form.id ? `Edit ${REPORT_TYPE_INFO[form.type].label.toLowerCase()}` : `New ${REPORT_TYPE_INFO[form.type].label.toLowerCase()}`}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setForm(null)}
+                disabled={saving}
+                aria-label="Close"
+                className="-mr-2 flex h-11 w-11 items-center justify-center rounded-lg text-xl text-muted-foreground hover:bg-background"
+              >
+                ×
+              </button>
+            </div>
 
-            <div className="mt-4 flex flex-col gap-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-4">
               <div>
-                <Label htmlFor="rep-child">Child</Label>
-                <Select
-                  id="rep-child"
-                  className="mt-1"
-                  value={form.childId}
-                  disabled={!!form.id}
-                  onChange={(e) => setForm({ ...form, childId: e.target.value })}
-                >
-                  <option value="">Choose a child…</option>
-                  {children.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.firstName} {c.lastName}
-                    </option>
-                  ))}
-                </Select>
+                <Label>Child</Label>
+                <div className="mt-1">
+                  <ChildPicker
+                    options={children}
+                    value={form.childId}
+                    disabled={!!form.id}
+                    onChange={(id) => setForm({ ...form, childId: id })}
+                  />
+                </div>
               </div>
 
               <div>
@@ -420,7 +430,7 @@ export default function ReportsPage() {
                       {ageAt(chosenChild.dateOfBirth, form.occurredAt ? new Date(form.occurredAt) : undefined) ?? "not recorded"}
                     </p>
                   )}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
                     <div>
                       <Label htmlFor="rep-time">Time</Label>
                       <Input
@@ -453,9 +463,9 @@ export default function ReportsPage() {
                   </div>
                   <fieldset>
                     <legend className="text-sm font-medium text-foreground">Type of incident (tick all that apply)</legend>
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="mt-2 grid grid-cols-1 gap-1 min-[400px]:grid-cols-2">
                       {INCIDENT_TYPES.map((t) => (
-                        <label key={t} className="flex items-center gap-2 text-sm text-foreground">
+                        <label key={t} className="flex min-h-11 items-center gap-3 text-base text-foreground sm:min-h-0 sm:gap-2 sm:text-sm">
                           <input
                             type="checkbox"
                             checked={form.incidentTypes.includes(t)}
@@ -601,17 +611,20 @@ export default function ReportsPage() {
                 Parent notified
               </label>
             </div>
-
-            {error && <p className="mt-4 text-sm text-danger">{error}</p>}
-            <div className="mt-6 flex gap-2">
-              <Button onClick={save} disabled={saving}>
-                {saving ? "Saving…" : "Save"}
-              </Button>
-              <Button variant="ghost" onClick={() => setForm(null)} disabled={saving}>
-                Cancel
-              </Button>
             </div>
-          </Card>
+
+            <div className="shrink-0 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+              {error && <p className="mb-2 text-sm text-danger">{error}</p>}
+              <div className="flex gap-2">
+                <Button onClick={save} disabled={saving} className="flex-1 sm:flex-none">
+                  {saving ? "Saving…" : "Save"}
+                </Button>
+                <Button variant="ghost" onClick={() => setForm(null)} disabled={saving} className="flex-1 sm:flex-none">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
