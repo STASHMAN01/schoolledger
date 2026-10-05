@@ -324,6 +324,21 @@ export async function GET(req: NextRequest, { params }: Params) {
       }
     }
 
+    // Tasks an admin assigned to this teacher's class and nobody has done.
+    if (inCentre && role === "TEACHER" && assignedCategoryId && permissions.includes("VIEW_CENTRE")) {
+      const open = await db.teacherTask.count({
+        where: { organizationId, categoryId: assignedCategoryId, completedAt: null },
+      });
+      if (open > 0) {
+        todos.push({
+          id: "tasks.open",
+          label: open === 1 ? "1 task assigned to your class" : `${open} tasks assigned to your class`,
+          count: open,
+          href: "/dashboard/centre/tasks",
+        });
+      }
+    }
+
     // Final review (Dylan, 4 Oct 2026): deleting is one step now, so admins
     // get one last look on the day before a class or child in Trash is
     // removed for good. Shown in both modes; opening Trash lets them

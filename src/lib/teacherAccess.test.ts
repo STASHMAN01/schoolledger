@@ -21,6 +21,9 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("GET", api("/lesson-plans"))).toBe(true);
     expect(teacherMayCall("GET", api("/classwork"))).toBe(true);
     expect(teacherMayCall("POST", api("/classwork"))).toBe(true);
+    expect(teacherMayCall("GET", api("/tasks"))).toBe(true);
+    expect(teacherMayCall("POST", api("/tasks/abc/acknowledge"))).toBe(true);
+    expect(teacherMayCall("POST", api("/tasks/abc/complete"))).toBe(true);
   });
 
   it("refuses changes, parent data and admin areas", () => {
@@ -44,6 +47,9 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("PUT", api("/lesson-plans"))).toBe(false);
     expect(teacherMayCall("DELETE", api("/classwork/abc123"))).toBe(false);
     expect(teacherMayCall("PATCH", api("/classwork/abc123"))).toBe(false);
+    // Only an admin hands out or takes back tasks.
+    expect(teacherMayCall("POST", api("/tasks"))).toBe(false);
+    expect(teacherMayCall("DELETE", api("/tasks/abc"))).toBe(false);
   });
 
   it("ignores query strings and trailing slashes", () => {
@@ -71,6 +77,7 @@ describe("teacherMayOpen", () => {
       "/dashboard/centre/daily-summary",
       "/dashboard/centre/lesson-plan",
       "/dashboard/centre/classwork",
+      "/dashboard/centre/tasks",
     ]) {
       expect(teacherMayOpen(p)).toBe(true);
     }

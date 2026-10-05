@@ -46,6 +46,9 @@ const ALLOWED: [string, RegExp][] = [
   ["GET", /^\/lesson-plans$/], // own class's lesson plan, read-only
   ["GET", /^\/classwork$/], // own class's classwork
   ["POST", /^\/classwork$/], // add an entry for today
+  ["GET", /^\/tasks$/], // tasks assigned to their own class
+  ["POST", new RegExp(`^/tasks/${ID}/acknowledge$`)],
+  ["POST", new RegExp(`^/tasks/${ID}/complete$`)],
 ];
 
 /** The part of an API path after /api/organizations/<orgId>, or null. */
@@ -76,6 +79,7 @@ export const TEACHER_PAGES = [
   "/dashboard/centre/daily-summary",
   "/dashboard/centre/lesson-plan",
   "/dashboard/centre/classwork",
+  "/dashboard/centre/tasks",
 ];
 
 export function teacherMayOpen(pathname: string): boolean {

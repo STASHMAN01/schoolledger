@@ -50,6 +50,8 @@ const CENTRE_LINKS: NavLink[] = [
   // teacher records it, the admin reads it (Dylan, 5 Oct 2026).
   { href: "/dashboard/centre/lesson-plan", label: "Lesson plan" },
   { href: "/dashboard/centre/classwork", label: "Classwork" },
+  // Work an admin hands to a class ("Admin has assigned you to ...").
+  { href: "/dashboard/centre/tasks", label: "Tasks" },
   // End-of-day summary: the teacher sends it, everyone else checks it.
   { href: "/dashboard/centre/daily-summary", label: "Daily summary" },
   { href: "/dashboard/centre/events", label: "Events" },

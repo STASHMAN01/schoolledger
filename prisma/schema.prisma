@@ -236,6 +236,7 @@ model Organization {
   childReports         ChildReport[]
   dailySummaries       DailySummary[]
   lessonPlans          LessonPlan[]
+  teacherTasks         TeacherTask[]
   classworkEntries     ClassworkEntry[]
 
   @@map("organizations")
@@ -287,6 +288,7 @@ model User {
   childReportsCreated ChildReport[]
   dailySummariesSubmitted DailySummary[]
   lessonPlansCreated      LessonPlan[]
+  teacherTasksCreated     TeacherTask[]
   classworkEntriesCreated ClassworkEntry[]
 
   @@map("users")
@@ -395,6 +397,7 @@ model Category {
   reports        ChildReport[]
   dailySummaries DailySummary[]
   lessonPlans    LessonPlan[]
+  teacherTasks   TeacherTask[]
   classworkEntries ClassworkEntry[]
 
   @@index([organizationId])
@@ -1316,4 +1319,30 @@ model ClassworkEntry {
   @@index([organizationId, date])
   @@index([categoryId, date])
   @@map("classwork_entries")
+}
+
+// Work an admin hands to a class (Dylan, 5 Oct 2026): "Admin has assigned
+// you to ...". Goes to the class's teacher(s) and its tablet; the first to
+// open the pop-up acknowledges it, any of them can mark it done.
+model TeacherTask {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  categoryId           String
+  title                String
+  details              String?   @db.Text
+  dueDate              DateTime? // date-only, school day
+  createdByUserId      String
+  createdAt            DateTime  @default(now())
+  acknowledgedAt       DateTime?
+  acknowledgedByUserId String?
+  completedAt          DateTime?
+  completedByUserId    String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id])
+  createdBy    User         @relation(fields: [createdByUserId], references: [id])
+
+  @@index([organizationId, completedAt])
+  @@index([categoryId, completedAt])
+  @@map("teacher_tasks")
 }

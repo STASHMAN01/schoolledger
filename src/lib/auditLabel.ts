@@ -141,6 +141,14 @@ export function describeAuditAction(row: AuditRow): string {
         : `sent the ${m.date ?? ""} daily summary (nobody hurt)`;
     case "lessonPlan.updated":
       return `updated the lesson plan for ${m.className ?? "a class"} (week of ${m.weekStart ?? ""})`;
+    case "task.assigned":
+      return `assigned "${m.title ?? "a task"}" to ${m.className ?? "a class"}`;
+    case "task.deleted":
+      return `took back the task "${m.title ?? ""}" from ${m.className ?? "a class"}`;
+    case "task.acknowledged":
+      return `opened the task "${m.title ?? ""}"`;
+    case "task.completed":
+      return `marked the task "${m.title ?? ""}" done`;
     case "classwork.added":
       return `recorded classwork for ${m.date ?? "today"}`;
     case "classwork.deleted":
