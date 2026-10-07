@@ -437,6 +437,10 @@ export const testimonialSubmissionSchema = z.object({
 // details are enforced by the form; the API also accepts the older
 // name-only shape (Accounting) -- such a child is flagged incomplete.
 export const childCreateSchema = childSchema.extend({
+  // Quick add (7 Oct 2026): name, surname and class only; the parent's name
+  // is then left blank until someone fills in the profile.
+  quickAdd: z.boolean().optional(),
+  parentName: z.string().trim().max(200).optional(),
   dateOfBirth: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
   gender: z.preprocess(emptyToUndefined, z.enum(["MALE", "FEMALE", "OTHER"]).optional()),
   // Older clients send one `guardian`; the add-child form now sends

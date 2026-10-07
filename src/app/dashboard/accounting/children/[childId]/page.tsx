@@ -177,7 +177,7 @@ export default function ChildDetailPage() {
         {child.firstName} {child.lastName}
       </h1>
       <p className="mb-4 text-sm text-muted-foreground">
-        {child.category.name} · Parent/guardian: {child.parentName}
+        {child.category.name} · Parent/guardian: {child.parentName || "not added yet"}
         {child.exitDate ? ` · left ${formatDateZA(child.exitDate)}` : ""}
       </p>
 

@@ -72,6 +72,9 @@ export function AddChildForm({
     feeOverride: "",
   });
   const [showSecond, setShowSecond] = useState(false);
+  // Quick add (Dylan, 7 Oct 2026): just name, surname and class, so a child can
+  // be on the class lists straight away and the rest filled in later.
+  const [quick, setQuick] = useState(false);
   // Documents the school requires (Dylan, 30 Sept 2026) -- asked for here,
   // unless staff tick that they'll follow later.
   const [requiredDocs, setRequiredDocs] = useState<string[]>([]);
@@ -113,7 +116,14 @@ export function AddChildForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const required: [string, string][] = [
+    const required: [string, string][] = quick
+      ? [
+          [f.firstName, "the child's first name"],
+          [f.lastName, "the child's surname"],
+          [f.categoryId || classes[0]?.id || "", "a class"],
+          [f.enrollmentDate, "a start date"],
+        ]
+      : [
       [f.firstName, "the child's first name"],
       [f.lastName, "the child's surname"],
       [f.dateOfBirth, "date of birth"],
@@ -126,6 +136,7 @@ export function AddChildForm({
       [f.gPhone, "the parent/guardian's phone number"],
     ];
     const hasSecond =
+      !quick &&
       showSecond &&
       [f.g2FirstName, f.g2LastName, f.g2Phone, f.g2Email, f.g2IdNumber, f.g2Occupation, ...f.g2ExtraPhones].some((v) => v.trim());
     if (hasSecond) {
@@ -141,7 +152,7 @@ export function AddChildForm({
       return;
     }
 
-    const docSlots = documentSlots(hasSecond);
+    const docSlots = quick ? [] : documentSlots(hasSecond);
     const missingDocs = docSlots.filter((s) => !picked[s.key]).map((s) => s.label);
     if (missingDocs.length > 0 && !docsLater) {
       setError(
@@ -150,7 +161,7 @@ export function AddChildForm({
       return;
     }
 
-    const ecProblem = emergencyContactProblem(
+    const ecProblem = quick ? null : emergencyContactProblem(
       { name: f.ecName, relationship: f.ecRelationship, phone: f.ecPhone },
       [
         { firstName: f.gFirstName, lastName: f.gLastName, phone: f.gPhone, extraPhones: f.gExtraPhones },
@@ -163,7 +174,7 @@ export function AddChildForm({
     }
 
     let feeOverrideCents: number | undefined;
-    if (showFee && f.feeOverride.trim()) {
+    if (!quick && showFee && f.feeOverride.trim()) {
       const rand = Number(f.feeOverride.replace(/[^\d.]/g, ""));
       if (Number.isNaN(rand) || rand < 0) {
         setError("The fee must be an amount in rand, e.g. 1500.");
@@ -177,7 +188,16 @@ export function AddChildForm({
       const res = await fetch(`/api/organizations/${organizationId}/children`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.stringify(
+          quick
+            ? {
+                quickAdd: true,
+                categoryId: f.categoryId || classes[0]?.id,
+                firstName: f.firstName.trim(),
+                lastName: f.lastName.trim(),
+                enrollmentDate: f.enrollmentDate,
+              }
+            : {
           categoryId: f.categoryId || classes[0]?.id,
           firstName: f.firstName.trim(),
           lastName: f.lastName.trim(),
@@ -223,7 +243,8 @@ export function AddChildForm({
           emergencyContactName: f.ecName.trim() || undefined,
           emergencyContactRelationship: f.ecRelationship.trim() || undefined,
           emergencyContactPhone: f.ecPhone.trim() || undefined,
-        }),
+            }
+        ),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -277,8 +298,23 @@ export function AddChildForm({
             Cancel
           </button>
         </div>
+        <label className="flex items-start gap-3 rounded-lg border border-border bg-background p-3 text-sm text-foreground">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-5 w-5 shrink-0"
+            checked={quick}
+            onChange={(e) => setQuick(e.target.checked)}
+          />
+          <span>
+            <span className="font-medium">Quick add</span>{" "}
+            <span className="text-muted-foreground">
+              — only the name, surname and class. The child goes on the class lists straight away; fill in the rest
+              on their profile later (they&apos;ll show as an incomplete profile until then).
+            </span>
+          </span>
+        </label>
         <p className="text-xs text-muted-foreground">
-          Fields marked * are required. A photo, and more guardians, can be added on the child&apos;s
+          {quick ? "Only the fields marked * are needed." : "Fields marked * are required."} A photo, and more guardians, can be added on the child&apos;s
           profile afterwards.
         </p>
 
@@ -290,6 +326,7 @@ export function AddChildForm({
           <Field label="Surname *" id="ac-last">
             <Input id="ac-last" value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} />
           </Field>
+          {!quick && (<>
           <Field label="Date of birth *" id="ac-dob">
             <Input id="ac-dob" type="date" value={f.dateOfBirth} onChange={(e) => set({ dateOfBirth: e.target.value })} />
           </Field>
@@ -301,6 +338,7 @@ export function AddChildForm({
               <option value="OTHER">Other</option>
             </Select>
           </Field>
+          </>)}
           <Field label="Class *" id="ac-class">
             <Select id="ac-class" value={f.categoryId || classes[0]?.id || ""} onChange={(e) => set({ categoryId: e.target.value })}>
               {classes.length === 0 && <option value="">No classes yet — add one under Classes</option>}
@@ -314,6 +352,7 @@ export function AddChildForm({
           <Field label="Start date *" id="ac-start">
             <Input id="ac-start" type="date" value={f.enrollmentDate} onChange={(e) => set({ enrollmentDate: e.target.value })} />
           </Field>
+          {!quick && (<>
           <Field label="Child's ID / birth certificate number" id="ac-cid">
             <Input id="ac-cid" value={f.childIdNumber} onChange={(e) => set({ childIdNumber: e.target.value })} />
           </Field>
@@ -339,8 +378,10 @@ export function AddChildForm({
               />
             </Field>
           )}
+          </>)}
         </fieldset>
 
+        {!quick && (<>
         <fieldset className="grid gap-3 sm:grid-cols-2">
           <legend className="font-display mb-2 text-sm font-semibold text-foreground">Parent / guardian 1</legend>
           <Field label="Relationship *" id="ac-rel">
@@ -533,12 +574,13 @@ export function AddChildForm({
             </label>
           </fieldset>
         )}
+        </>)}
 
         {error && <p className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>}
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={saving || classes.length === 0}>
-            {saving ? "Adding…" : "Add child"}
+            {saving ? "Adding…" : quick ? "Quick add child" : "Add child"}
           </Button>
           <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
             Cancel

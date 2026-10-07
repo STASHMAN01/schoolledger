@@ -91,6 +91,11 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const body = childCreateSchema.parse(await req.json());
 
+    if (!body.quickAdd && !body.parentName) {
+      return NextResponse.json({ error: "The parent or guardian's name is required." }, { status: 400 });
+    }
+    const parentName = body.parentName ?? "";
+
     // A fee override is money -- only VIEW_MONEY may set one.
     if (body.feeOverrideCents != null && !canViewMoney) {
       return NextResponse.json(
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         relationship: body.emergencyContactRelationship,
         phone: body.emergencyContactPhone,
       },
-      [{ name: body.parentName, phone: body.parentPhone }, ...guardians]
+      [{ name: parentName, phone: body.parentPhone }, ...guardians]
     );
     if (ecProblem) {
       return NextResponse.json({ error: ecProblem }, { status: 400 });
@@ -173,7 +178,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           categoryId: body.categoryId,
           firstName: body.firstName,
           lastName: body.lastName,
-          parentName: body.parentName,
+          parentName,
           parentPhone: body.parentPhone ?? null,
           parentEmail: body.parentEmail ?? null,
           enrollmentDate: body.enrollmentDate,
