@@ -8,7 +8,8 @@ import { db } from "@/lib/db";
 //
 // Counters now live in Postgres (`rate_limit_buckets`), updated with one
 // atomic upsert per check, so concurrent requests can't both slip under the
-// limit. Keys are SHA-256 hashed before storage: they contain emails,
+// limit. Times are UTC, matching how Prisma stores DateTime columns.
+// Keys are SHA-256 hashed before storage: they contain emails,
 // usernames and IP addresses, and none of that needs to sit in the table.
 //
 // If the database can't be reached the check falls back to a per-instance
@@ -54,11 +55,11 @@ export async function rateLimit(
   try {
     const rows = await db.$queryRaw<{ count: number }[]>`
       INSERT INTO "rate_limit_buckets" ("key", "count", "resetAt")
-      VALUES (${hashed}, 1, now() + (${windowMs}::int * interval '1 millisecond'))
+      VALUES (${hashed}, 1, (now() AT TIME ZONE 'UTC') + (${windowMs}::int * interval '1 millisecond'))
       ON CONFLICT ("key") DO UPDATE SET
-        "count" = CASE WHEN "rate_limit_buckets"."resetAt" < now() THEN 1
+        "count" = CASE WHEN "rate_limit_buckets"."resetAt" < (now() AT TIME ZONE 'UTC') THEN 1
                        ELSE "rate_limit_buckets"."count" + 1 END,
-        "resetAt" = CASE WHEN "rate_limit_buckets"."resetAt" < now() THEN EXCLUDED."resetAt"
+        "resetAt" = CASE WHEN "rate_limit_buckets"."resetAt" < (now() AT TIME ZONE 'UTC') THEN EXCLUDED."resetAt"
                          ELSE "rate_limit_buckets"."resetAt" END
       RETURNING "count"`;
     return decide(Number(rows[0]?.count ?? 1), limit);
