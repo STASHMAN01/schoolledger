@@ -1008,3 +1008,34 @@ in MRR/ARR.
 - Admin: New theme / Edit / Remove (keep or delete its days), Edit this week now has a teaching guide box, "Themes coming up" list, Import (xlsx/csv, preview then import; a class-day that already has a plan is replaced). Template download is a CSV.
 - Teacher: theme banner, today's topic with the guide open, home card shows theme + guide. Teachers still propose topics for empty days; they never see or write the guide field in edit mode.
 - Import columns: Theme, Start date, End date, Class (name, "a; b", or All), Date (date or weekday), Topic for the day, Teaching guide. Parser in src/lib/lessonImport.ts (tested).
+
+## 7 Oct 2026 -- Native Android app, phase 1 (server + app)
+
+Why: the installed "shortcut" app can't notify when closed, can't ring loud alarms and isn't faster. Decision (Dylan): a native Kotlin app, screen by screen.
+
+Server: bearer-token sign-in for the app (`src/lib/mobileAuth.ts`, `/api/mobile/login|me|device`), `requireMembership` accepts the token as well as the cookie, middleware lets Bearer API calls reach the route (which still checks the token), FCM sender (`src/lib/fcm.ts`, env `FIREBASE_SERVICE_ACCOUNT`), weekday 08:30 cron `/api/cron/todo-alerts`. Quick add child (earlier today) is used by the app.
+
+App: `android/` (see android/README.md). Screens: login, to-do, register, children + Quick add, files, alarms. Not compiled or run in the build sandbox (no Android SDK access); first build is on the laptop.
+
+Schema change, NOT yet applied (needs Dylan's OK, then `npx prisma db push`). Adds one table, touches no existing data:
+
+```sql
+CREATE TABLE "MobileDevice" (
+  "id" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "tokenHash" TEXT NOT NULL,
+  "tokenVersion" INTEGER NOT NULL,
+  "deviceName" TEXT NOT NULL,
+  "fcmToken" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "expiresAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "MobileDevice_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX "MobileDevice_tokenHash_key" ON "MobileDevice"("tokenHash");
+CREATE INDEX "MobileDevice_userId_idx" ON "MobileDevice"("userId");
+ALTER TABLE "MobileDevice" ADD CONSTRAINT "MobileDevice_userId_fkey"
+  FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+```
+
+Safe order: the website works before the table exists (the app token is only looked up when a Bearer header is sent). Run the push, then use the app.

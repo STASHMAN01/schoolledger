@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Crechely" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#0670B8</item>
+        <item name="android:windowBackground">#FAFAF9</item>
+    </style>
+</resources>
