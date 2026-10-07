@@ -12,7 +12,7 @@ type Params = { params: Promise<{ token: string }> };
 // application; uploads never submitted are deleted after 2 days.
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    const { allowed: ipAllowed } = rateLimit(`apply-school-doc-ip:${clientIp(req.headers)}`, {
+    const { allowed: ipAllowed } = await rateLimit(`apply-school-doc-ip:${clientIp(req.headers)}`, {
       limit: 40,
       windowMs: 60 * 60 * 1000,
     });
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (!org) {
       return NextResponse.json({ error: "This link is invalid or no longer in use." }, { status: 404 });
     }
-    const { allowed: orgAllowed } = rateLimit(`apply-school-doc-org:${org.id}`, {
+    const { allowed: orgAllowed } = await rateLimit(`apply-school-doc-org:${org.id}`, {
       limit: 150,
       windowMs: 24 * 60 * 60 * 1000,
     });

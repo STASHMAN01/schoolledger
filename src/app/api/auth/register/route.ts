@@ -15,7 +15,7 @@ import { issueAndSendVerificationEmail } from "@/lib/emailVerification";
 // else's school.
 export async function POST(req: NextRequest) {
   const ip = clientIp(req.headers);
-  const { allowed } = rateLimit(`register:${ip}`, {
+  const { allowed } = await rateLimit(`register:${ip}`, {
     limit: 5,
     windowMs: 60 * 60 * 1000,
   });

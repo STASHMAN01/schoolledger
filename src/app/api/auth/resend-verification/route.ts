@@ -16,7 +16,7 @@ import { handleApiError } from "@/lib/apiError";
 export async function POST(req: NextRequest) {
   try {
     const ip = clientIp(req.headers);
-    const { allowed } = rateLimit(`resend-verification-ip:${ip}`, {
+    const { allowed } = await rateLimit(`resend-verification-ip:${ip}`, {
       limit: 10,
       windowMs: 60 * 60 * 1000,
     });
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       message: "If that account needs verifying, a new link has been sent.",
     });
 
-    const { allowed: emailAllowed } = rateLimit(`resend-verification-email:${email}`, {
+    const { allowed: emailAllowed } = await rateLimit(`resend-verification-email:${email}`, {
       limit: 3,
       windowMs: 60 * 60 * 1000,
     });

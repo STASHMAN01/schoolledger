@@ -9,7 +9,7 @@ import { handleApiError } from "@/lib/apiError";
 export async function POST(req: NextRequest) {
   try {
     const ip = clientIp(req.headers);
-    const { allowed } = rateLimit(`reset-password:${ip}`, {
+    const { allowed } = await rateLimit(`reset-password:${ip}`, {
       limit: 10,
       windowMs: 60 * 60 * 1000,
     });

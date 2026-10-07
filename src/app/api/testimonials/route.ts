@@ -11,7 +11,7 @@ import { handleApiError } from "@/lib/apiError";
 export async function POST(req: NextRequest) {
   try {
     const ip = clientIp(req.headers);
-    const { allowed } = rateLimit(`testimonial-submit-ip:${ip}`, {
+    const { allowed } = await rateLimit(`testimonial-submit-ip:${ip}`, {
       limit: 5,
       windowMs: 60 * 60 * 1000,
     });

@@ -44,15 +44,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // spraying one password across many accounts from one source
         // doesn't fly under the per-account limit.
         const ip = clientIp(request?.headers);
-        const byAccount = rateLimit(`login:${identifier.kind}:${identifier.value}`, {
+        const byAccount = await rateLimit(`login:${identifier.kind}:${identifier.value}`, {
           limit: 10,
           windowMs: 15 * 60 * 1000,
         });
-        const byIp = rateLimit(`login:ip:${ip}`, {
+        const byIp = await rateLimit(`login:ip:${ip}`, {
           limit: 20,
           windowMs: 15 * 60 * 1000,
         });
-        if (!byAccount.allowed || !byIp.allowed) return null;
+        // A daily ceiling per account on top (security review #22): a class
+        // profile's username is guessable and its password is shared on a
+        // tablet, so 10 tries every 15 minutes (~960 a day) is too many.
+        const byAccountDay = await rateLimit(`login-day:${identifier.kind}:${identifier.value}`, {
+          limit: identifier.kind === "username" ? 30 : 60,
+          windowMs: 24 * 60 * 60 * 1000,
+        });
+        if (!byAccount.allowed || !byIp.allowed || !byAccountDay.allowed) return null;
 
         const user =
           identifier.kind === "email"

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
+import { escapeHtml } from "@/lib/escapeHtml";
+import { rateLimit } from "@/lib/rateLimit";
 import { generateInviteToken as generateFormToken } from "@/lib/inviteToken";
 import { sendMail } from "@/lib/mail";
 import { publicBaseUrl } from "@/lib/applyLink";
@@ -92,6 +94,20 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
 
+    // Per-school daily cap on form-link emails (security review #7).
+    if (sendEmail) {
+      const quota = await rateLimit(`email:form-link:${organizationId}`, {
+        limit: 150,
+        windowMs: 24 * 60 * 60 * 1000,
+      });
+      if (!quota.allowed) {
+        return NextResponse.json(
+          { error: "Your school has sent the most form emails allowed today. Copy the link instead, or try tomorrow." },
+          { status: 429 }
+        );
+      }
+    }
+
     const organization = await db.organization.findUniqueOrThrow({
       where: { id: organizationId },
       select: { name: true },
@@ -121,8 +137,8 @@ export async function POST(req: NextRequest, { params }: Params) {
         subject: `Documents still needed for ${child.firstName} at ${organization.name}`,
         text: `${organization.name} still needs a few documents for ${child.firstName}. You can upload them from your phone (a clear photo is fine). The link expires in ${LINK_EXPIRY_DAYS} days:\n\n${url}`,
         html: `
-          <p>${organization.name} still needs a few documents for ${child.firstName}.</p>
-          <p><a href="${url}">Upload the documents</a></p>
+          <p>${escapeHtml(organization.name)} still needs a few documents for ${escapeHtml(child.firstName)}.</p>
+          <p><a href="${escapeHtml(url)}">Upload the documents</a></p>
           <p style="color:#666;font-size:13px">A clear photo from your phone is fine. The link expires in ${LINK_EXPIRY_DAYS} days.</p>
         `,
       });
@@ -133,9 +149,9 @@ export async function POST(req: NextRequest, { params }: Params) {
         subject: `Enrolment form for ${child.firstName} at ${organization.name}`,
         text: `${organization.name} has asked you to complete an enrolment form for ${child.firstName}. This link works once and expires in ${LINK_EXPIRY_DAYS} days:\n\n${url}\n\nYou'll need photos of your ID document and ${child.firstName}'s ID document (if available) to complete it on your phone.`,
         html: `
-          <p>${organization.name} has asked you to complete an enrolment form for ${child.firstName}.</p>
-          <p><a href="${url}">Complete the form</a></p>
-          <p style="color:#666;font-size:13px">This link works once and expires in ${LINK_EXPIRY_DAYS} days. You'll need photos of your ID document and ${child.firstName}'s ID document (if available) to complete it on your phone.</p>
+          <p>${escapeHtml(organization.name)} has asked you to complete an enrolment form for ${escapeHtml(child.firstName)}.</p>
+          <p><a href="${escapeHtml(url)}">Complete the form</a></p>
+          <p style="color:#666;font-size:13px">This link works once and expires in ${LINK_EXPIRY_DAYS} days. You'll need photos of your ID document and ${escapeHtml(child.firstName)}'s ID document (if available) to complete it on your phone.</p>
         `,
       });
       emailSent = result.sent;
