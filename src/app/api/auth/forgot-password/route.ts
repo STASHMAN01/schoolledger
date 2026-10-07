@@ -5,6 +5,7 @@ import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { generateInviteToken } from "@/lib/inviteToken";
 import { sendMail } from "@/lib/mail";
 import { handleApiError } from "@/lib/apiError";
+import { escapeHtml } from "@/lib/escapeHtml";
 import { publicBaseUrl } from "@/lib/applyLink";
 
 const RESET_EXPIRY_MINUTES = 60;
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     const ip = clientIp(req.headers);
     // Two layers: per-IP (stop one client hammering arbitrary emails) and
     // per-email below (stop repeated resets/emails to one target).
-    const { allowed } = rateLimit(`forgot-password-ip:${ip}`, {
+    const { allowed } = await rateLimit(`forgot-password-ip:${ip}`, {
       limit: 10,
       windowMs: 60 * 60 * 1000,
     });
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
       message: "If an account exists for that email, a reset link has been sent.",
     });
 
-    const { allowed: emailAllowed } = rateLimit(`forgot-password-email:${email}`, {
+    const { allowed: emailAllowed } = await rateLimit(`forgot-password-email:${email}`, {
       limit: 3,
       windowMs: 60 * 60 * 1000,
     });
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       text: `We got a request to reset your Crechely password. This link works once and expires in ${RESET_EXPIRY_MINUTES} minutes:\n\n${resetUrl}\n\nIf you didn't ask for this, you can ignore this email — your password hasn't been changed.`,
       html: `
         <p>We got a request to reset your Crechely password.</p>
-        <p><a href="${resetUrl}">Reset your password</a></p>
+        <p><a href="${escapeHtml(resetUrl)}">Reset your password</a></p>
         <p style="color:#666;font-size:13px">This link works once and expires in ${RESET_EXPIRY_MINUTES} minutes. If you didn't ask for this, you can ignore this email — your password hasn't been changed.</p>
       `,
     });
