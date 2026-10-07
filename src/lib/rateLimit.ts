@@ -69,6 +69,32 @@ export async function rateLimit(
   }
 }
 
+/**
+ * Read-only check: has this key already reached `limit` in its current
+ * window? Does not count as an attempt. Pair it with rateLimit() called
+ * only on failures, so that successful logins never use up the allowance.
+ */
+export async function isOverLimit(key: string, limit: number): Promise<boolean> {
+  const hashed = await hashRateLimitKey(key);
+  try {
+    const rows = await db.$queryRaw<{ count: number }[]>`
+      SELECT "count" FROM "rate_limit_buckets"
+      WHERE "key" = ${hashed} AND "resetAt" >= (now() AT TIME ZONE 'UTC')`;
+    return Number(rows[0]?.count ?? 0) >= limit;
+  } catch (err) {
+    console.error("[rateLimit] shared store unavailable for isOverLimit", err);
+    const b = memoryBuckets.get(hashed);
+    return Boolean(b && b.resetAt >= Date.now() && b.count >= limit);
+  }
+}
+
+/** Forget a key's count, e.g. when an admin resets a locked-out password. */
+export async function clearRateLimit(key: string): Promise<void> {
+  const hashed = await hashRateLimitKey(key);
+  memoryBuckets.delete(hashed);
+  await db.rateLimitBucket.deleteMany({ where: { key: hashed } }).catch(() => undefined);
+}
+
 /** Per-instance fallback, also used directly by tests. */
 export function memoryRateLimit(
   key: string,
