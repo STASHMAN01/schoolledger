@@ -173,4 +173,5 @@ security notes drift out of sync with the schema.
 - Rate limiting is now shared across instances (Postgres `rate_limit_buckets`), replacing the in-memory stopgap described above.
 - The platform area requires TOTP two-factor in addition to the password.
 - Pages send a Content-Security-Policy; HTML emails escape every interpolated value.
-- Still open: field-level encryption of ID numbers, ID documents and medicine records; error monitoring/alerting; nonce-based CSP.
+- ID numbers, ID documents, online-form answers, allergies and the medicine register are encrypted at rest (src/lib/encryptedFields.ts). FIELD_ENCRYPTION_KEY must be backed up in a password manager: losing it makes those fields unreadable.
+- Still open: error monitoring/alerting; nonce-based CSP.

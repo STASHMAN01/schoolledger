@@ -1,6 +1,5 @@
-import type { Prisma } from "@prisma/client";
+import type { Tx } from "@/lib/db";
 
-type Tx = Prisma.TransactionClient;
 
 /**
  * REC-{year}-{6-digit sequence}, sequential per organization, resetting
