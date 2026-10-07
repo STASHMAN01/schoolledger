@@ -7,6 +7,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -80,7 +81,7 @@ object Api {
         parseRegister(get("/api/organizations/$org/attendance/register?categoryId=$classId&date=$date"))
 
     suspend fun saveRegister(org: String, classId: String, date: String, marks: Map<String, String>) {
-        val records = org.json.JSONArray()
+        val records = JSONArray()
         marks.forEach { (id, status) -> records.put(JSONObject().put("childId", id).put("status", status)) }
         post(
             "/api/organizations/$org/attendance/register",
