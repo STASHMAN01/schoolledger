@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, isPasswordBreached, BREACHED_PASSWORD_MESSAGE } from "@/lib/password";
 import { resetProfilePasswordSchema } from "@/lib/profiles";
 
 type Params = { params: Promise<{ organizationId: string; membershipId: string }> };
@@ -49,6 +49,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           { error: pw.error.issues[0]?.message ?? "Invalid password." },
           { status: 400 }
         );
+      }
+      if (await isPasswordBreached(pw.data.password)) {
+        return NextResponse.json({ error: BREACHED_PASSWORD_MESSAGE }, { status: 400 });
       }
       await db.user.update({
         where: { id: profile.user.id },

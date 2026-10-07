@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword, isPasswordStrongEnough } from "@/lib/password";
+import { hashPassword, isPasswordStrongEnough, isPasswordBreached, BREACHED_PASSWORD_MESSAGE } from "@/lib/password";
 import { registerSchema } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
@@ -61,6 +61,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (await isPasswordBreached(password)) {
+    return NextResponse.json({ error: BREACHED_PASSWORD_MESSAGE }, { status: 400 });
+  }
   const passwordHash = await hashPassword(password);
 
   const result = await db.$transaction(async (tx) => {
