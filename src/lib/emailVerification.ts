@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { generateInviteToken } from "@/lib/inviteToken";
 import { sendMail } from "@/lib/mail";
 import { publicBaseUrl } from "@/lib/applyLink";
+import { escapeHtml } from "@/lib/escapeHtml";
 import { logAudit } from "@/lib/audit";
 
 export const VERIFY_EXPIRY_HOURS = 48;
@@ -46,9 +47,9 @@ export async function issueAndSendVerificationEmail(
     subject: "Verify your email for Crechely",
     text: `Hi ${user.name},\n\nOne last step to finish setting up your school: confirm this is a real, working email address by clicking the link below. This link works once and expires in ${VERIFY_EXPIRY_HOURS} hours:\n\n${verifyUrl}\n\nIf you didn't create a Crechely account, you can ignore this email.`,
     html: `
-      <p>Hi ${user.name},</p>
+      <p>Hi ${escapeHtml(user.name)},</p>
       <p>One last step to finish setting up your school: confirm this is a real, working email address.</p>
-      <p><a href="${verifyUrl}">Verify your email</a></p>
+      <p><a href="${escapeHtml(verifyUrl)}">Verify your email</a></p>
       <p style="color:#666;font-size:13px">This link works once and expires in ${VERIFY_EXPIRY_HOURS} hours. If you didn't create a Crechely account, you can ignore this email.</p>
     `,
   });
