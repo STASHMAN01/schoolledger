@@ -6,7 +6,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("isPasswordBreached (security review #13)", () => {
   it("sends only the 5-character prefix and matches the suffix", async () => {
-    const fetchMock = vi.fn(async (_url: string) => new Response("1E4C9B93F3F0682250B6CF8331B7EE68FD8:3861493\r\nAAAA:0"));
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(async () => new Response("1E4C9B93F3F0682250B6CF8331B7EE68FD8:3861493\r\nAAAA:0"));
     vi.stubGlobal("fetch", fetchMock);
     expect(await isPasswordBreached("password")).toBe(true);
     expect(fetchMock.mock.calls[0][0]).toBe("https://api.pwnedpasswords.com/range/5BAA6");
