@@ -110,7 +110,7 @@ export default function PlatformOverviewPage() {
           <div className="flex flex-col gap-3">
             {data.countries.map((c) => (
               <div key={c.countryCode} className="flex items-center gap-3">
-                <span className="w-40 shrink-0 truncate text-sm text-foreground">
+                <span className="w-28 shrink-0 truncate text-sm text-foreground sm:w-40">
                   {c.countryName} <span className="text-muted-foreground">({c.countryCode})</span>
                 </span>
                 <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-background">
