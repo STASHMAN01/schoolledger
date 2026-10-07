@@ -1043,7 +1043,7 @@ Until the table exists, only the push registration and the 08:30 cron error (har
 From the security review (findings numbered there). Branch `security-hardening`.
 - **Migration (apply BEFORE merging):** new table `rate_limit_buckets`; three nullable columns on `users` (`totpSecret`, `totpEnabledAt`, `totpLastStep`). Additive only; SQL is in the PR description, or `npx prisma db push`.
 - #6/#7: every value in HTML emails is escaped (`src/lib/escapeHtml.ts`); absence emails capped at 300/school/day, form-link emails at 150.
-- #4/#22: `rateLimit()` is now async and shared through Postgres (atomic upsert, SHA-256 hashed keys, in-memory fallback if the DB is unreachable). Daily login ceiling per account: 30 for class profiles, 60 for email logins. Expired rows pruned by the purge cron.
+- #4/#22: `rateLimit()` is now async and shared through Postgres (atomic upsert, SHA-256 hashed keys, in-memory fallback if the DB is unreachable). Daily ceiling on FAILED logins per account: 30 for class profiles, 60 for email logins (successes never count; resetting a profile password lifts its lockout). Expired rows pruned by the purge cron.
 - #16: nobody edits their own membership; only admins make/edit/demote admins or invite one; a non-admin with MANAGE_TEAM can only grant permissions they hold; the last admin can't be demoted.
 - #17: revealing a full ID needs MANAGE_CHILDREN; 30 reveals/person/hour.
 - #5/#12: /platform needs an authenticator code (TOTP, set up on first visit at /platform-verify) on top of the password; signed 12-hour cookie bound to user + tokenVersion; secrets encrypted with FIELD_ENCRYPTION_KEY. Lost phone: clear the three totp columns for that user. Unverified or class-profile accounts are never platform admins.

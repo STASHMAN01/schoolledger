@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { emailSchema } from "@/lib/validation";
-import { clientIp, rateLimit } from "@/lib/rateLimit";
+import { clientIp, isOverLimit, rateLimit } from "@/lib/rateLimit";
 import { isTokenStillValid } from "@/lib/tokenVersion";
 // Must stay import-free: auth.ts runs in the Edge middleware too.
 import { parseLoginIdentifier } from "@/lib/loginIdentifier";
@@ -52,24 +52,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           limit: 20,
           windowMs: 15 * 60 * 1000,
         });
-        // A daily ceiling per account on top (security review #22): a class
-        // profile's username is guessable and its password is shared on a
-        // tablet, so 10 tries every 15 minutes (~960 a day) is too many.
-        const byAccountDay = await rateLimit(`login-day:${identifier.kind}:${identifier.value}`, {
-          limit: identifier.kind === "username" ? 30 : 60,
-          windowMs: 24 * 60 * 60 * 1000,
-        });
-        if (!byAccount.allowed || !byIp.allowed || !byAccountDay.allowed) return null;
+        // A daily ceiling on FAILED logins per account on top (security
+        // review #22): a class profile's username is guessable and its
+        // password is shared on a tablet, so 10 tries every 15 minutes
+        // (~960 a day) is too many. Only failures count, so normal use
+        // never runs into it.
+        const dayKey = `login-failed-day:${identifier.kind}:${identifier.value}`;
+        const dayLimit = identifier.kind === "username" ? 30 : 60;
+        const dayWindow = { limit: dayLimit, windowMs: 24 * 60 * 60 * 1000 };
+        if (!byAccount.allowed || !byIp.allowed || (await isOverLimit(dayKey, dayLimit))) return null;
 
         const user =
           identifier.kind === "email"
             ? await db.user.findUnique({ where: { email: identifier.value } })
             : await db.user.findUnique({ where: { username: identifier.value } });
         // A username only ever logs in a profile, and an email never does.
-        if (!user || (identifier.kind === "username") !== user.isProfile) return null;
+        if (!user || (identifier.kind === "username") !== user.isProfile) {
+          await rateLimit(dayKey, dayWindow);
+          return null;
+        }
 
         const valid = await verifyPassword(credentials.password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          await rateLimit(dayKey, dayWindow);
+          return null;
+        }
 
         return {
           id: user.id,

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
+import { clearRateLimit } from "@/lib/rateLimit";
 import { hashPassword, isPasswordBreached, BREACHED_PASSWORD_MESSAGE } from "@/lib/password";
 import { resetProfilePasswordSchema } from "@/lib/profiles";
 
@@ -57,6 +58,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         where: { id: profile.user.id },
         data: { passwordHash: await hashPassword(pw.data.password), tokenVersion: { increment: 1 } },
       });
+      // A new password also lifts a lockout from failed tries (security review #22).
+      if (profile.user.username) {
+        await clearRateLimit(`login-failed-day:username:${profile.user.username}`);
+        await clearRateLimit(`login:username:${profile.user.username}`);
+      }
     } else {
       await db.user.update({
         where: { id: profile.user.id },
