@@ -30,7 +30,7 @@ const bodySchema = z.object({
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, membershipId } = await params;
-    const { userId } = await requireMembership(organizationId, "MANAGE_TEAM");
+    const { userId, role: callerRole, permissions: callerPermissions } = await requireMembership(organizationId, "MANAGE_TEAM");
 
     const body = bodySchema.parse(await req.json());
 
@@ -43,6 +43,42 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     const nextRole: Role = body.role ?? existing.role;
+
+    // Privilege rules (security review #16, 7 Oct 2026). MANAGE_TEAM can be
+    // given to a non-admin, and before this nothing stopped that person
+    // making themselves (or a friend) an Admin, or demoting the owner.
+    if (existing.userId === userId) {
+      return NextResponse.json(
+        { error: "You can't change your own role or permissions. Ask another admin." },
+        { status: 403 }
+      );
+    }
+    if (callerRole !== "ADMIN") {
+      if (existing.role === "ADMIN" || nextRole === "ADMIN") {
+        return NextResponse.json({ error: "Only an admin can make or change an admin." }, { status: 403 });
+      }
+      // A non-admin can only hand out permissions they hold themselves,
+      // whether through the role's defaults or an explicit list.
+      const granting = body.effectivePermissions ?? ROLE_DEFAULT_PERMISSIONS[nextRole];
+      const changesAccess = body.role !== undefined || body.effectivePermissions !== undefined;
+      if (changesAccess && granting.some((p) => !callerPermissions.includes(p))) {
+        return NextResponse.json(
+          { error: "You can only give permissions that you have yourself." },
+          { status: 403 }
+        );
+      }
+    }
+    if (existing.role === "ADMIN" && nextRole !== "ADMIN") {
+      const otherAdmins = await db.membership.count({
+        where: { organizationId, role: "ADMIN", id: { not: existing.id } },
+      });
+      if (otherAdmins === 0) {
+        return NextResponse.json(
+          { error: "A school needs at least one admin. Make someone else an admin first." },
+          { status: 400 }
+        );
+      }
+    }
 
     // A class profile (shared tablet) is only ever a Teacher. Its sensitive
     // permissions are stripped on every request anyway (see
