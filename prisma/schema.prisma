@@ -282,6 +282,7 @@ model User {
   auditLogs   AuditLog[]
   payments    Payment[] @relation("RecordedBy")
   deletionApprovals DeletionApproval[]
+  mobileDevices MobileDevice[]
   reminderSendApprovals ReminderSendApproval[]
   reviewedTestimonials Testimonial[]
   formDocumentsGenerated FormDocument[]
@@ -1477,4 +1478,26 @@ model MedicineDose {
   @@index([medicineRecordId, givenAt])
   @@index([organizationId, givenAt])
   @@map("medicine_doses")
+}
+
+// The Android app's sign-in (Dylan, 7 Oct 2026). One row per installed app.
+// The app holds a random token; only its SHA-256 hash is stored here, so a
+// leaked database can't be used to sign in. tokenVersion is copied from the
+// user at sign-in: bumping User.tokenVersion (password change, "log out
+// everywhere") invalidates every device. fcmToken is where push
+// notifications are sent; it is empty until the app registers it.
+model MobileDevice {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique
+  tokenVersion Int
+  deviceName   String
+  fcmToken     String?
+  createdAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  expiresAt    DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

@@ -26,6 +26,8 @@ export const PUBLIC_PATHS = [
   "/reset-password",
   "/api/auth",
   "/api/webhooks",
+  // The Android app signs in here (no session yet); the route rate-limits.
+  "/api/mobile/login",
   // SEO/crawler files and Next's own generated icon/OG routes must be
   // reachable without a session — before this fix they, and literally
   // any mistyped URL, silently redirected to /login instead of 404ing.
