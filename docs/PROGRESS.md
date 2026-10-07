@@ -1008,3 +1008,16 @@ in MRR/ARR.
 - Admin: New theme / Edit / Remove (keep or delete its days), Edit this week now has a teaching guide box, "Themes coming up" list, Import (xlsx/csv, preview then import; a class-day that already has a plan is replaced). Template download is a CSV.
 - Teacher: theme banner, today's topic with the guide open, home card shows theme + guide. Teachers still propose topics for empty days; they never see or write the guide field in edit mode.
 - Import columns: Theme, Start date, End date, Class (name, "a; b", or All), Date (date or weekday), Topic for the day, Teaching guide. Parser in src/lib/lessonImport.ts (tested).
+
+## Security hardening (7 Oct 2026)
+From the security review (findings numbered there). Branch `security-hardening`.
+- **Migration (apply BEFORE merging):** new table `rate_limit_buckets`; three nullable columns on `users` (`totpSecret`, `totpEnabledAt`, `totpLastStep`). Additive only; SQL is in the PR description, or `npx prisma db push`.
+- #6/#7: every value in HTML emails is escaped (`src/lib/escapeHtml.ts`); absence emails capped at 300/school/day, form-link emails at 150.
+- #4/#22: `rateLimit()` is now async and shared through Postgres (atomic upsert, SHA-256 hashed keys, in-memory fallback if the DB is unreachable). Daily login ceiling per account: 30 for class profiles, 60 for email logins. Expired rows pruned by the purge cron.
+- #16: nobody edits their own membership; only admins make/edit/demote admins or invite one; a non-admin with MANAGE_TEAM can only grant permissions they hold; the last admin can't be demoted.
+- #17: revealing a full ID needs MANAGE_CHILDREN; 30 reveals/person/hour.
+- #5/#12: /platform needs an authenticator code (TOTP, set up on first visit at /platform-verify) on top of the password; signed 12-hour cookie bound to user + tokenVersion; secrets encrypted with FIELD_ENCRYPTION_KEY. Lost phone: clear the three totp columns for that user. Unverified or class-profile accounts are never platform admins.
+- #8/#19: Content-Security-Policy on pages (still 'unsafe-inline' scripts; nonces are the next step); X-Powered-By off.
+- #9: npm audit 0 vulnerabilities (nodemailer 10 via override, Next's postcss overridden).
+- #13: new passwords checked against Have I Been Pwned (k-anonymity, fails open).
+- Not in this branch: field encryption for ID numbers, documents and medicine (#15/#21, separate PR, run after the database is on a paid plan with backups); monitoring (#10).

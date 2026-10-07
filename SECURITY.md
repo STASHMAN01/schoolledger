@@ -167,3 +167,10 @@ yet and must happen before onboarding real paying customers.
 If a future phase adds a table storing anything sensitive (bank details,
 ID numbers, etc.), update this file in the same change — don't let the
 security notes drift out of sync with the schema.
+
+## Security review follow-up (7 Oct 2026)
+
+- Rate limiting is now shared across instances (Postgres `rate_limit_buckets`), replacing the in-memory stopgap described above.
+- The platform area requires TOTP two-factor in addition to the password.
+- Pages send a Content-Security-Policy; HTML emails escape every interpolated value.
+- Still open: field-level encryption of ID numbers, ID documents and medicine records; error monitoring/alerting; nonce-based CSP.
