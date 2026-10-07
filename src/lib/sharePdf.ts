@@ -4,13 +4,17 @@
 // a real file, rather than relying on whatever buttons the phone's PDF
 // viewer happens to show.
 
+import { appShareFile, inApp } from "@/lib/appBridge";
+
 export function canShareFiles(): boolean {
+  if (inApp()) return true; // the Android app shares through its own bridge
   return typeof navigator !== "undefined" && "share" in navigator && "canShare" in navigator;
 }
 
 export type ShareResult = { ok: true } | { ok: false; cancelled: boolean; message: string };
 
 export async function sharePdfFromUrl(url: string, fallbackName = "document.pdf"): Promise<ShareResult> {
+  if (appShareFile(url, fallbackName)) return { ok: true };
   try {
     const res = await fetch(url);
     if (!res.ok) return { ok: false, cancelled: false, message: "Could not load the file." };

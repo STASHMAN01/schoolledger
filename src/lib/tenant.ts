@@ -6,7 +6,6 @@ import { hasActiveAccess } from "@/lib/billing/access";
 import { REQUEST_METHOD_HEADER, REQUEST_PATH_HEADER } from "@/lib/requestMethod";
 import { teacherMayCall } from "@/lib/teacherAccess";
 import { getEffectivePermissions } from "@/lib/permissions";
-import { mobileDeviceFromRequest } from "@/lib/mobileAuth";
 
 export class TenantAccessError extends Error {
   status: number;
@@ -55,9 +54,8 @@ export async function requireMembership(
     allowWhenReadOnly?: boolean;
   }
 ) {
-  // The website sends a session cookie; the Android app sends a Bearer token.
   const session = await auth();
-  const userId = session?.user?.id ?? (await mobileDeviceFromRequest())?.userId;
+  const userId = session?.user?.id;
   if (!userId) {
     throw new TenantAccessError("Not signed in.", 401);
   }

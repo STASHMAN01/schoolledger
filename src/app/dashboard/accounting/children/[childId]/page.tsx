@@ -8,6 +8,7 @@ import { Card, Input } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { EditChildDetails } from "@/components/EditChildDetails";
 import { formatDateZA } from "@/lib/date";
+import { canShareFiles as detectCanShare, sharePdfFromUrl } from "@/lib/sharePdf";
 
 type Entry = {
   id: string;
@@ -75,9 +76,7 @@ export default function ChildDetailPage() {
   // canShare actually exists.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time feature detection on mount
-    setCanShareFiles(
-      typeof navigator !== "undefined" && "share" in navigator && "canShare" in navigator
-    );
+    setCanShareFiles(detectCanShare());
   }, []);
 
   const load = useCallback(async () => {
@@ -126,27 +125,8 @@ export default function ChildDetailPage() {
     setSharing(true);
     setShareError(null);
     try {
-      const res = await fetch(downloadUrl);
-      if (!res.ok) {
-        setShareError("Could not load the statement.");
-        return;
-      }
-      const blob = await res.blob();
-      const disposition = res.headers.get("content-disposition") ?? "";
-      const match = disposition.match(/filename="?([^"]+)"?/);
-      const filename = match?.[1] ?? "statement.pdf";
-      const file = new File([blob], filename, { type: "application/pdf" });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: filename });
-      } else {
-        setShareError("Sharing isn't supported on this device — use Download instead.");
-      }
-    } catch (err) {
-      // The user cancelling the native share sheet throws an AbortError —
-      // that's a normal outcome, not a failure worth showing an error for.
-      if (err instanceof Error && err.name !== "AbortError") {
-        setShareError("Could not share the statement.");
-      }
+      const result = await sharePdfFromUrl(downloadUrl, "statement.pdf");
+      if (!result.ok && !result.cancelled) setShareError(result.message);
     } finally {
       setSharing(false);
     }

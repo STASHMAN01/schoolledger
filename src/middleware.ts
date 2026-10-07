@@ -22,15 +22,9 @@ export default auth((req: NextRequest & { auth?: unknown }) => {
   // public". A path that is neither public nor protected is one that
   // doesn't exist, and it should fall through to the 404 page rather than
   // be redirected to /login. See src/lib/publicPaths.ts.
-  // The Android app signs in with a Bearer token instead of a cookie. Let
-  // those API calls through; every route still checks the token itself
-  // (requireMembership), so this grants nothing on its own.
-  const isAppApiCall =
-    pathname.startsWith("/api/") && /^Bearer\s/.test(req.headers.get("authorization") ?? "");
-
   const response = !requiresSession(pathname)
     ? next()
-    : req.auth || isAppApiCall
+    : req.auth
       ? next()
       : NextResponse.redirect(new URL("/login", req.url));
 

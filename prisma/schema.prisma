@@ -282,7 +282,7 @@ model User {
   auditLogs   AuditLog[]
   payments    Payment[] @relation("RecordedBy")
   deletionApprovals DeletionApproval[]
-  mobileDevices MobileDevice[]
+  pushDevices PushDevice[]
   reminderSendApprovals ReminderSendApproval[]
   reviewedTestimonials Testimonial[]
   formDocumentsGenerated FormDocument[]
@@ -1480,22 +1480,17 @@ model MedicineDose {
   @@map("medicine_doses")
 }
 
-// The Android app's sign-in (Dylan, 7 Oct 2026). One row per installed app.
-// The app holds a random token; only its SHA-256 hash is stored here, so a
-// leaked database can't be used to sign in. tokenVersion is copied from the
-// user at sign-in: bumping User.tokenVersion (password change, "log out
-// everywhere") invalidates every device. fcmToken is where push
-// notifications are sent; it is empty until the app registers it.
-model MobileDevice {
-  id           String    @id @default(cuid())
-  userId       String
-  tokenHash    String    @unique
-  tokenVersion Int
-  deviceName   String
-  fcmToken     String?
-  createdAt    DateTime  @default(now())
-  lastSeenAt   DateTime  @default(now())
-  expiresAt    DateTime
+// A tablet or phone running the Crechely Android app (Dylan, 7 Oct 2026).
+// The app is the website in a native shell; this table only records where to
+// send it push notifications and alarms. fcmToken is Firebase's address for
+// the device. It belongs to whoever signed in on that device last.
+model PushDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  fcmToken   String   @unique
+  deviceName String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

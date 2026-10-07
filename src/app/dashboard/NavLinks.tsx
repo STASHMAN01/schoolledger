@@ -16,6 +16,7 @@ import { signOut } from "next-auth/react";
 import { useOrg } from "./OrgContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { teacherMayOpen } from "@/lib/teacherAccess";
+import { inApp } from "@/lib/appBridge";
 
 type NavLink = { href: string; label: string; exact?: boolean };
 
@@ -146,7 +147,13 @@ function useNav() {
   // Replays that mode's guided walkthrough -- the home page's mount effect
   // watches for ?tour=1 (see CentreManagementHomePage/AccountingHomePage).
   const tourHref = inAccounting ? "/dashboard/accounting?tour=1" : "/dashboard/centre?tour=1";
-  return { pathname, links, settings, settingsBase, communication, tourHref };
+  // Alarms only exist inside the Android app (it provides window.CrechelyApp).
+  const [inTheApp, setInTheApp] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time detection on mount
+    setInTheApp(inApp());
+  }, []);
+  return { pathname, links, settings, settingsBase, communication, tourHref, inTheApp };
 }
 
 const tabClass = (active: boolean) =>
@@ -236,7 +243,7 @@ export function NavBar() {
 
 /** Top-right utility links on tablet/desktop (Communication, Platform, Support). */
 export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
-  const { pathname, communication, tourHref } = useNav();
+  const { pathname, communication, tourHref, inTheApp } = useNav();
   const small = (active: boolean) =>
     `transition-standard hidden whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium md:inline-flex ${
       active ? "bg-brand-soft text-brand-soft-foreground" : "text-muted-foreground hover:bg-background hover:text-foreground"
@@ -250,6 +257,11 @@ export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) 
           className={small(isActive(pathname, communication.href))}
         >
           Communication
+        </Link>
+      )}
+      {inTheApp && (
+        <Link href="/dashboard/alarms" className={small(isActive(pathname, "/dashboard/alarms"))}>
+          Alarms
         </Link>
       )}
       {isPlatformAdmin && (
@@ -274,7 +286,7 @@ export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) 
 
 /** Phones: ☰ button + full menu (main tabs, settings, utility links). */
 export function MobileMenu({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
-  const { pathname, links, settings, communication, tourHref } = useNav();
+  const { pathname, links, settings, communication, tourHref, inTheApp } = useNav();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -302,6 +314,7 @@ export function MobileMenu({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
     {
       label: "More",
       items: [
+        ...(inTheApp ? [{ href: "/dashboard/alarms", label: "Alarms" }] : []),
         ...(isPlatformAdmin ? [{ href: "/platform", label: "Platform" }] : []),
         { href: tourHref, label: "Take a tour" },
         { href: "/support", label: "Support" },

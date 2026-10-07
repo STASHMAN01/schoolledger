@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       role: "TEACHER",
       assignedCategoryId: { not: null },
       organization: { deletedAt: null },
-      user: { mobileDevices: { some: { fcmToken: { not: null }, expiresAt: { gt: new Date() } } } },
+      user: { pushDevices: { some: {} } },
     },
     select: {
       userId: true,
@@ -32,9 +32,7 @@ export async function GET(req: NextRequest) {
       organization: {
         select: { id: true, subscriptionStatus: true, trialEndsAt: true, currentPeriodEnd: true },
       },
-      user: {
-        select: { mobileDevices: { where: { fcmToken: { not: null } }, select: { id: true, fcmToken: true } } },
-      },
+      user: { select: { pushDevices: { select: { id: true, fcmToken: true } } } },
     },
   });
 
@@ -64,8 +62,7 @@ export async function GET(req: NextRequest) {
       skipped++;
       continue;
     }
-    for (const device of m.user.mobileDevices) {
-      if (!device.fcmToken) continue;
+    for (const device of m.user.pushDevices) {
       const result = await sendPush(device.fcmToken, {
         title: "Take the register",
         body: `${category?.name ?? "Your class"}: ${enrolled - marked} of ${enrolled} children not marked yet.`,
@@ -74,7 +71,7 @@ export async function GET(req: NextRequest) {
       });
       if (result === "sent") sent++;
       if (result === "invalid-token") {
-        await db.mobileDevice.update({ where: { id: device.id }, data: { fcmToken: null } }).catch(() => {});
+        await db.pushDevice.delete({ where: { id: device.id } }).catch(() => {});
       }
     }
   }
