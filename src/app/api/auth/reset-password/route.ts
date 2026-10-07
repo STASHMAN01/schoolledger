@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resetPasswordSchema } from "@/lib/validation";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, isPasswordBreached, BREACHED_PASSWORD_MESSAGE } from "@/lib/password";
 import { hashInviteToken } from "@/lib/inviteToken";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { handleApiError } from "@/lib/apiError";
@@ -9,7 +9,7 @@ import { handleApiError } from "@/lib/apiError";
 export async function POST(req: NextRequest) {
   try {
     const ip = clientIp(req.headers);
-    const { allowed } = rateLimit(`reset-password:${ip}`, {
+    const { allowed } = await rateLimit(`reset-password:${ip}`, {
       limit: 10,
       windowMs: 60 * 60 * 1000,
     });
@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (await isPasswordBreached(password)) {
+      return NextResponse.json({ error: BREACHED_PASSWORD_MESSAGE }, { status: 400 });
+    }
     const passwordHash = await hashPassword(password);
 
     // Claim the token first, atomically: only the request that flips

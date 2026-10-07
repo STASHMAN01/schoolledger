@@ -6,6 +6,13 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { sendMail } from "@/lib/mail";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
+import { escapeHtml } from "@/lib/escapeHtml";
+import { rateLimit } from "@/lib/rateLimit";
+
+// Most absence emails one school can send in a day (security review #7):
+// far above a real centre's absences, low enough that a fake "school" can't
+// use Crechely's domain to mass-mail strangers.
+const MAX_ABSENCE_EMAILS_PER_DAY = 300;
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -71,12 +78,21 @@ export async function POST(req: NextRequest, { params }: Params) {
         skippedNoEmailCount++;
         continue;
       }
+      const quota = await rateLimit(`email:absence:${organizationId}`, {
+        limit: MAX_ABSENCE_EMAILS_PER_DAY,
+        windowMs: 24 * 60 * 60 * 1000,
+      });
+      if (!quota.allowed) {
+        // Left un-notified, so a later tap (tomorrow) can still send it.
+        failedCount++;
+        continue;
+      }
       try {
         const result = await sendMail({
           to: r.child.parentEmail,
           subject: `${r.child.firstName} was marked absent today at ${organization.name}`,
           text: `${organization.name} has marked ${r.child.firstName} absent for ${dateLabel}. If this isn't right, or your child will be away for longer, please let the school know.`,
-          html: `<p>${organization.name} has marked <strong>${r.child.firstName}</strong> absent for ${dateLabel}.</p><p style="color:#666;font-size:13px">If this isn't right, or your child will be away for longer, please let the school know.</p>`,
+          html: `<p>${escapeHtml(organization.name)} has marked <strong>${escapeHtml(r.child.firstName)}</strong> absent for ${escapeHtml(dateLabel)}.</p><p style="color:#666;font-size:13px">If this isn't right, or your child will be away for longer, please let the school know.</p>`,
         });
         if (result.sent) {
           notifiedCount++;

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
+import { hasPassedStepUp } from "@/lib/platformTwoFactor";
+import { db } from "@/lib/db";
 import { SignOutButton } from "@/app/dashboard/SignOutButton";
 
 // Completely separate from /dashboard's layout: this area has nothing to
@@ -15,6 +17,18 @@ export default async function PlatformLayout({ children }: { children: React.Rea
 
   const allowed = await checkIsPlatformAdmin(session.user.id);
   if (!allowed) redirect("/dashboard");
+
+  // Security review #5: the platform area also needs a code from an
+  // authenticator app (set up on first visit). The API routes enforce the
+  // same check in requirePlatformAdmin(); this just sends the browser to
+  // the code screen instead of showing pages full of errors.
+  const twoFactor = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { totpEnabledAt: true, tokenVersion: true },
+  });
+  if (!twoFactor?.totpEnabledAt || !(await hasPassedStepUp(session.user.id, twoFactor.tokenVersion))) {
+    redirect("/platform-verify");
+  }
 
   return (
     <div className="min-h-screen bg-background">

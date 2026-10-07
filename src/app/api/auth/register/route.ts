@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { hashPassword, isPasswordStrongEnough } from "@/lib/password";
+import { hashPassword, isPasswordStrongEnough, isPasswordBreached, BREACHED_PASSWORD_MESSAGE } from "@/lib/password";
 import { registerSchema } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
@@ -15,7 +15,7 @@ import { issueAndSendVerificationEmail } from "@/lib/emailVerification";
 // else's school.
 export async function POST(req: NextRequest) {
   const ip = clientIp(req.headers);
-  const { allowed } = rateLimit(`register:${ip}`, {
+  const { allowed } = await rateLimit(`register:${ip}`, {
     limit: 5,
     windowMs: 60 * 60 * 1000,
   });
@@ -61,6 +61,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (await isPasswordBreached(password)) {
+    return NextResponse.json({ error: BREACHED_PASSWORD_MESSAGE }, { status: 400 });
+  }
   const passwordHash = await hashPassword(password);
 
   const result = await db.$transaction(async (tx) => {

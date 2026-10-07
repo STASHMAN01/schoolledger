@@ -26,7 +26,7 @@ async function findOrg(token: string) {
 
 export async function GET(req: NextRequest, { params }: Params) {
   try {
-    const { allowed } = rateLimit(`apply-school-check:${clientIp(req.headers)}`, {
+    const { allowed } = await rateLimit(`apply-school-check:${clientIp(req.headers)}`, {
       limit: 60,
       windowMs: 60 * 60 * 1000,
     });
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    const { allowed: ipAllowed } = rateLimit(`apply-school-submit-ip:${clientIp(req.headers)}`, {
+    const { allowed: ipAllowed } = await rateLimit(`apply-school-submit-ip:${clientIp(req.headers)}`, {
       limit: 5,
       windowMs: 60 * 60 * 1000,
     });
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     // Caps a runaway/spam burst against one school even across many IPs.
-    const { allowed: orgAllowed } = rateLimit(`apply-school-submit-org:${org.id}`, {
+    const { allowed: orgAllowed } = await rateLimit(`apply-school-submit-org:${org.id}`, {
       limit: 50,
       windowMs: 24 * 60 * 60 * 1000,
     });

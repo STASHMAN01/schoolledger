@@ -113,7 +113,10 @@ export const PUBLIC_PATHS = [
 // and src/app/platform each check the session in their own layout and
 // redirect, and every API route checks membership for itself. The
 // middleware is the outer layer, not the only one.
-export const PROTECTED_PREFIXES = ["/dashboard", "/platform"];
+// "/platform-verify" is the two-factor screen in front of /platform
+// (security review #5); it sits outside /platform so that layout can
+// redirect to it without looping.
+export const PROTECTED_PREFIXES = ["/dashboard", "/platform", "/platform-verify"];
 
 /**
  * Whether a request must carry a session to proceed.

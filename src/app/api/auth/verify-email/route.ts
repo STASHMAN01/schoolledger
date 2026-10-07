@@ -14,7 +14,7 @@ import { handleApiError } from "@/lib/apiError";
 export async function POST(req: NextRequest) {
   try {
     const ip = clientIp(req.headers);
-    const { allowed } = rateLimit(`verify-email:${ip}`, {
+    const { allowed } = await rateLimit(`verify-email:${ip}`, {
       limit: 20,
       windowMs: 60 * 60 * 1000,
     });

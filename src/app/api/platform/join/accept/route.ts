@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { acceptPlatformInviteSchema } from "@/lib/validation";
-import { hashPassword, isPasswordStrongEnough } from "@/lib/password";
+import { hashPassword, isPasswordStrongEnough, isPasswordBreached, BREACHED_PASSWORD_MESSAGE } from "@/lib/password";
 import { hashInviteToken } from "@/lib/inviteToken";
 import { handleApiError } from "@/lib/apiError";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
@@ -14,7 +14,7 @@ import { clientIp, rateLimit } from "@/lib/rateLimit";
 export async function POST(req: NextRequest) {
   try {
     // Public token endpoints are rate-limited per IP (final inspection R9).
-    const { allowed } = rateLimit(`platform-join-accept:${clientIp(req.headers)}`, { limit: 20, windowMs: 60 * 60 * 1000 });
+    const { allowed } = await rateLimit(`platform-join-accept:${clientIp(req.headers)}`, { limit: 20, windowMs: 60 * 60 * 1000 });
     if (!allowed) {
       return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
     }
@@ -69,6 +69,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 10 characters." }, { status: 400 });
     }
 
+    if (await isPasswordBreached(body.password)) {
+      return NextResponse.json({ error: BREACHED_PASSWORD_MESSAGE }, { status: 400 });
+    }
     const passwordHash = await hashPassword(body.password);
 
     const newUser = await db.$transaction(async (tx) => {
