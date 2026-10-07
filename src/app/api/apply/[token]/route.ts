@@ -29,7 +29,7 @@ type Params = { params: Promise<{ token: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const ip = clientIp(req.headers);
-    const { allowed } = rateLimit(`apply-check:${ip}`, { limit: 30, windowMs: 60 * 60 * 1000 });
+    const { allowed } = await rateLimit(`apply-check:${ip}`, { limit: 30, windowMs: 60 * 60 * 1000 });
     if (!allowed) {
       return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
     }
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const ip = clientIp(req.headers);
-    const { allowed: ipAllowed } = rateLimit(`apply-submit-ip:${ip}`, {
+    const { allowed: ipAllowed } = await rateLimit(`apply-submit-ip:${ip}`, {
       limit: 20,
       windowMs: 60 * 60 * 1000,
     });
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const { token } = await params;
     const tokenHash = hashFormToken(token);
 
-    const { allowed: tokenAllowed } = rateLimit(`apply-submit-token:${tokenHash}`, {
+    const { allowed: tokenAllowed } = await rateLimit(`apply-submit-token:${tokenHash}`, {
       limit: 5,
       windowMs: 60 * 60 * 1000,
     });

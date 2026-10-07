@@ -1478,3 +1478,16 @@ model MedicineDose {
   @@index([organizationId, givenAt])
   @@map("medicine_doses")
 }
+
+// Shared rate-limit counters (security review #4, 7 Oct 2026). One row per
+// hashed key ("login:email:<sha256>"), updated with an atomic upsert in
+// src/lib/rateLimit.ts so every server instance sees the same count.
+// Expired rows are deleted by the daily purge cron.
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+  @@map("rate_limit_buckets")
+}

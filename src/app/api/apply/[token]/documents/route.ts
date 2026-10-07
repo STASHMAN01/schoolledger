@@ -15,7 +15,7 @@ type Params = { params: Promise<{ token: string }> };
 // on a "details" link it waits with the form until staff approve it.
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    const { allowed: ipAllowed } = rateLimit(`apply-doc-ip:${clientIp(req.headers)}`, {
+    const { allowed: ipAllowed } = await rateLimit(`apply-doc-ip:${clientIp(req.headers)}`, {
       limit: 60,
       windowMs: 60 * 60 * 1000,
     });
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
     const { token } = await params;
     const tokenHash = hashFormToken(token);
-    const { allowed: tokenAllowed } = rateLimit(`apply-doc-token:${tokenHash}`, {
+    const { allowed: tokenAllowed } = await rateLimit(`apply-doc-token:${tokenHash}`, {
       limit: 40,
       windowMs: 60 * 60 * 1000,
     });

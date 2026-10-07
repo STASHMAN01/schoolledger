@@ -16,7 +16,7 @@ import { clientIp, rateLimit } from "@/lib/rateLimit";
 export async function POST(req: NextRequest) {
   try {
     // Public token endpoints are rate-limited per IP (final inspection R9).
-    const { allowed } = rateLimit(`invite-accept:${clientIp(req.headers)}`, { limit: 20, windowMs: 60 * 60 * 1000 });
+    const { allowed } = await rateLimit(`invite-accept:${clientIp(req.headers)}`, { limit: 20, windowMs: 60 * 60 * 1000 });
     if (!allowed) {
       return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
     }

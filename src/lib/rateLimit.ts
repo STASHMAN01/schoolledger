@@ -1,17 +1,22 @@
-// Minimal in-memory rate limiter for auth-adjacent endpoints (login,
-// registration, invite-accept). This is a stopgap suitable for a single
-// server instance / low volume; it resets on deploy and does not share
-// state across serverless instances.
+import { db } from "@/lib/db";
+
+// Rate limiter shared by every server instance (security review #4, 7 Oct
+// 2026). The old version kept its counters in each serverless instance's
+// memory, so an attacker spread across instances got many times the limit
+// and every deploy reset the counts -- which mattered most for class-profile
+// logins ("dees.butterfly") whose usernames are easy to guess.
 //
-// BEFORE relying on this in production behind more than one server
-// instance, replace with a shared store (e.g. Upstash Redis rate limiting,
-// or your DB) — see SECURITY.md, "Before onboarding real customer data".
-// Left simple on purpose so an early, single-instance deploy still has
-// *some* brute-force protection rather than none.
+// Counters now live in Postgres (`rate_limit_buckets`), updated with one
+// atomic upsert per check, so concurrent requests can't both slip under the
+// limit. Keys are SHA-256 hashed before storage: they contain emails,
+// usernames and IP addresses, and none of that needs to sit in the table.
+//
+// If the database can't be reached the check falls back to a per-instance
+// in-memory counter rather than failing every login outright (a login
+// needs the database anyway, so this only matters for a blip).
 
 type Bucket = { count: number; resetAt: number };
-
-const buckets = new Map<string, Bucket>();
+const memoryBuckets = new Map<string, Bucket>();
 let callsSincePrune = 0;
 
 // The caller's IP for rate-limit keys (final inspection R9). On Vercel,
@@ -27,36 +32,63 @@ export function clientIp(headers: Headers | { get(name: string): string | null }
   );
 }
 
-export function rateLimit(
-  key: string,
-  { limit, windowMs }: { limit: number; windowMs: number }
-): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  // Drop expired buckets now and then so the map can't grow forever
-  // (final inspection R9 -- the prune helper was never being called).
-  if (++callsSincePrune >= 500) {
-    callsSincePrune = 0;
-    pruneRateLimitBuckets();
-  }
-  const existing = buckets.get(key);
-
-  if (!existing || existing.resetAt < now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1 };
-  }
-
-  if (existing.count >= limit) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  existing.count += 1;
-  return { allowed: true, remaining: limit - existing.count };
+// Web Crypto, not node:crypto: auth.ts imports this file and auth.ts is also
+// bundled into the Edge middleware, where Node built-ins break every page.
+export async function hashRateLimitKey(key: string): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Call periodically-ish (e.g. on each invocation) to avoid unbounded growth.
-export function pruneRateLimitBuckets() {
-  const now = Date.now();
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt < now) buckets.delete(key);
+export type RateLimitResult = { allowed: boolean; remaining: number };
+
+/** Pure decision from the post-increment count (exported for tests). */
+export function decide(count: number, limit: number): RateLimitResult {
+  return { allowed: count <= limit, remaining: Math.max(0, limit - count) };
+}
+
+export async function rateLimit(
+  key: string,
+  { limit, windowMs }: { limit: number; windowMs: number }
+): Promise<RateLimitResult> {
+  const hashed = await hashRateLimitKey(key);
+  try {
+    const rows = await db.$queryRaw<{ count: number }[]>`
+      INSERT INTO "rate_limit_buckets" ("key", "count", "resetAt")
+      VALUES (${hashed}, 1, now() + (${windowMs}::int * interval '1 millisecond'))
+      ON CONFLICT ("key") DO UPDATE SET
+        "count" = CASE WHEN "rate_limit_buckets"."resetAt" < now() THEN 1
+                       ELSE "rate_limit_buckets"."count" + 1 END,
+        "resetAt" = CASE WHEN "rate_limit_buckets"."resetAt" < now() THEN EXCLUDED."resetAt"
+                         ELSE "rate_limit_buckets"."resetAt" END
+      RETURNING "count"`;
+    return decide(Number(rows[0]?.count ?? 1), limit);
+  } catch (err) {
+    console.error("[rateLimit] shared store unavailable, using in-memory fallback", err);
+    return memoryRateLimit(hashed, { limit, windowMs });
   }
+}
+
+/** Per-instance fallback, also used directly by tests. */
+export function memoryRateLimit(
+  key: string,
+  { limit, windowMs }: { limit: number; windowMs: number }
+): RateLimitResult {
+  const now = Date.now();
+  if (++callsSincePrune >= 500) {
+    callsSincePrune = 0;
+    for (const [k, b] of memoryBuckets) if (b.resetAt < now) memoryBuckets.delete(k);
+  }
+  const existing = memoryBuckets.get(key);
+  if (!existing || existing.resetAt < now) {
+    memoryBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return decide(1, limit);
+  }
+  existing.count += 1;
+  return decide(existing.count, limit);
+}
+
+/** Deletes expired counters. Called from the daily purge cron. */
+export async function pruneRateLimitBuckets(): Promise<number> {
+  const result = await db.rateLimitBucket.deleteMany({ where: { resetAt: { lt: new Date() } } });
+  return result.count;
 }
