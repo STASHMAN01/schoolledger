@@ -313,6 +313,30 @@ class MainActivity : Activity() {
             next.forEach { AlarmScheduler.schedule(applicationContext, it) }
         }
 
+        @JavascriptInterface fun getRoutineEnabled(): Boolean = trusted && Prefs.routineEnabled
+
+        @JavascriptInterface fun setRoutineEnabled(on: Boolean) {
+            if (!trusted) return
+            Prefs.routineEnabled = on
+            AlarmScheduler.scheduleRoutine(applicationContext)
+        }
+
+        /** The website sends this class's timetable: JSON [{day,hour,minute,activity}]. */
+        @JavascriptInterface fun setRoutine(json: String) {
+            if (!trusted) return
+            val next = runCatching {
+                val arr = JSONArray(json)
+                (0 until arr.length()).map {
+                    val o = arr.getJSONObject(it)
+                    RoutineItem(o.getInt("day").coerceIn(1, 7), o.getInt("hour").coerceIn(0, 23), o.getInt("minute").coerceIn(0, 59), o.optString("activity", "Next activity").take(120))
+                }
+            }.getOrNull() ?: return
+            Prefs.routine = next
+            AlarmScheduler.scheduleRoutine(applicationContext)
+        }
+
+        @JavascriptInterface fun routineCount(): Int = if (trusted) Prefs.routine.size else 0
+
         @JavascriptInterface fun testAlarm() {
             if (!trusted) return
             AlarmService.ring(applicationContext, "Test alarm", "This is how loud your alarm will be. Tap Stop.", "todos")

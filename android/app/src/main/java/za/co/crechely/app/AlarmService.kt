@@ -41,7 +41,8 @@ class AlarmService : Service() {
         startForegroundWithNotification(title, body, screen)
         startSound()
         stopHandler.removeCallbacksAndMessages(null)
-        stopHandler.postDelayed({ stopSelf() }, 5 * 60 * 1000L)
+        val seconds = intent?.getIntExtra(EXTRA_SECONDS, 300) ?: 300
+        stopHandler.postDelayed({ stopSelf() }, seconds * 1000L)
         return START_NOT_STICKY
     }
 
@@ -128,11 +129,13 @@ class AlarmService : Service() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
         const val EXTRA_SCREEN = "screen"
+        const val EXTRA_SECONDS = "seconds"
         private const val NOTIFICATION_ID = 4001
 
-        fun ring(context: Context, title: String, body: String, screen: String = "todos") {
+        fun ring(context: Context, title: String, body: String, screen: String = "todos", seconds: Int = 300) {
             val i = Intent(context, AlarmService::class.java)
                 .putExtra(EXTRA_TITLE, title).putExtra(EXTRA_BODY, body).putExtra(EXTRA_SCREEN, screen)
+                .putExtra(EXTRA_SECONDS, seconds)
             androidx.core.content.ContextCompat.startForegroundService(context, i)
         }
 

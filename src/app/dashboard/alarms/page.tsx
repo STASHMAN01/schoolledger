@@ -5,7 +5,7 @@
 // works inside the app, which provides window.CrechelyApp. In a normal
 // browser it just explains that.
 import { useEffect, useState } from "react";
-import { appGetAlarms, appOpenSettings, appSetAlarms, appTestAlarm, inApp, type AppAlarm } from "@/lib/appBridge";
+import { appGetAlarms, appRoutineCount, appRoutineEnabled, appSetRoutineEnabled, appOpenSettings, appSetAlarms, appTestAlarm, inApp, type AppAlarm } from "@/lib/appBridge";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -16,11 +16,15 @@ export default function AlarmsPage() {
   const [time, setTime] = useState("08:15");
   const [label, setLabel] = useState("");
   const [weekdaysOnly, setWeekdaysOnly] = useState(true);
+  const [routineOn, setRoutineOn] = useState(true);
+  const [routineCount, setRoutineCount] = useState(0);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- one-time read from the app on mount */
     setAvailable(inApp());
     setAlarms(appGetAlarms());
+    setRoutineOn(appRoutineEnabled());
+    setRoutineCount(appRoutineCount());
     setReady(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
@@ -59,6 +63,25 @@ export default function AlarmsPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           These ring loudly on this tablet at the time you set, even when the app is closed and the tablet is on silent.
           You will also get an alarm if the register has not been taken.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <label className="flex items-center gap-3 text-sm font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={routineOn}
+            onChange={(e) => {
+              setRoutineOn(e.target.checked);
+              appSetRoutineEnabled(e.target.checked);
+            }}
+            className="h-5 w-5"
+          />
+          Ring when the class routine changes
+        </label>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Uses the class timetable (Timetable tab). It rings for 30 seconds at the start of each activity.{" "}
+          {routineCount > 0 ? `${routineCount} timetable entries loaded on this tablet.` : "No timetable loaded yet: open the dashboard once while online."}
         </p>
       </div>
 

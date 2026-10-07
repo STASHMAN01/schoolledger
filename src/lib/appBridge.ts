@@ -12,6 +12,10 @@ type Bridge = {
   testAlarm(): void;
   shareFile(url: string, name: string): void;
   openAppSettings(): void;
+  getRoutineEnabled(): boolean;
+  setRoutineEnabled(on: boolean): void;
+  setRoutine(json: string): void;
+  routineCount(): number;
 };
 
 function bridge(): Bridge | null {
@@ -53,4 +57,20 @@ export function appShareFile(url: string, name: string): boolean {
   if (!b) return false;
   b.shareFile(new URL(url, window.location.origin).toString(), name);
   return true;
+}
+
+export type RoutineAlarm = { day: number; hour: number; minute: number; activity: string };
+
+export function appRoutineEnabled(): boolean {
+  return bridge()?.getRoutineEnabled?.() ?? false;
+}
+export function appSetRoutineEnabled(on: boolean): void {
+  bridge()?.setRoutineEnabled?.(on);
+}
+export function appRoutineCount(): number {
+  return bridge()?.routineCount?.() ?? 0;
+}
+/** Sends the class timetable to the app so it can ring at every change. */
+export function appSetRoutine(items: RoutineAlarm[]): void {
+  bridge()?.setRoutine?.(JSON.stringify(items));
 }

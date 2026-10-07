@@ -15,6 +15,7 @@ import { checkIsPlatformAdmin } from "@/lib/platformAdmin";
 import { db } from "@/lib/db";
 import { VerifyEmailGate } from "./VerifyEmailGate";
 import { DeletedSchoolScreen } from "./DeletedSchoolScreen";
+import { RoutineSync } from "./RoutineSync";
 import { purgeDateFor } from "@/lib/orgDeletion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -132,6 +133,7 @@ export default async function DashboardLayout({
         </div>
         <ErrorCatcher />
         {showApp && <TourOverlay />}
+        {showApp && <RoutineSync />}
       </div>
       </TourProvider>
     </OrgProvider>

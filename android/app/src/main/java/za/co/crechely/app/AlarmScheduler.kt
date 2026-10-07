@@ -40,7 +40,39 @@ object AlarmScheduler {
         (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending(context, id))
     }
 
+    // ---- class routine: one alarm per timetable entry, repeating every week ----
+    private const val ROUTINE_BASE = 20000
+    private const val ROUTINE_MAX = 120
+
+    private fun routinePending(context: Context, index: Int): PendingIntent = PendingIntent.getBroadcast(
+        context, ROUTINE_BASE + index,
+        Intent(context, RoutineReceiver::class.java).putExtra("index", index),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    fun nextRoutineTrigger(item: RoutineItem, from: Calendar = Calendar.getInstance()): Calendar {
+        val c = (from.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, item.hour); set(Calendar.MINUTE, item.minute)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        fun isoDay(x: Calendar) = (x.get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1 // Monday = 1
+        var guard = 0
+        while ((!c.after(from) || isoDay(c) != item.day) && guard++ < 14) c.add(Calendar.DAY_OF_YEAR, 1)
+        return c
+    }
+
+    fun scheduleRoutine(context: Context) {
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        for (i in 0 until ROUTINE_MAX) am.cancel(routinePending(context, i))
+        if (!Prefs.routineEnabled) return
+        Prefs.routine.take(ROUTINE_MAX).forEachIndexed { i, item ->
+            val at = nextRoutineTrigger(item).timeInMillis
+            am.setAlarmClock(AlarmManager.AlarmClockInfo(at, routinePending(context, i)), routinePending(context, i))
+        }
+    }
+
     fun rescheduleAll(context: Context) {
+        scheduleRoutine(context)
         Prefs.alarms.forEach { schedule(context, it) }
     }
 }
@@ -53,6 +85,16 @@ class AlarmReceiver : BroadcastReceiver() {
         if (!alarm.enabled) return
         AlarmService.ring(context, alarm.label.ifBlank { "Alarm" }, "Tap Stop when you've seen this.", "todos")
         AlarmScheduler.schedule(context, alarm) // set tomorrow's
+    }
+}
+
+class RoutineReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        Prefs.init(context)
+        val item = Prefs.routine.getOrNull(intent.getIntExtra("index", -1)) ?: return
+        if (!Prefs.routineEnabled) return
+        AlarmService.ring(context, "Time for: ${item.activity}", "The routine has changed. Tap Stop.", "todos", seconds = 30)
+        AlarmScheduler.scheduleRoutine(context) // sets next week's
     }
 }
 
