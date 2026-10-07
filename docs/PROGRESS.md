@@ -1021,3 +1021,11 @@ From the security review (findings numbered there). Branch `security-hardening`.
 - #9: npm audit 0 vulnerabilities (nodemailer 10 via override, Next's postcss overridden).
 - #13: new passwords checked against Have I Been Pwned (k-anonymity, fails open).
 - Not in this branch: field encryption for ID numbers, documents and medicine (#15/#21, separate PR, run after the database is on a paid plan with backups); monitoring (#10).
+
+## Field encryption (7 Oct 2026)
+Security review #15/#21. Branch `field-encryption` (on top of `security-hardening`).
+- `src/lib/encryptedFields.ts` + `src/lib/db.ts`: Prisma extension that encrypts on write (nested writes too) and decrypts on read (includes too) for Child.childIdNumber/parentIdNumber/allergies, Guardian.idNumber, ChildDocument.fileData, ParentSubmission.data, ParentSubmissionAttachment.image, MedicineRecord (medicineName, reason, prescriberName, lastDoseAtHome, specialInstructions, signatureImage), MedicineDose.note. AES-256-GCM with FIELD_ENCRYPTION_KEY, stored as `enc:v1:...`; old plaintext rows still read fine.
+- These fields can no longer be searched/sorted in SQL (none are today). Raw SQL bypasses it.
+- `Tx` type exported from db.ts replaces `Prisma.TransactionClient` (which doesn't know the extension).
+- Middleware now uses `src/lib/authEdge.ts` (session cookie only), so the Edge bundle no longer pulls in Prisma or Node crypto (middleware 145 kB -> 88 kB).
+- **No schema change.** Existing rows: `scripts/encrypt-existing-fields.mjs` (dry run by default, `--apply` to write, re-runnable, refuses a key that can't read already-encrypted values). Run only after the paid DB + backup, with the same FIELD_ENCRYPTION_KEY as Vercel.

@@ -1,8 +1,8 @@
-import type { Prisma, Child, Category } from "@prisma/client";
+import type { Tx } from "@/lib/db";
+import type { Child, Category } from "@prisma/client";
 import { allocateOldestFirst, statusForEntry } from "./allocation";
 import { logAudit } from "@/lib/audit";
 
-type Tx = Prisma.TransactionClient;
 
 /**
  * Which PaymentType recurring monthly fee rows (School Fees, Aftercare,
