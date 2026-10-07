@@ -275,6 +275,15 @@ model User {
   // no chicken-and-egg problem bootstrapping this flag from zero; this
   // column is only for admins invited after that via /platform/team.
   isPlatformAdmin Boolean @default(false)
+  // Two-factor login for platform admins (security review #5, 7 Oct 2026).
+  // totpSecret is the authenticator-app secret, AES-256-GCM encrypted with
+  // FIELD_ENCRYPTION_KEY (src/lib/fieldCrypto.ts). Set but with a null
+  // totpEnabledAt = set-up started, not yet confirmed with a code.
+  // totpLastStep stops the same 6-digit code being used twice.
+  // To reset a lost phone: clear all three columns for that user.
+  totpSecret    String?
+  totpEnabledAt DateTime?
+  totpLastStep  Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

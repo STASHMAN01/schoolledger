@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/db", () => ({ db: {} }));
 import { decide, hashRateLimitKey, memoryRateLimit } from "./rateLimit";
 
 describe("rate limiter", () => {
