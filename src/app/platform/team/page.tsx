@@ -96,7 +96,7 @@ export default function PlatformTeamPage() {
       ) : (
         <>
           <h2 className="font-display mb-2 text-lg font-medium text-foreground">Platform admins</h2>
-          <Card className="mb-8 overflow-hidden">
+          <Card className="mb-8 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-background text-left text-muted-foreground">
                 <tr>
@@ -121,7 +121,7 @@ export default function PlatformTeamPage() {
           {invites.length === 0 ? (
             <p className="text-sm text-muted-foreground">No pending invites.</p>
           ) : (
-            <Card className="overflow-hidden">
+            <Card className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-background text-left text-muted-foreground">
                   <tr>

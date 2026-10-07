@@ -205,7 +205,7 @@ export default function PlatformOrganizationsPage() {
         <p className="text-sm text-muted-foreground">No schools match.</p>
       ) : (
         <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-background text-left text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 font-medium">School</th>

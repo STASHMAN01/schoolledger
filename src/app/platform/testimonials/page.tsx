@@ -67,7 +67,7 @@ export default function PlatformTestimonialsPage() {
         description="Nothing submitted here shows on the public site until you approve it. Rejecting one just hides it — it's never deleted, and you can change your mind later."
       />
 
-      <div className="mb-4 flex gap-2 text-sm">
+      <div className="mb-4 flex flex-wrap gap-2 text-sm">
         {(["PENDING", "ALL"] as const).map((f) => (
           <button
             key={f}

@@ -19,7 +19,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-foreground">
               P
@@ -28,34 +28,34 @@ export default async function PlatformLayout({ children }: { children: React.Rea
               Platform
             </span>
           </div>
-          <nav className="flex items-center gap-1">
+          <nav className="-mx-1 flex max-w-full flex-wrap items-center gap-x-0.5 gap-y-1">
             <Link
               href="/platform"
-              className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+              className="transition-standard rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
             >
               Overview
             </Link>
             <Link
               href="/platform/organizations"
-              className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+              className="transition-standard rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
             >
               Schools
             </Link>
             <Link
               href="/platform/team"
-              className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+              className="transition-standard rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
             >
               Team
             </Link>
             <Link
               href="/platform/testimonials"
-              className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+              className="transition-standard rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
             >
               Testimonials
             </Link>
             <Link
               href="/dashboard"
-              className="transition-standard rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+              className="transition-standard rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
             >
               Back to app
             </Link>
