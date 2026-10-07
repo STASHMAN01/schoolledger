@@ -1,7 +1,7 @@
-import type { DeletionTargetType, Prisma } from "@prisma/client";
+import type { Tx } from "@/lib/db";
+import type { DeletionTargetType } from "@prisma/client";
 import { statusForEntry } from "@/lib/billing/allocation";
 
-type Tx = Prisma.TransactionClient;
 
 export type PaymentReversal = {
   creditClawedBackCents: number;
