@@ -1009,33 +1009,32 @@ in MRR/ARR.
 - Teacher: theme banner, today's topic with the guide open, home card shows theme + guide. Teachers still propose topics for empty days; they never see or write the guide field in edit mode.
 - Import columns: Theme, Start date, End date, Class (name, "a; b", or All), Date (date or weekday), Topic for the day, Teaching guide. Parser in src/lib/lessonImport.ts (tested).
 
-## 7 Oct 2026 -- Native Android app, phase 1 (server + app)
+## 7 Oct 2026 -- Android app = the real website in a native shell
 
-Why: the installed "shortcut" app can't notify when closed, can't ring loud alarms and isn't faster. Decision (Dylan): a native Kotlin app, screen by screen.
+Why: the installed "shortcut" app can't notify when closed or ring loud alarms. A first fully native (Compose) version looked different from the website and Dylan rejected it ("ugly"). Decision (Dylan): the real website inside a native shell. The look always matches the web app; the native layer only adds closed-app push notifications, loud alarms, file sharing, uploads/downloads and an offline page.
 
-Server: bearer-token sign-in for the app (`src/lib/mobileAuth.ts`, `/api/mobile/login|me|device`), `requireMembership` accepts the token as well as the cookie, middleware lets Bearer API calls reach the route (which still checks the token), FCM sender (`src/lib/fcm.ts`, env `FIREBASE_SERVICE_ACCOUNT`), weekday 08:30 cron `/api/cron/todo-alerts`. Quick add child (earlier today) is used by the app.
+Server: no separate app sign-in any more (the website login cookie is used). `PUT/DELETE /api/mobile/device` (cookie session) stores the tablet's Firebase token in `PushDevice` (token belongs to whoever signed in last on that device). FCM sender `src/lib/fcm.ts` (env `FIREBASE_SERVICE_ACCOUNT`). Weekday 08:30 cron `/api/cron/todo-alerts` pushes a loud alarm to teachers whose register isn't taken. Quick add child is on the website.
 
-App: `android/` (see android/README.md). Screens: login, to-do, register, children + Quick add, files, alarms. Not compiled or run in the build sandbox (no Android SDK access); first build is on the laptop.
+Website: `src/lib/appBridge.ts` (`window.CrechelyApp`, only exists inside the app), in-app-only page `/dashboard/alarms` (add/delete/test alarms, linked in the menu only inside the app), `sharePdf.ts` uses the app's share sheet inside the app.
+
+App: `android/` (see android/README.md): WebView + AlarmService/AlarmScheduler/PushService/AlarmActivity.
 
 Schema change, NOT yet applied (needs Dylan's OK, then `npx prisma db push`). Adds one table, touches no existing data:
 
 ```sql
-CREATE TABLE "MobileDevice" (
+CREATE TABLE "PushDevice" (
   "id" TEXT NOT NULL,
   "userId" TEXT NOT NULL,
-  "tokenHash" TEXT NOT NULL,
-  "tokenVersion" INTEGER NOT NULL,
+  "fcmToken" TEXT NOT NULL,
   "deviceName" TEXT NOT NULL,
-  "fcmToken" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "expiresAt" TIMESTAMP(3) NOT NULL,
-  CONSTRAINT "MobileDevice_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "PushDevice_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "MobileDevice_tokenHash_key" ON "MobileDevice"("tokenHash");
-CREATE INDEX "MobileDevice_userId_idx" ON "MobileDevice"("userId");
-ALTER TABLE "MobileDevice" ADD CONSTRAINT "MobileDevice_userId_fkey"
+CREATE UNIQUE INDEX "PushDevice_fcmToken_key" ON "PushDevice"("fcmToken");
+CREATE INDEX "PushDevice_userId_idx" ON "PushDevice"("userId");
+ALTER TABLE "PushDevice" ADD CONSTRAINT "PushDevice_userId_fkey"
   FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ```
 
-Safe order: the website works before the table exists (the app token is only looked up when a Bearer header is sent). Run the push, then use the app.
+Until the table exists, only the push registration and the 08:30 cron error (harmlessly); the website itself is unaffected.

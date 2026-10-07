@@ -6,9 +6,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 /**
  * Receives push messages from the server, even when the app is closed. The
@@ -17,14 +14,13 @@ import kotlinx.coroutines.launch
  */
 class PushService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
+        // The website page tells the server about the new token the next time the app opens.
         Prefs.init(applicationContext)
         Prefs.fcmToken = token
-        CoroutineScope(Dispatchers.IO).launch { Api.registerPushToken(token) }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
         Prefs.init(applicationContext)
-        if (Prefs.token == null) return // signed out: ignore
         val d = message.data
         val title = d["title"] ?: "Crechely"
         val body = d["body"] ?: ""

@@ -36,8 +36,11 @@ object AlarmScheduler {
         am.setAlarmClock(AlarmManager.AlarmClockInfo(at, pending(context, a.id)), pending(context, a.id))
     }
 
+    fun cancel(context: Context, id: Int) {
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending(context, id))
+    }
+
     fun rescheduleAll(context: Context) {
-        if (Prefs.token == null && Prefs.alarms.isEmpty()) return
         Prefs.alarms.forEach { schedule(context, it) }
     }
 }
@@ -45,6 +48,7 @@ object AlarmScheduler {
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getIntExtra("alarmId", -1)
+        Prefs.init(context)
         val alarm = Prefs.alarms.firstOrNull { it.id == id } ?: return
         if (!alarm.enabled) return
         AlarmService.ring(context, alarm.label.ifBlank { "Alarm" }, "Tap Stop when you've seen this.", "todos")
