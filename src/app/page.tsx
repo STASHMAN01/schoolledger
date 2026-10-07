@@ -9,6 +9,8 @@ import { Reveal } from "@/components/Reveal";
 import { HeroDashboard } from "@/components/HeroDashboard";
 import { ReminderFlow } from "@/components/ReminderFlow";
 import { AttendancePreview, DocumentsPreview } from "@/components/MarketingPreviews";
+import { StatementPreview } from "@/components/StatementPreview";
+import { MobileCtaBar } from "@/components/MobileCtaBar";
 import { SUPPORT_EMAIL, WHATSAPP_LINK, WHATSAPP_NUMBER } from "@/lib/support";
 import { TRIAL_DAYS } from "@/lib/trial";
 import { FOUNDING_SPOTS, foundingSpotsLeft } from "@/lib/billing/founding";
@@ -245,7 +247,9 @@ export default async function RootPage() {
   ]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    // Bottom padding on phones only, so the pinned WhatsApp / trial bar
+    // never covers the footer.
+    <div className="flex min-h-screen flex-col bg-background pb-[calc(4.25rem+env(safe-area-inset-bottom))] sm:pb-0">
       {/* Narrow navy strip above the nav, as in the reference. */}
       <div className="bg-panel px-4 py-2 text-center text-xs text-panel-muted">
         Built for preschools, nurseries &amp; crèches · Made in South Africa
@@ -409,6 +413,33 @@ export default async function RootPage() {
                   <ReminderFlow />
                   <p className="mt-3 text-xs text-muted-foreground">
                     Shown with sample families — not a real school&rsquo;s data.
+                  </p>
+                </div>
+              </Reveal>
+            </div>
+
+            {/* What the reminder carries: the statement itself, so the
+                one-click PDF promise above is something you can see. */}
+            <div className="mt-16 grid min-w-0 items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16 [&>*]:min-w-0">
+              <Reveal>
+                <div>
+                  <h3 className="font-display text-xl font-semibold text-foreground">
+                    A statement a parent can&rsquo;t argue with
+                  </h3>
+                  <p className="mt-3 max-w-md text-base text-muted-foreground">
+                    One click turns a family&rsquo;s record into a PDF: every
+                    charge, what was paid and when, and what&rsquo;s still
+                    owing, oldest first, with your banking details at the top.
+                    Send it on its own, or let it go out attached to a reminder.
+                  </p>
+                </div>
+              </Reveal>
+              <Reveal delay={80}>
+                <div className="max-w-lg lg:justify-self-end">
+                  <StatementPreview />
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    A Crechely statement, redrawn with the same sample family —
+                    not a real school&rsquo;s data.
                   </p>
                 </div>
               </Reveal>
@@ -792,6 +823,7 @@ export default async function RootPage() {
       </main>
 
       <MarketingFooter />
+      <MobileCtaBar />
     </div>
   );
 }

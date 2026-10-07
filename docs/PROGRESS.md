@@ -1038,3 +1038,11 @@ ALTER TABLE "PushDevice" ADD CONSTRAINT "PushDevice_userId_fkey"
 ```
 
 Until the table exists, only the push registration and the 08:30 cron error (harmlessly); the website itself is unaffected.
+
+## Landing page: mobile WhatsApp bar + statement preview (7 Oct 2026)
+
+From comparing a Kimi-made landing page against the live one; only the two ideas worth keeping were taken.
+
+- `src/components/MobileCtaBar.tsx`: bar pinned to the bottom on phones only (WhatsApp us + Start my free trial). WhatsApp is the outlined button with a green icon, since white on WhatsApp green misses WCAG AA. The page gets matching bottom padding on phones so the footer isn't covered. Hidden from `sm` up.
+- `src/components/StatementPreview.tsx`: the fee statement redrawn as HTML, line for line with `statementPdf.ts` (header, "Statement of account", Charge/Due/Paid/Paid on/Status, totals, PDF money format). Same sample family as the reminder demo (Lerato Mokoena, R1,050 outstanding). Sits under the reminder demo in the money section, captioned as sample data.
+- Note for later: globals.css has an unlayered `* { border-color: var(--border) }`, so Tailwind border-colour utilities (e.g. `border-stone-800`) have no effect anywhere. The statement uses inline border colours for that reason.
