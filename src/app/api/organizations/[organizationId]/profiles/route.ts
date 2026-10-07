@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, isPasswordBreached, BREACHED_PASSWORD_MESSAGE } from "@/lib/password";
 import {
   MAX_PROFILES_PER_ORG,
   candidateUsernames,
@@ -55,6 +55,9 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
 
+    if (await isPasswordBreached(body.password)) {
+      return NextResponse.json({ error: BREACHED_PASSWORD_MESSAGE }, { status: 400 });
+    }
     const passwordHash = await hashPassword(body.password);
 
     let created: { membershipId: string; username: string };

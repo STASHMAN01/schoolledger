@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { acceptInviteSchema } from "@/lib/validation";
-import { hashPassword, isPasswordStrongEnough } from "@/lib/password";
+import { hashPassword, isPasswordStrongEnough, isPasswordBreached, BREACHED_PASSWORD_MESSAGE } from "@/lib/password";
 import { hashInviteToken } from "@/lib/inviteToken";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
@@ -103,6 +103,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (await isPasswordBreached(body.password)) {
+      return NextResponse.json({ error: BREACHED_PASSWORD_MESSAGE }, { status: 400 });
+    }
     const passwordHash = await hashPassword(body.password);
 
     const newUser = await db.$transaction(async (tx) => {

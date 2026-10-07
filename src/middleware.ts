@@ -6,6 +6,25 @@ import { REQUEST_METHOD_HEADER, REQUEST_PATH_HEADER } from "@/lib/requestMethod"
 // unit-tested without booting NextAuth -- see src/lib/publicPaths.test.ts.
 import { requiresSession } from "@/lib/publicPaths";
 
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  // 'unsafe-eval' only for local development (React refresh); never live.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-src 'self' blob:",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  // Not on http://localhost, where it would break every asset.
+  ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
+].join("; ");
+
 export default auth((req: NextRequest & { auth?: unknown }) => {
   const { pathname } = req.nextUrl;
 
@@ -35,6 +54,18 @@ export default auth((req: NextRequest & { auth?: unknown }) => {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+  // Content-Security-Policy for pages (security review #8, 7 Oct 2026).
+  // Only same-origin scripts, styles, frames and connections; no plugins;
+  // nobody may frame the app; forms only post back here. 'unsafe-inline'
+  // is still needed for Next's inline bootstrap scripts until pages move
+  // to per-request nonces, but this already blocks scripts loaded from any
+  // other site, <base> hijacks and data being posted elsewhere. API routes
+  // are skipped: they return JSON/PDFs and some set their own stricter
+  // policy (parent-uploaded photos are served with "sandbox").
+  if (!pathname.startsWith("/api/")) {
+    response.headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+  }
   if (process.env.NODE_ENV === "production") {
     response.headers.set(
       "Strict-Transport-Security",
