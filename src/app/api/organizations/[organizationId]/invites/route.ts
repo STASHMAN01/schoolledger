@@ -5,7 +5,7 @@ import { createInviteSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { generateInviteToken } from "@/lib/inviteToken";
-import { getEffectivePermissions } from "@/lib/permissions";
+import { ROLE_DEFAULT_PERMISSIONS, getEffectivePermissions } from "@/lib/permissions";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -64,9 +64,24 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { userId } = await requireMembership(organizationId, "MANAGE_TEAM");
+    const { userId, role: callerRole, permissions: callerPermissions } = await requireMembership(
+      organizationId,
+      "MANAGE_TEAM"
+    );
 
     const body = createInviteSchema.parse(await req.json());
+
+    // Security review #16: someone given Manage team without being an admin
+    // can't invite an admin, or a role that has more access than they do.
+    if (
+      callerRole !== "ADMIN" &&
+      (body.role === "ADMIN" || ROLE_DEFAULT_PERMISSIONS[body.role].some((p) => !callerPermissions.includes(p)))
+    ) {
+      return NextResponse.json(
+        { error: "Only an admin can invite someone with that role." },
+        { status: 403 }
+      );
+    }
 
     const existingMember = await db.membership.findFirst({
       where: { organizationId, user: { email: body.email } },
