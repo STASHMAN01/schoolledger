@@ -61,7 +61,16 @@ export async function sendPush(
   message: { title: string; body: string; alarm?: boolean; screen?: string; channel?: "sales" }
 ): Promise<PushResult> {
   const sa = loadServiceAccount();
-  if (!sa) return "not-configured";
+  if (!sa) {
+    // Either FIREBASE_SERVICE_ACCOUNT is missing, or it isn't the whole
+    // JSON key file (a common paste mistake). Logged so it isn't silent.
+    console.warn(
+      process.env.FIREBASE_SERVICE_ACCOUNT
+        ? "[push] FIREBASE_SERVICE_ACCOUNT is set but isn't a valid service-account JSON key"
+        : "[push] FIREBASE_SERVICE_ACCOUNT is not set; push skipped"
+    );
+    return "not-configured";
+  }
   try {
     const res = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
       method: "POST",
@@ -80,10 +89,18 @@ export async function sendPush(
         },
       }),
     });
-    if (res.ok) return "sent";
+    if (res.ok) {
+      console.log(`[push] sent "${message.title}" to token …${fcmToken.slice(-6)}`);
+      return "sent";
+    }
+    // Google's error body says exactly why (wrong project, API disabled,
+    // bad token...). The token tail only, never the whole token.
+    const detail = await res.text().catch(() => "");
+    console.error(`[push] FCM rejected send to …${fcmToken.slice(-6)}: ${res.status} ${detail.slice(0, 500)}`);
     // 404 UNREGISTERED / 400 INVALID_ARGUMENT: the app was uninstalled.
     return res.status === 404 || res.status === 400 ? "invalid-token" : "failed";
-  } catch {
+  } catch (err) {
+    console.error("[push] send threw:", err instanceof Error ? err.message : err);
     return "failed";
   }
 }
