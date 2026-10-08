@@ -49,9 +49,15 @@ class AlarmActivity : Activity() {
             text = body; setTextColor(Color.WHITE); textSize = 20f; gravity = Gravity.CENTER
             setPadding(0, pad / 2, 0, pad)
         })
+        // Big Stop first: that is what someone reaches for when it is ringing.
         root.addView(Button(this).apply {
-            text = "Stop and open"; textSize = 24f; isAllCaps = false
+            text = "Stop"; textSize = 26f; isAllCaps = false
             setTextColor(Color.parseColor("#0670B8")); setBackgroundColor(Color.WHITE)
+            setOnClickListener { stopAlarm() }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (88 * resources.displayMetrics.density).toInt()))
+        root.addView(Button(this).apply {
+            text = "Stop and open Crechely"; textSize = 18f; isAllCaps = false
+            setTextColor(Color.WHITE); setBackgroundColor(Color.parseColor("#0670B8"))
             setOnClickListener {
                 AlarmService.stop(this@AlarmActivity)
                 startActivity(
@@ -60,8 +66,20 @@ class AlarmActivity : Activity() {
                 )
                 finish()
             }
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (88 * resources.displayMetrics.density).toInt()))
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (64 * resources.displayMetrics.density).toInt()).apply { topMargin = (12 * resources.displayMetrics.density).toInt() })
         setContentView(root)
+    }
+
+    private fun stopAlarm() {
+        AlarmService.stop(this)
+        finish()
+    }
+
+    // Back stops the alarm too, so it can never be left ringing behind a
+    // dismissed screen.
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        stopAlarm()
     }
 
     override fun onDestroy() {

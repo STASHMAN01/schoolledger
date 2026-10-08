@@ -6,6 +6,7 @@ import { handleApiError } from "@/lib/apiError";
 import { schoolClock, schoolDateValue } from "@/lib/dailySummary";
 import { addDays } from "@/lib/lessonPlan";
 import { DONE_VISIBLE_DAYS, taskCreateSchema } from "@/lib/teacherTasks";
+import { notifyClassTeachers } from "@/lib/notifyTeachers";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -93,6 +94,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       entityId: task.id,
       metadata: { className: category.name, title: body.title },
     });
+
+    // Tell the class's tablets straight away (Dylan, 8 Oct 2026). A normal
+    // notification, not an alarm: it should not wake anyone up at night.
+    await notifyClassTeachers(organizationId, category.id, {
+      title: "New task for your class",
+      body: body.dueDate ? `${body.title} — due ${body.dueDate}` : body.title,
+      screen: "todos",
+    }).catch(() => {});
 
     return NextResponse.json({ task: shape(task) }, { status: 201 });
   } catch (err) {

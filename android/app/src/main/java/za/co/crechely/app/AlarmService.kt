@@ -39,6 +39,7 @@ class AlarmService : Service() {
         val body = intent?.getStringExtra(EXTRA_BODY) ?: ""
         val screen = intent?.getStringExtra(EXTRA_SCREEN) ?: "todos"
         startForegroundWithNotification(title, body, screen)
+        showStopScreen(title, body, screen)
         startSound()
         stopHandler.removeCallbacksAndMessages(null)
         val seconds = intent?.getIntExtra(EXTRA_SECONDS, 300) ?: 300
@@ -73,6 +74,22 @@ class AlarmService : Service() {
             startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
         } else {
             startForeground(NOTIFICATION_ID, n)
+        }
+    }
+
+    /**
+     * Android only shows a full-screen notification by itself when nothing
+     * else is on screen, so while someone is using the app the alarm would
+     * ring with no Stop button in sight (Dylan, 8 Oct 2026). Opening the
+     * screen ourselves covers both cases.
+     */
+    private fun showStopScreen(title: String, body: String, screen: String) {
+        runCatching {
+            startActivity(
+                Intent(this, AlarmActivity::class.java)
+                    .putExtra(EXTRA_TITLE, title).putExtra(EXTRA_BODY, body).putExtra(EXTRA_SCREEN, screen)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            )
         }
     }
 
