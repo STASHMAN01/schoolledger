@@ -4,12 +4,20 @@ import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, PageHeader, Select, Textarea } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
+import { PhotoAttachments, type Photo } from "@/components/PhotoAttachments";
 
 // Classwork (Dylan, 5 Oct 2026): the class teacher records what they did
 // with the children today. Add-only for teachers; the admin reads it and
 // can remove a mistaken entry.
 
-type Entry = { id: string; date: string; description: string; createdAt: string; createdBy: { name: string } };
+type Entry = {
+  id: string;
+  date: string;
+  description: string;
+  createdAt: string;
+  createdBy: { name: string };
+  photos: Photo[];
+};
 type Category = { id: string; name: string; archived: boolean };
 
 function prettyDate(date: string) {
@@ -181,12 +189,21 @@ export default function ClassworkPage() {
               <div className="divide-y divide-border">
                 {list.map((e) => (
                   <div key={e.id} className="flex items-start justify-between gap-3 py-2">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="whitespace-pre-wrap text-sm text-foreground">{e.description}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {new Date(e.createdAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} ·{" "}
                         {e.createdBy.name}
                       </p>
+                      <PhotoAttachments
+                        organizationId={organizationId}
+                        kind="CLASSWORK"
+                        targetId={e.id}
+                        photos={e.photos ?? []}
+                        canAdd={isTeacher && date === today}
+                        canRemove={canRemove || (isTeacher && date === today)}
+                        onChanged={load}
+                      />
                     </div>
                     {canRemove && (
                       <button

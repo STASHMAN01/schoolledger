@@ -1009,6 +1009,64 @@ in MRR/ARR.
 - Teacher: theme banner, today's topic with the guide open, home card shows theme + guide. Teachers still propose topics for empty days; they never see or write the guide field in edit mode.
 - Import columns: Theme, Start date, End date, Class (name, "a; b", or All), Date (date or weekday), Topic for the day, Teaching guide. Parser in src/lib/lessonImport.ts (tested).
 
+## 8 Oct 2026 -- Photos and file storage (Cloudflare R2)
+
+Why: teachers need to photograph activities and injuries, and the existing
+child documents sit in Postgres as base64 text (hence the 2 MB cap and the
+database growth). Decision (Dylan, 8 Oct): object storage, Cloudflare R2
+($0.015/GB-month, free egress, 10 GB free; Oracle's free 200 GB is block
+storage on a VM we would have to run and back up ourselves, so no).
+
+How it works: the tablet shrinks the photo, asks `POST /api/organizations/
+:id/uploads` for a signed link (5 minutes), PUTs straight to the bucket, then
+confirms with `PUT .../uploads/:fileId`, which checks the object really
+arrived. Viewing goes through `GET .../files/:fileId`, which checks the
+caller and redirects to a signed link that expires. The bucket is private:
+no public URLs, because these are children's photos (POPIA). Deleting a
+photo deletes the object too.
+
+Scope: classwork entries and incident reports. Child documents/IDs still use
+child_documents and will move later.
+
+Needs in Vercel: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+R2_BUCKET. Without them the upload endpoint returns 503 and the rest of the
+site is unaffected. The bucket needs a CORS rule allowing PUT from
+https://www.crechely.co.za.
+
+Schema change, NOT yet applied (needs Dylan's OK, then `npx prisma db push`):
+
+```sql
+CREATE TABLE "stored_files" (
+  "id" TEXT NOT NULL,
+  "organizationId" TEXT NOT NULL,
+  "key" TEXT NOT NULL,
+  "kind" TEXT NOT NULL,
+  "contentType" TEXT NOT NULL,
+  "sizeBytes" INTEGER NOT NULL DEFAULT 0,
+  "caption" TEXT,
+  "status" TEXT NOT NULL DEFAULT 'PENDING',
+  "classworkEntryId" TEXT,
+  "childReportId" TEXT,
+  "uploadedByUserId" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "stored_files_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "stored_files_key_key" ON "stored_files"("key");
+CREATE INDEX "stored_files_organizationId_status_idx" ON "stored_files"("organizationId", "status");
+CREATE INDEX "stored_files_classworkEntryId_idx" ON "stored_files"("classworkEntryId");
+CREATE INDEX "stored_files_childReportId_idx" ON "stored_files"("childReportId");
+
+ALTER TABLE "stored_files" ADD CONSTRAINT "stored_files_organizationId_fkey"
+  FOREIGN KEY ("organizationId") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "stored_files" ADD CONSTRAINT "stored_files_classworkEntryId_fkey"
+  FOREIGN KEY ("classworkEntryId") REFERENCES "classwork_entries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "stored_files" ADD CONSTRAINT "stored_files_childReportId_fkey"
+  FOREIGN KEY ("childReportId") REFERENCES "child_reports"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "stored_files" ADD CONSTRAINT "stored_files_uploadedByUserId_fkey"
+  FOREIGN KEY ("uploadedByUserId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+```
+
 ## 7 Oct 2026 -- Android app = the real website in a native shell
 
 Why: the installed "shortcut" app can't notify when closed or ring loud alarms. A first fully native (Compose) version looked different from the website and Dylan rejected it ("ugly"). Decision (Dylan): the real website inside a native shell. The look always matches the web app; the native layer only adds closed-app push notifications, loud alarms, file sharing, uploads/downloads and an offline page.

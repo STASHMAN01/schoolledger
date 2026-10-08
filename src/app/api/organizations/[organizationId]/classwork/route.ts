@@ -15,6 +15,11 @@ const entrySelect = {
   description: true,
   createdAt: true,
   createdBy: { select: { name: true } },
+  photos: {
+    where: { status: "ACTIVE" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, caption: true, contentType: true },
+  },
 } as const;
 
 async function schoolToday(organizationId: string) {

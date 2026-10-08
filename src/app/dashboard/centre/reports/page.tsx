@@ -23,6 +23,8 @@ import {
   type ReportTypeValue,
 } from "@/lib/reports";
 
+import { PhotoAttachments, type Photo } from "@/components/PhotoAttachments";
+
 type ReportRow = {
   id: string;
   type: ReportTypeValue;
@@ -33,6 +35,7 @@ type ReportRow = {
   child: { id: string; firstName: string; lastName: string };
   category: { id: string; name: string };
   createdBy: { id: string; name: string };
+  photos: Photo[];
 };
 
 type ChildOption = {
@@ -331,6 +334,15 @@ export default function ReportsPage() {
                   {r.createdBy.name}
                 </p>
                 <p className="mt-1 line-clamp-2 text-sm text-foreground">{r.summary}</p>
+                <PhotoAttachments
+                  organizationId={organizationId}
+                  kind="REPORT"
+                  targetId={r.id}
+                  photos={r.photos ?? []}
+                  canAdd={canChange}
+                  canRemove={canChange}
+                  onChanged={load}
+                />
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
                 {r.parentNotified ? (

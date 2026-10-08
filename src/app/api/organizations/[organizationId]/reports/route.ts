@@ -17,6 +17,11 @@ const listSelect = {
   child: { select: { id: true, firstName: true, lastName: true } },
   category: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
+  photos: {
+    where: { status: "ACTIVE" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, caption: true, contentType: true },
+  },
 } as const;
 
 // Centre Management > Reports list. Filters: categoryId (ignored/overridden

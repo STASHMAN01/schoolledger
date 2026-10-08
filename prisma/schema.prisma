@@ -241,6 +241,7 @@ model Organization {
   medicineRecords      MedicineRecord[]
   medicineDoses        MedicineDose[]
   lessonThemes         LessonTheme[]
+  storedFiles          StoredFile[]
 
   @@map("organizations")
 }
@@ -297,6 +298,7 @@ model User {
   medicineRecordsCreated  MedicineRecord[]
   medicineDosesGiven      MedicineDose[]
   lessonThemesCreated     LessonTheme[]
+  storedFilesUploaded     StoredFile[]
 
   @@map("users")
 }
@@ -812,6 +814,7 @@ model ChildReport {
   @@index([childId, occurredAt])
   @@index([categoryId])
   @@map("child_reports")
+  photos StoredFile[]
 }
 
 // Phase 5: a class's fixed weekly timetable (Mon-Fri). The whole week for
@@ -1369,6 +1372,7 @@ model ClassworkEntry {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category     Category     @relation(fields: [categoryId], references: [id])
   createdBy    User         @relation(fields: [createdByUserId], references: [id])
+  photos       StoredFile[]
 
   @@index([organizationId, date])
   @@index([categoryId, date])
@@ -1495,4 +1499,40 @@ model PushDevice {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// A file kept in object storage (Cloudflare R2), 8 Oct 2026. The bytes live
+// in the bucket; this row is only the record of what the file is, who it
+// belongs to and who put it there. `key` is its path in the bucket.
+//
+// Used for classwork photos ("a picture of what the class did today") and
+// incident photos (an injury). Children's documents still use the older
+// child_documents table and will move here later.
+//
+// status is PENDING until the tablet reports the upload finished -- an
+// abandoned upload leaves a PENDING row and nothing else.
+model StoredFile {
+  id               String   @id @default(cuid())
+  organizationId   String
+  key              String   @unique
+  // "CLASSWORK" | "REPORT"
+  kind             String
+  contentType      String
+  sizeBytes        Int      @default(0)
+  caption          String?
+  status           String   @default("PENDING")
+  classworkEntryId String?
+  childReportId    String?
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  classworkEntry ClassworkEntry? @relation(fields: [classworkEntryId], references: [id], onDelete: Cascade)
+  childReport    ChildReport?    @relation(fields: [childReportId], references: [id], onDelete: Cascade)
+  uploadedBy     User            @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([classworkEntryId])
+  @@index([childReportId])
+  @@map("stored_files")
 }
