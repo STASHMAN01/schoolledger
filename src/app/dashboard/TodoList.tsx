@@ -18,6 +18,8 @@ type TodoItem = {
   label: string;
   count: number;
   href: string;
+  /** The must-do-every-day items (register, classwork, daily report). */
+  required?: boolean;
 };
 
 export function TodoList({
@@ -97,15 +99,25 @@ export function TodoList({
 }
 
 function TodoRows({ todos }: { todos: TodoItem[] }) {
+  // Every-day items first: they are the day's minimum, so they should never
+  // be pushed down the list by whatever else came up.
+  const ordered = [...todos].sort((a, b) => Number(!!b.required) - Number(!!a.required));
   return (
     <div className="divide-y divide-border">
-      {todos.map((t) => (
+      {ordered.map((t) => (
         <Link
           key={t.id}
           href={t.href}
           className="transition-standard flex min-h-11 items-center justify-between gap-3 py-2.5 hover:bg-background"
         >
-          <span className="text-sm font-medium text-foreground">{t.label}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="text-sm font-medium text-foreground">{t.label}</span>
+            {t.required && (
+              <span className="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-soft-foreground">
+                Every day
+              </span>
+            )}
+          </span>
           <Badge variant="accent">{t.count}</Badge>
         </Link>
       ))}

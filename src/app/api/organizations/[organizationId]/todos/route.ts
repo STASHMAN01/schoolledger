@@ -8,7 +8,7 @@ import { hasUnseenScheduleChange } from "@/lib/scheduleNotice";
 import { isProfileIncomplete } from "@/lib/childProfile";
 import { finalReviewWindow } from "@/lib/deletion";
 import { isSummaryDue, schoolClock, schoolDateValue } from "@/lib/dailySummary";
-import { CLASSWORK_REMINDER_HOUR, isWeekendDate } from "@/lib/lessonPlan";
+import { isWeekendDate } from "@/lib/lessonPlan";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -17,6 +17,11 @@ type TodoItem = {
   label: string;
   count: number;
   href: string;
+  // Dylan, 8 Oct 2026: the three things a class teacher must do every single
+  // day (register, classwork, daily report). They are listed from the start
+  // of the day rather than from a reminder hour, and the widget pins them to
+  // the top, so nobody has to remember what the day's minimum is.
+  required?: boolean;
 };
 
 // Phase 3 Session 2 -- the to-do engine v1 (see docs/PLAN.md: "3-4 tasks
@@ -87,6 +92,7 @@ export async function GET(req: NextRequest, { params }: Params) {
             label: `Take attendance for ${category?.name ?? "your class"}`,
             count: remaining,
             href: "/dashboard/centre/attendance",
+            required: true,
           });
         }
       } else if (scope.mode === "all") {
@@ -261,8 +267,9 @@ export async function GET(req: NextRequest, { params }: Params) {
     if (inCentre && permissions.includes("VIEW_CENTRE")) {
       const org = await db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } });
       const clock = schoolClock(org?.timezone ?? "Africa/Johannesburg");
-      if (isSummaryDue(clock)) {
-        const date = schoolDateValue(clock.date);
+      const summaryDate = schoolDateValue(clock.date);
+      if (clock.weekday <= 5) {
+        const date = summaryDate;
         if (role === "TEACHER" && assignedCategoryId) {
           const sent = await db.dailySummary.findUnique({
             where: { categoryId_date: { categoryId: assignedCategoryId, date } },
@@ -274,9 +281,10 @@ export async function GET(req: NextRequest, { params }: Params) {
               label: "Send today's daily report",
               count: 1,
               href: "/dashboard/centre/daily-summary",
+              required: true,
             });
           }
-        } else if (role !== "TEACHER" && permissions.includes("MANAGE_CLASSES")) {
+        } else if (role !== "TEACHER" && permissions.includes("MANAGE_CLASSES") && isSummaryDue(clock)) {
           const classes = await db.membership.findMany({
             where: {
               organizationId,
@@ -309,7 +317,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     if (inCentre && role === "TEACHER" && assignedCategoryId && permissions.includes("VIEW_CENTRE")) {
       const org = await db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } });
       const clock = schoolClock(org?.timezone ?? "Africa/Johannesburg");
-      if (clock.weekday <= 5 && clock.minutes >= CLASSWORK_REMINDER_HOUR * 60) {
+      if (clock.weekday <= 5) {
         const recorded = await db.classworkEntry.count({
           where: { categoryId: assignedCategoryId, date: schoolDateValue(clock.date) },
         });
@@ -319,6 +327,7 @@ export async function GET(req: NextRequest, { params }: Params) {
             label: "Record today's classwork",
             count: 1,
             href: "/dashboard/centre/classwork",
+            required: true,
           });
         }
       }
