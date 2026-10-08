@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { notifyPlatformAdmins } from "@/lib/notifyPlatform";
+import { formatCents } from "@/lib/formatMoney";
 
 // Paystack webhooks are the one endpoint in this app that's intentionally
 // unauthenticated (no session, no membership check) — see PUBLIC_PATHS in
@@ -115,6 +117,27 @@ export async function POST(req: NextRequest) {
         // date forward, so a school that renews and then cancels keeps
         // access for the days it paid for (Dylan, 28 Sept 2026).
         if (organizationId && data.reference && typeof data.amount === "number") {
+          // "ka-ching" (Dylan, 8 Oct 2026): every successful charge -- a
+          // brand-new subscription or a renewal -- is a sale worth hearing
+          // about. Checked before the idempotent upsert below so a
+          // Paystack retry of an already-recorded payment doesn't ring
+          // twice.
+          const alreadyRecorded = await db.subscriptionPayment.findUnique({
+            where: { paystackReference: data.reference },
+            select: { id: true },
+          });
+          if (!alreadyRecorded) {
+            const org = await db.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
+            await notifyPlatformAdmins({
+              title: "Ka-ching!",
+              body: org
+                ? `${org.name} paid ${formatCents(data.amount, data.currency ?? "ZAR")}.`
+                : `A payment of ${formatCents(data.amount, data.currency ?? "ZAR")} came in.`,
+              screen: "todos",
+              sale: true,
+            }).catch(() => {});
+          }
+
           const paidAt = new Date(data.paid_at ?? data.paidAt ?? Date.now());
           const periodEnd = addPlanInterval(paidAt, data.plan?.interval);
           await db.subscriptionPayment.upsert({

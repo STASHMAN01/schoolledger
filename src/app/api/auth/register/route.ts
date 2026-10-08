@@ -6,6 +6,7 @@ import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { logAudit } from "@/lib/audit";
 import { TRIAL_DAYS } from "@/lib/trial";
 import { issueAndSendVerificationEmail } from "@/lib/emailVerification";
+import { notifyPlatformAdmins } from "@/lib/notifyPlatform";
 
 // Creates a brand new Organization (school) plus its first user as ADMIN.
 // This is the ONLY place a User + Membership + Organization get created
@@ -128,6 +129,12 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Failed to send verification email at registration", err);
   }
+
+  await notifyPlatformAdmins({
+    title: "New school signed up",
+    body: `${result.organization.name} just registered.`,
+    screen: "todos",
+  }).catch(() => {});
 
   return NextResponse.json({
     organizationId: result.organization.id,

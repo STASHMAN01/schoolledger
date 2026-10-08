@@ -58,7 +58,7 @@ export type PushResult = "sent" | "invalid-token" | "failed" | "not-configured";
 
 export async function sendPush(
   fcmToken: string,
-  message: { title: string; body: string; alarm?: boolean; screen?: string }
+  message: { title: string; body: string; alarm?: boolean; screen?: string; channel?: "sales" }
 ): Promise<PushResult> {
   const sa = loadServiceAccount();
   if (!sa) return "not-configured";
@@ -74,6 +74,7 @@ export async function sendPush(
             body: message.body,
             alarm: message.alarm ? "1" : "0",
             screen: message.screen ?? "todos",
+            ...(message.channel ? { channel: message.channel } : {}),
           },
           android: { priority: "HIGH", ttl: "7200s" },
         },

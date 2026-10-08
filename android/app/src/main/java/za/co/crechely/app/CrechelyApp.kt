@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 
 class CrechelyApp : Application() {
@@ -37,10 +38,24 @@ class CrechelyApp : Application() {
                 )
             },
         )
+        // Platform-owner only (Dylan, 8 Oct 2026): a new school signing up or
+        // paying rings this distinct "ka-ching" sound instead of the ordinary
+        // reminder tone. The server only ever pushes this channel to the
+        // platform owner's own device, never to a school's admin.
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_SALES, "Sales", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "A new school signs up or pays -- ka-ching."
+                setSound(
+                    Uri.parse("android.resource://za.co.crechely.app/raw/ka_ching"),
+                    AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build(),
+                )
+            },
+        )
     }
 
     companion object {
         const val CHANNEL_ALARM = "alarm"
         const val CHANNEL_GENERAL = "general"
+        const val CHANNEL_SALES = "sales"
     }
 }

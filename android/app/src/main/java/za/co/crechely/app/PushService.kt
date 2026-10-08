@@ -33,7 +33,12 @@ class PushService : FirebaseMessagingService() {
             this, 1, Intent(this, MainActivity::class.java).putExtra("screen", screen).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val n = NotificationCompat.Builder(this, CrechelyApp.CHANNEL_GENERAL)
+        // "sales" (Dylan, 8 Oct 2026): a new school signing up or paying --
+        // platform-owner only, rings the distinct ka-ching channel instead
+        // of the ordinary reminder tone. Anything else uses the general
+        // channel as before.
+        val channel = if (d["channel"] == "sales") CrechelyApp.CHANNEL_SALES else CrechelyApp.CHANNEL_GENERAL
+        val n = NotificationCompat.Builder(this, channel)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title).setContentText(body)
             .setAutoCancel(true).setContentIntent(open).build()

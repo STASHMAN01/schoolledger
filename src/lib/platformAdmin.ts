@@ -8,7 +8,7 @@ import { TenantAccessError } from "@/lib/tenant";
 // an env var — no manual database edit needed on a fresh deploy. Anyone
 // invited later via /platform/team is instead granted access through the
 // isPlatformAdmin column on User (see PlatformInvite in schema.prisma).
-function ownerEmails(): string[] {
+export function ownerEmails(): string[] {
   return (process.env.PLATFORM_ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
