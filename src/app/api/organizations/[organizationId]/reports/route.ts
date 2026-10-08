@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
-import { blankToNull, reportCreateSchema, resolveReportScope } from "@/lib/reports";
+import { REPORT_TYPE_INFO, blankToNull, reportCreateSchema, resolveReportScope } from "@/lib/reports";
+import { notifyOrgAdmins } from "@/lib/notifyTeachers";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -126,6 +127,23 @@ export async function POST(req: NextRequest, { params }: Params) {
       entityId: child.id,
       metadata: { childFirstName: child.firstName, childLastName: child.lastName, type: body.type },
     });
+
+    // A teacher filed this -- an admin (especially for an incident) should
+    // know right away rather than find it later. Skip when an admin filed
+    // it themselves. Keep the child's name out of the push text (see
+    // notifyTeachers.ts) -- just enough to prompt opening the app.
+    if (role === "TEACHER") {
+      await notifyOrgAdmins(
+        organizationId,
+        {
+          title: REPORT_TYPE_INFO[body.type].label,
+          body: `New ${REPORT_TYPE_INFO[body.type].label.toLowerCase()} filed.`,
+          screen: "reports",
+          alarm: body.type === "INCIDENT",
+        },
+        { exceptUserId: userId }
+      ).catch(() => {});
+    }
 
     return NextResponse.json({ report }, { status: 201 });
   } catch (err) {

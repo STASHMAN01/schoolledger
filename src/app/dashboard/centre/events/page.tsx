@@ -36,6 +36,7 @@ export default function CentreEventsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,6 +65,20 @@ export default function CentreEventsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     load();
   }, [load]);
+
+  async function remove(id: string, name: string) {
+    setDeletingId(id);
+    setError(null);
+    const res = await fetch(`/api/organizations/${organizationId}/events/${id}`, { method: "DELETE" });
+    setDeletingId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Couldn't delete. Please try again.");
+      return;
+    }
+    setSuccess(`Deleted "${name}".`);
+    load();
+  }
 
   return (
     <div className="animate-in max-w-3xl">
@@ -117,17 +132,28 @@ export default function CentreEventsPage() {
                 </div>
               </>
             );
-            return canOpen && e.isPaid ? (
-              <Link
-                key={e.id}
-                href={`/dashboard/accounting/events/${e.id}`}
-                className="transition-standard flex min-h-11 flex-wrap items-center gap-3 p-4 hover:bg-background"
-              >
-                {body}
-              </Link>
-            ) : (
+            return (
               <div key={e.id} className="flex min-h-11 flex-wrap items-center gap-3 p-4">
-                {body}
+                {canOpen && e.isPaid ? (
+                  <Link
+                    href={`/dashboard/accounting/events/${e.id}`}
+                    className="transition-standard flex min-w-0 flex-1 flex-wrap items-center gap-3 hover:underline"
+                  >
+                    {body}
+                  </Link>
+                ) : (
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">{body}</div>
+                )}
+                {canCreate && (
+                  <button
+                    type="button"
+                    onClick={() => remove(e.id, e.name)}
+                    disabled={deletingId === e.id}
+                    className="transition-standard shrink-0 text-xs text-danger hover:underline disabled:opacity-50"
+                  >
+                    {deletingId === e.id ? "Deleting…" : "Delete"}
+                  </button>
+                )}
               </div>
             );
           })}

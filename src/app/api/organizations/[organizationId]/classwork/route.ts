@@ -6,6 +6,7 @@ import { handleApiError } from "@/lib/apiError";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
 import { schoolClock, schoolDateValue } from "@/lib/dailySummary";
 import { CLASSWORK_HISTORY_DAYS, addDays, classworkSchema } from "@/lib/lessonPlan";
+import { notifyOrgAdmins } from "@/lib/notifyTeachers";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -97,6 +98,16 @@ export async function POST(req: NextRequest, { params }: Params) {
       entityId: entry.id,
       metadata: { date: clock.date },
     });
+
+    const category = await db.category.findUnique({
+      where: { id: assignedCategoryId },
+      select: { name: true },
+    });
+    await notifyOrgAdmins(organizationId, {
+      title: "New activity logged",
+      body: category ? `${category.name} recorded today's activity.` : "A class recorded today's activity.",
+      screen: "classwork",
+    }).catch(() => {});
 
     return NextResponse.json({ entry: { ...entry, date: clock.date } }, { status: 201 });
   } catch (err) {

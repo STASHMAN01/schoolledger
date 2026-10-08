@@ -147,12 +147,16 @@ function useNav() {
   // Replays that mode's guided walkthrough -- the home page's mount effect
   // watches for ?tour=1 (see CentreManagementHomePage/AccountingHomePage).
   const tourHref = inAccounting ? "/dashboard/accounting?tour=1" : "/dashboard/centre?tour=1";
-  // Alarms only exist inside the Android app (it provides window.CrechelyApp).
-  const [inTheApp, setInTheApp] = useState(false);
+  // Alarms only exist inside the Android app (it provides window.CrechelyApp),
+  // and only an admin may add or edit them (Dylan, 8 Oct 2026) -- it's a
+  // device-wide setting on the shared tablet, enforced again server-side by
+  // AlarmsLayout for anyone who tries the URL directly.
+  const [inAppDevice, setInAppDevice] = useState(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time detection on mount
-    setInTheApp(inApp());
+    setInAppDevice(inApp());
   }, []);
+  const inTheApp = inAppDevice && role === "ADMIN";
   return { pathname, links, settings, settingsBase, communication, tourHref, inTheApp };
 }
 
