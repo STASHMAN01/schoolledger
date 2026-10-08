@@ -16,6 +16,7 @@ type Bridge = {
   setRoutineEnabled(on: boolean): void;
   setRoutine(json: string): void;
   routineCount(): number;
+  registerPush?(): void;
 };
 
 function bridge(): Bridge | null {
@@ -73,4 +74,14 @@ export function appRoutineCount(): number {
 /** Sends the class timetable to the app so it can ring at every change. */
 export function appSetRoutine(items: RoutineAlarm[]): void {
   bridge()?.setRoutine?.(JSON.stringify(items));
+}
+
+/**
+ * Asks the app to (re-)send its push token to the server. The app also does
+ * this on its own after a cold page load, but that native hook misses a
+ * sign-in that redirects straight to /dashboard client-side without a full
+ * page reload -- so the dashboard calls this itself every time it mounts.
+ */
+export function appRegisterPush(): void {
+  bridge()?.registerPush?.();
 }

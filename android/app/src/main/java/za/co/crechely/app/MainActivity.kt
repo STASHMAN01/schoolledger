@@ -22,6 +22,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.util.Log
 import android.widget.FrameLayout
 import android.widget.ProgressBar
 import android.widget.Toast
@@ -211,17 +212,30 @@ class MainActivity : Activity() {
 
     // ---- push ----
 
-    /** Tells the server (using the website sign-in) where to send this tablet's notifications. */
+    /**
+     * Tells the server (using the website sign-in) where to send this tablet's
+     * notifications. Only runs on a real page load (WebViewClient#onPageFinished),
+     * which fires after the first cold load of our site but NOT after a client-side
+     * (SPA) navigation -- e.g. the redirect a login form does straight to
+     * /dashboard without a full page reload. That left this silently never
+     * firing again post-login for anyone who signed in after a redirect rather
+     * than a fresh page load. The website itself also calls this (via the
+     * Bridge.registerPush() JS entry point below) every time its dashboard
+     * mounts, which covers that case -- same pattern already used for the
+     * routine-alarm sync.
+     */
     private fun registerPushToken() {
         runCatching {
-            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-                Prefs.fcmToken = token
-                val body = JSONObject().put("fcmToken", token).put("deviceName", "${Build.MANUFACTURER} ${Build.MODEL}")
-                val js = "fetch('/api/mobile/device',{method:'PUT',headers:{'Content-Type':'application/json'},body:" +
-                    JSONObject.quote(body.toString()) + "}).catch(function(){});"
-                runOnUiThread { if (trusted) web.evaluateJavascript(js, null) }
-            }
-        } // Firebase isn't set up yet: the website still works, just without push.
+            FirebaseMessaging.getInstance().token
+                .addOnSuccessListener { token ->
+                    Prefs.fcmToken = token
+                    val body = JSONObject().put("fcmToken", token).put("deviceName", "${Build.MANUFACTURER} ${Build.MODEL}")
+                    val js = "fetch('/api/mobile/device',{method:'PUT',headers:{'Content-Type':'application/json'},body:" +
+                        JSONObject.quote(body.toString()) + "}).catch(function(){});"
+                    runOnUiThread { if (trusted) web.evaluateJavascript(js, null) }
+                }
+                .addOnFailureListener { e -> Log.e("CrechelyPush", "Could not get an FCM token", e) }
+        }.onFailure { e -> Log.e("CrechelyPush", "registerPushToken() threw (Firebase not initialized?)", e) }
     }
 
     private fun askForPermissions() {
@@ -282,6 +296,14 @@ class MainActivity : Activity() {
     /** What the website can ask the app to do. Only works while our own website is on screen. */
     inner class Bridge {
         @JavascriptInterface fun appVersion(): String = this@MainActivity.appVersion()
+
+        /** The website calls this every time its dashboard mounts (see PushRegister.tsx),
+         *  so push gets registered even after a sign-in that redirected client-side
+         *  rather than with a full page load. */
+        @JavascriptInterface fun registerPush() {
+            if (!trusted) return
+            runOnUiThread { registerPushToken() }
+        }
 
         @JavascriptInterface fun getAlarms(): String {
             if (!trusted) return "[]"

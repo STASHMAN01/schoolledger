@@ -16,6 +16,7 @@ import { db } from "@/lib/db";
 import { VerifyEmailGate } from "./VerifyEmailGate";
 import { DeletedSchoolScreen } from "./DeletedSchoolScreen";
 import { RoutineSync } from "./RoutineSync";
+import { PushRegister } from "./PushRegister";
 import { purgeDateFor } from "@/lib/orgDeletion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -134,6 +135,7 @@ export default async function DashboardLayout({
         <ErrorCatcher />
         {showApp && <TourOverlay />}
         {showApp && <RoutineSync />}
+        {showApp && <PushRegister />}
       </div>
       </TourProvider>
     </OrgProvider>
