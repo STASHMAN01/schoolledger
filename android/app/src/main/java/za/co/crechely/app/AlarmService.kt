@@ -25,6 +25,7 @@ import androidx.core.app.NotificationCompat
  */
 class AlarmService : Service() {
     private var player: MediaPlayer? = null
+    private var vibrator: Vibrator? = null
     private var savedVolume: Int? = null
     private val stopHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
@@ -124,6 +125,7 @@ class AlarmService : Service() {
         } else {
             getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         }
+        vibrator = v
         v?.vibrate(VibrationEffect.createWaveform(pattern, 0))
     }
 
@@ -131,6 +133,8 @@ class AlarmService : Service() {
         stopHandler.removeCallbacksAndMessages(null)
         player?.runCatching { stop(); release() }
         player = null
+        vibrator?.cancel()
+        vibrator = null
         savedVolume?.let {
             // Put the volume back the way the person had it.
             (getSystemService(Context.AUDIO_SERVICE) as AudioManager).setStreamVolume(AudioManager.STREAM_ALARM, it, 0)
