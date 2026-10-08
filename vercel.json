@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/todo-alerts",
       "schedule": "30 6 * * 1-5"
+    },
+    {
+      "path": "/api/cron/activity-alerts",
+      "schedule": "30 13 * * 1-5"
     }
   ]
 }
