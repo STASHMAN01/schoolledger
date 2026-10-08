@@ -21,17 +21,23 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const body = uploadRequestSchema.parse(await req.json());
     const targetId = (body.kind === "CLASSWORK" ? body.classworkEntryId : body.childReportId)!;
-    const allowed = await canAttachTo(organizationId, body.kind, targetId, { role, assignedCategoryId, permissions });
+    // Classwork's own caps (5 shared group photos, or one per child for an
+    // individual activity) are enforced inside canAttachTo, where the
+    // entry's activityType is already being looked up.
+    const allowed = await canAttachTo(
+      organizationId,
+      body.kind,
+      targetId,
+      { role, assignedCategoryId, permissions },
+      body.kind === "CLASSWORK" ? body.childId : undefined
+    );
     if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status });
 
-    const already = await db.storedFile.count({
-      where:
-        body.kind === "CLASSWORK"
-          ? { classworkEntryId: targetId, status: "ACTIVE" }
-          : { childReportId: targetId, status: "ACTIVE" },
-    });
-    if (already >= MAX_FILES_PER_ITEM) {
-      return NextResponse.json({ error: `That already has ${MAX_FILES_PER_ITEM} photos.` }, { status: 400 });
+    if (body.kind === "REPORT") {
+      const already = await db.storedFile.count({ where: { childReportId: targetId, status: "ACTIVE" } });
+      if (already >= MAX_FILES_PER_ITEM) {
+        return NextResponse.json({ error: `That already has ${MAX_FILES_PER_ITEM} photos.` }, { status: 400 });
+      }
     }
 
     const file = await db.storedFile.create({
@@ -45,6 +51,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         uploadedByUserId: userId,
         classworkEntryId: body.kind === "CLASSWORK" ? targetId : null,
         childReportId: body.kind === "REPORT" ? targetId : null,
+        childId: body.kind === "CLASSWORK" ? (body.childId ?? null) : null,
       },
       select: { id: true },
     });

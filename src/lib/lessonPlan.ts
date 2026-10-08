@@ -55,13 +55,21 @@ export const lessonPlanPutSchema = z.object({
   days: z.array(lessonPlanDaySchema).max(5),
 });
 
+export const ACTIVITY_TYPES = ["GROUP", "INDIVIDUAL"] as const;
+export type ActivityTypeValue = (typeof ACTIVITY_TYPES)[number];
+
 export const classworkSchema = z.object({
+  activityType: z.enum(ACTIVITY_TYPES),
   description: z
     .string()
     .trim()
     .min(1, "Describe what you did with the children.")
     .max(5_000, "Keep it under 5,000 characters."),
 });
+
+/** A group activity's shared photos; an individual one isn't capped the
+ * same way (one per child in the class instead -- see storedFiles.ts). */
+export const MAX_GROUP_PHOTOS = 5;
 
 /** How far back the Classwork history looks. */
 export const CLASSWORK_HISTORY_DAYS = 30;

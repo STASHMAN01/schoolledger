@@ -4,19 +4,24 @@ import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
 import { Button, Card, EmptyState, PageHeader, Select, Textarea } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
-import { PhotoAttachments, type Photo } from "@/components/PhotoAttachments";
+import { ClassworkPhotos, type ClassworkPhoto, type RosterChild } from "./ClassworkPhotos";
 
-// Classwork (Dylan, 5 Oct 2026): the class teacher records what they did
-// with the children today. Add-only for teachers; the admin reads it and
-// can remove a mistaken entry.
+// Classwork (Dylan, 5 Oct 2026; split into group/individual activities and
+// Cloudflare R2 photos, 8 Oct 2026): the class teacher records what they
+// did with the children today, and must attach at least one photo -- a
+// shared one for a group activity, or one per child for an individual
+// activity. Add-only for teachers; only an admin can remove a mistaken
+// entry or any uploaded photo.
 
+type ActivityType = "GROUP" | "INDIVIDUAL";
 type Entry = {
   id: string;
   date: string;
+  activityType: ActivityType;
   description: string;
   createdAt: string;
   createdBy: { name: string };
-  photos: Photo[];
+  photos: ClassworkPhoto[];
 };
 type Category = { id: string; name: string; archived: boolean };
 
@@ -30,9 +35,11 @@ function prettyDate(date: string) {
 }
 
 export default function ClassworkPage() {
-  const { organizationId, role, permissions } = useOrg();
+  const { organizationId, role } = useOrg();
   const isTeacher = role === "TEACHER";
-  const canRemove = !isTeacher && permissions.includes("MANAGE_CLASSES");
+  // Only an admin may delete an entry or a photo (Dylan, 8 Oct 2026) -- a
+  // teacher can no longer remove even their own, same-day entry/photo.
+  const canRemove = role === "ADMIN";
   const { confirm, dialog } = useConfirmDialog();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -40,6 +47,8 @@ export default function ClassworkPage() {
   const [className, setClassName] = useState("");
   const [today, setToday] = useState("");
   const [entries, setEntries] = useState<Entry[] | null>(null);
+  const [roster, setRoster] = useState<RosterChild[]>([]);
+  const [activityType, setActivityType] = useState<ActivityType>("GROUP");
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -60,9 +69,12 @@ export default function ClassworkPage() {
 
   const load = useCallback(async () => {
     const qs = isTeacher ? "" : `?categoryId=${encodeURIComponent(categoryId)}`;
-    const res = await fetch(`/api/organizations/${organizationId}/classwork${qs}`);
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
+    const [entriesRes, rosterRes] = await Promise.all([
+      fetch(`/api/organizations/${organizationId}/classwork${qs}`),
+      fetch(`/api/organizations/${organizationId}/children${qs}`),
+    ]);
+    const data = await entriesRes.json().catch(() => ({}));
+    if (entriesRes.ok) {
       setEntries(data.entries);
       setClassName(data.category.name);
       setToday(data.today);
@@ -71,6 +83,8 @@ export default function ClassworkPage() {
       setEntries([]);
       setError(data.error ?? "Could not load classwork.");
     }
+    const rosterData = await rosterRes.json().catch(() => ({}));
+    if (rosterRes.ok) setRoster(rosterData.children ?? []);
   }, [organizationId, isTeacher, categoryId]);
 
   useEffect(() => {
@@ -85,7 +99,7 @@ export default function ClassworkPage() {
     const res = await fetch(`/api/organizations/${organizationId}/classwork`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: text }),
+      body: JSON.stringify({ activityType, description: text }),
     });
     const data = await res.json().catch(() => ({}));
     setSaving(false);
@@ -94,6 +108,7 @@ export default function ClassworkPage() {
       return;
     }
     setText("");
+    setActivityType("GROUP");
     load();
   }
 
@@ -145,6 +160,29 @@ export default function ClassworkPage() {
 
       {isTeacher && (
         <Card as="div" className="mb-5 p-4">
+          <label className="mb-1 block text-sm font-medium text-foreground">Activity</label>
+          <div className="mb-3 flex gap-2">
+            {(["GROUP", "INDIVIDUAL"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setActivityType(t)}
+                className={`transition-standard min-h-11 rounded-lg border px-3 text-sm font-medium ${
+                  activityType === t
+                    ? "border-brand bg-brand-soft text-brand-soft-foreground"
+                    : "border-border text-muted-foreground hover:bg-background"
+                }`}
+              >
+                {t === "GROUP" ? "Group activity" : "Individual activity"}
+              </button>
+            ))}
+          </div>
+          <p className="mb-3 text-xs text-muted-foreground">
+            {activityType === "GROUP"
+              ? "One description and up to 5 shared photos of the class doing it together."
+              : "One description, then a photo of each child doing it on their own."}
+          </p>
+
           <label htmlFor="classwork-text" className="mb-1 block text-sm font-medium text-foreground">
             What did you do with the children today?
           </label>
@@ -157,7 +195,7 @@ export default function ClassworkPage() {
             onChange={(e) => setText(e.target.value)}
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            Please don&apos;t put medical or private details here.
+            Please don&apos;t put medical or private details here. A photo is required -- you&apos;ll add it right after saving.
           </p>
           <div className="mt-3">
             <Button onClick={add} disabled={saving || !text.trim()}>
@@ -187,35 +225,49 @@ export default function ClassworkPage() {
                 {date === today && <span className="ml-2 text-xs font-normal text-brand">Today</span>}
               </h2>
               <div className="divide-y divide-border">
-                {list.map((e) => (
-                  <div key={e.id} className="flex items-start justify-between gap-3 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="whitespace-pre-wrap text-sm text-foreground">{e.description}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {new Date(e.createdAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} ·{" "}
-                        {e.createdBy.name}
-                      </p>
-                      <PhotoAttachments
-                        organizationId={organizationId}
-                        kind="CLASSWORK"
-                        targetId={e.id}
-                        photos={e.photos ?? []}
-                        canAdd={isTeacher && date === today}
-                        canRemove={canRemove || (isTeacher && date === today)}
-                        onChanged={load}
-                      />
+                {list.map((e) => {
+                  const hasPhoto = e.activityType === "GROUP" ? e.photos.length > 0 : e.photos.some((p) => p.childId);
+                  return (
+                    <div key={e.id} className="flex items-start justify-between gap-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="whitespace-pre-wrap text-sm text-foreground">{e.description}</p>
+                          <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                            {e.activityType === "GROUP" ? "Group" : "Individual"}
+                          </span>
+                          {!hasPhoto && (
+                            <span className="rounded-full border border-danger/30 bg-danger/5 px-2 py-0.5 text-xs text-danger">
+                              Photo needed
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {new Date(e.createdAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} ·{" "}
+                          {e.createdBy.name}
+                        </p>
+                        <ClassworkPhotos
+                          organizationId={organizationId}
+                          entryId={e.id}
+                          activityType={e.activityType}
+                          photos={e.photos ?? []}
+                          roster={roster}
+                          canAdd={isTeacher && date === today}
+                          canRemove={canRemove}
+                          onChanged={load}
+                        />
+                      </div>
+                      {canRemove && (
+                        <button
+                          type="button"
+                          onClick={() => remove(e.id)}
+                          className="shrink-0 text-sm text-danger underline underline-offset-2"
+                        >
+                          Remove
+                        </button>
+                      )}
                     </div>
-                    {canRemove && (
-                      <button
-                        type="button"
-                        onClick={() => remove(e.id)}
-                        className="shrink-0 text-sm text-danger underline underline-offset-2"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
           ))}

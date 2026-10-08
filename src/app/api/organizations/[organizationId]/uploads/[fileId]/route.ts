@@ -39,11 +39,17 @@ export async function PUT(_req: Request, { params }: Params) {
 }
 
 // Removing a photo takes the file out of the bucket as well: a deleted
-// injury photo should not sit in storage afterwards (POPIA).
+// injury photo should not sit in storage afterwards (POPIA). Admin-only
+// (Dylan, 8 Oct 2026: "the admin is the only one who can delete the
+// uploaded pictures") -- a teacher can add photos but never remove one,
+// including their own, once it's uploaded.
 export async function DELETE(_req: Request, { params }: Params) {
   try {
     const { organizationId, fileId } = await params;
     const { userId, role, permissions, assignedCategoryId } = await requireMembership(organizationId, "VIEW_CENTRE");
+    if (role !== "ADMIN") {
+      return NextResponse.json({ error: "Only an admin can delete a photo." }, { status: 403 });
+    }
 
     const file = await db.storedFile.findFirst({
       where: { id: fileId, organizationId },

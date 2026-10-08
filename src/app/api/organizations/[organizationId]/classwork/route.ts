@@ -13,13 +13,14 @@ type Params = { params: Promise<{ organizationId: string }> };
 const entrySelect = {
   id: true,
   date: true,
+  activityType: true,
   description: true,
   createdAt: true,
   createdBy: { select: { name: true } },
   photos: {
     where: { status: "ACTIVE" },
     orderBy: { createdAt: "asc" },
-    select: { id: true, caption: true, contentType: true },
+    select: { id: true, caption: true, contentType: true, childId: true },
   },
 } as const;
 
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         organizationId,
         categoryId: assignedCategoryId,
         date: schoolDateValue(clock.date),
+        activityType: body.activityType,
         description: body.description,
         createdByUserId: userId,
       },

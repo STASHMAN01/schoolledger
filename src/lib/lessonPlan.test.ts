@@ -38,8 +38,18 @@ describe("isWeekendDate", () => {
 
 describe("schemas", () => {
   it("requires some classwork text and trims it", () => {
-    expect(classworkSchema.safeParse({ description: "   " }).success).toBe(false);
-    expect(classworkSchema.parse({ description: "  Painted leaves " }).description).toBe("Painted leaves");
+    expect(classworkSchema.safeParse({ activityType: "GROUP", description: "   " }).success).toBe(false);
+    expect(
+      classworkSchema.parse({ activityType: "GROUP", description: "  Painted leaves " }).description
+    ).toBe("Painted leaves");
+  });
+
+  it("requires a valid activity type", () => {
+    expect(classworkSchema.safeParse({ description: "Painted leaves" }).success).toBe(false);
+    expect(classworkSchema.safeParse({ activityType: "SOLO", description: "Painted leaves" }).success).toBe(false);
+    expect(classworkSchema.safeParse({ activityType: "INDIVIDUAL", description: "Painted leaves" }).success).toBe(
+      true
+    );
   });
 
   it("accepts a week of days and rejects a bad date or an over-long topic", () => {

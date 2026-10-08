@@ -485,6 +485,11 @@ model Child {
   attendanceRecords AttendanceRecord[]
   whatsappGroupChecks WhatsAppGroupCheck[]
   reports      ChildReport[]
+  // Individual-activity classwork photos tagged to this child (Dylan, 8
+  // Oct 2026). SetNull, not Cascade/Restrict: if a child record is purged,
+  // the photo itself (and the class's record of that day) should still
+  // stand -- it just stops being attributed to a specific child.
+  classworkPhotos StoredFile[]
 
   @@index([organizationId])
   @@index([categoryId])
@@ -1360,14 +1365,25 @@ model LessonTheme {
 // What the class teacher did with the children today (Dylan, 5 Oct 2026).
 // Teachers only add, for today; they never edit or delete. Photos can
 // attach to these later.
+//
+// Split into GROUP vs INDIVIDUAL (Dylan, 8 Oct 2026): a group activity gets
+// one description and up to 5 shared photos; an individual activity gets
+// one description and, optionally, one photo per child in the class
+// (StoredFile.childId) -- so there must be a picture of each child with
+// what they did, not just one photo for the whole class. A photo is
+// required to submit either way; enforced client-side (an entry already
+// exists with zero photos is still visible/removable by an admin, same as
+// any other classwork entry) since the upload itself is a second API call
+// against an entry that must already exist.
 model ClassworkEntry {
-  id              String   @id @default(cuid())
+  id              String       @id @default(cuid())
   organizationId  String
   categoryId      String
   date            DateTime
-  description     String   @db.Text
+  activityType    ActivityType @default(GROUP)
+  description     String       @db.Text
   createdByUserId String
-  createdAt       DateTime @default(now())
+  createdAt       DateTime     @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category     Category     @relation(fields: [categoryId], references: [id])
@@ -1377,6 +1393,11 @@ model ClassworkEntry {
   @@index([organizationId, date])
   @@index([categoryId, date])
   @@map("classwork_entries")
+}
+
+enum ActivityType {
+  GROUP
+  INDIVIDUAL
 }
 
 // Work an admin hands to a class (Dylan, 5 Oct 2026): "Admin has assigned
@@ -1523,16 +1544,22 @@ model StoredFile {
   status           String   @default("PENDING")
   classworkEntryId String?
   childReportId    String?
+  // Set only for a CLASSWORK photo on an INDIVIDUAL-activity entry: which
+  // child this specific photo is of (Dylan, 8 Oct 2026). Null for every
+  // GROUP-activity photo and every REPORT photo.
+  childId          String?
   uploadedByUserId String
   createdAt        DateTime @default(now())
 
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   classworkEntry ClassworkEntry? @relation(fields: [classworkEntryId], references: [id], onDelete: Cascade)
   childReport    ChildReport?    @relation(fields: [childReportId], references: [id], onDelete: Cascade)
+  child          Child?          @relation(fields: [childId], references: [id], onDelete: SetNull)
   uploadedBy     User            @relation(fields: [uploadedByUserId], references: [id])
 
   @@index([organizationId, status])
   @@index([classworkEntryId])
   @@index([childReportId])
+  @@index([childId])
   @@map("stored_files")
 }

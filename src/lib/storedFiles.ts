@@ -4,11 +4,12 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES } from "@/lib/storage";
+import { MAX_GROUP_PHOTOS } from "@/lib/lessonPlan";
 
 export const FILE_KINDS = ["CLASSWORK", "REPORT"] as const;
 export type FileKind = (typeof FILE_KINDS)[number];
 
-/** How many photos one classwork entry or report may carry. */
+/** How many photos one incident/academic/disciplinary report may carry. */
 export const MAX_FILES_PER_ITEM = 12;
 
 export const uploadRequestSchema = z
@@ -19,6 +20,9 @@ export const uploadRequestSchema = z
     caption: z.string().trim().max(200).optional(),
     classworkEntryId: z.string().cuid().optional(),
     childReportId: z.string().cuid().optional(),
+    // Only meaningful for an INDIVIDUAL-activity classwork entry: which
+    // child this photo is of. Ignored for REPORT and for GROUP entries.
+    childId: z.string().cuid().optional(),
   })
   .refine((v) => (v.kind === "CLASSWORK" ? !!v.classworkEntryId : !!v.childReportId), {
     message: "The file must be attached to something.",
@@ -39,7 +43,8 @@ export async function canAttachTo(
   organizationId: string,
   kind: FileKind,
   targetId: string,
-  access: Access
+  access: Access,
+  childId?: string
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   if (kind === "CLASSWORK") {
     if (!access.permissions.includes("VIEW_CENTRE")) {
@@ -47,11 +52,32 @@ export async function canAttachTo(
     }
     const entry = await db.classworkEntry.findFirst({
       where: { id: targetId, organizationId },
-      select: { categoryId: true },
+      select: { categoryId: true, activityType: true },
     });
     if (!entry) return { ok: false, status: 404, error: "Not found." };
     if (access.role === "TEACHER" && entry.categoryId !== access.assignedCategoryId) {
       return { ok: false, status: 403, error: "Not allowed for your class." };
+    }
+    if (entry.activityType === "INDIVIDUAL") {
+      if (!childId) return { ok: false, status: 400, error: "Pick which child this photo is of." };
+      const child = await db.child.findFirst({
+        where: { id: childId, organizationId, categoryId: entry.categoryId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!child) return { ok: false, status: 404, error: "That child isn't in this class." };
+      const already = await db.storedFile.findFirst({
+        where: { classworkEntryId: targetId, childId, status: { in: ["ACTIVE", "PENDING"] } },
+        select: { id: true },
+      });
+      if (already) return { ok: false, status: 400, error: "This child already has a photo for today." };
+    } else {
+      if (childId) return { ok: false, status: 400, error: "A group activity's photos aren't tagged to one child." };
+      const count = await db.storedFile.count({
+        where: { classworkEntryId: targetId, status: { in: ["ACTIVE", "PENDING"] } },
+      });
+      if (count >= MAX_GROUP_PHOTOS) {
+        return { ok: false, status: 400, error: `A group activity can have up to ${MAX_GROUP_PHOTOS} photos.` };
+      }
     }
     return { ok: true };
   }
