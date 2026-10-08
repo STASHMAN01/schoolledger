@@ -13,7 +13,8 @@ class CrechelyApp : Application() {
         super.onCreate()
         Prefs.init(this)
         createChannels()
-        AlarmScheduler.rescheduleAll(this)
+        // Never let alarm scheduling take the whole app down at launch.
+        runCatching { AlarmScheduler.rescheduleAll(this) }
     }
 
     private fun createChannels() {

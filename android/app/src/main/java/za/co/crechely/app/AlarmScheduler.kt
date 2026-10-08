@@ -5,10 +5,36 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.util.Log
 import java.util.Calendar
 
 /** Alarms set on this tablet (Alarms tab). They work with no internet and no Firebase. */
 object AlarmScheduler {
+    /**
+     * Sets an alarm without ever crashing the app. Since Android 12,
+     * setAlarmClock needs an exact-alarm permission (see the manifest:
+     * USE_EXACT_ALARM / SCHEDULE_EXACT_ALARM). Without one it throws a
+     * SecurityException, and because CrechelyApp.onCreate reschedules
+     * every alarm at start-up, that closed the app the moment it opened
+     * on an Android 13+ tablet once a class routine had synced (8 Oct
+     * 2026). If a tablet still refuses exact alarms, fall back to a
+     * slightly inexact one rather than throwing.
+     */
+    private fun setAlarm(am: AlarmManager, at: Long, pi: PendingIntent) {
+        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
+        if (canExact) {
+            try {
+                am.setAlarmClock(AlarmManager.AlarmClockInfo(at, pi), pi)
+                return
+            } catch (e: SecurityException) {
+                Log.w("CrechelyAlarm", "Exact alarm refused; using an inexact one", e)
+            }
+        }
+        runCatching { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi) }
+            .onFailure { e -> Log.e("CrechelyAlarm", "Could not set alarm", e) }
+    }
+
     private fun pending(context: Context, id: Int): PendingIntent = PendingIntent.getBroadcast(
         context, 5000 + id,
         Intent(context, AlarmReceiver::class.java).putExtra("alarmId", id),
@@ -32,8 +58,8 @@ object AlarmScheduler {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         if (!a.enabled) { am.cancel(pending(context, a.id)); return }
         val at = nextTrigger(a).timeInMillis
-        // setAlarmClock is exact, survives Doze and needs no special permission.
-        am.setAlarmClock(AlarmManager.AlarmClockInfo(at, pending(context, a.id)), pending(context, a.id))
+        // Exact and survives Doze (permission: see setAlarm).
+        setAlarm(am, at, pending(context, a.id))
     }
 
     fun cancel(context: Context, id: Int) {
@@ -67,7 +93,7 @@ object AlarmScheduler {
         if (!Prefs.routineEnabled) return
         Prefs.routine.take(ROUTINE_MAX).forEachIndexed { i, item ->
             val at = nextRoutineTrigger(item).timeInMillis
-            am.setAlarmClock(AlarmManager.AlarmClockInfo(at, routinePending(context, i)), routinePending(context, i))
+            setAlarm(am, at, routinePending(context, i))
         }
     }
 

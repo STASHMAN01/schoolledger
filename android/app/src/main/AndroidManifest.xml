@@ -9,6 +9,12 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Exact alarms (register reminder, class routine). Android 13+:
+         USE_EXACT_ALARM, granted at install for an alarm app. Android 12:
+         SCHEDULE_EXACT_ALARM, granted by default there. Without either,
+         setAlarmClock throws and closed the app at launch. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:name=".CrechelyApp"
