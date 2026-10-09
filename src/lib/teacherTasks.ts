@@ -3,6 +3,13 @@ import { DATE_RE } from "@/lib/lessonPlan";
 
 // Tasks an admin assigns to a class (Dylan, 5 Oct 2026). Pure helpers.
 
+/**
+ * Sent as categoryId to give the same task to every active class at once
+ * (Dylan, 9 Oct 2026). Each class still gets its own copy, so every teacher
+ * acknowledges and ticks it off separately.
+ */
+export const ALL_CLASSES = "__all__";
+
 export const taskCreateSchema = z.object({
   categoryId: z.string().min(1, "Choose a class."),
   title: z.string().trim().min(1, "Say what the task is.").max(200, "Keep the title under 200 characters."),

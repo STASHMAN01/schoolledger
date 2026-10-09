@@ -5,7 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { schoolClock, schoolDateValue } from "@/lib/dailySummary";
 import { addDays } from "@/lib/lessonPlan";
-import { DONE_VISIBLE_DAYS, taskCreateSchema } from "@/lib/teacherTasks";
+import { ALL_CLASSES, DONE_VISIBLE_DAYS, taskCreateSchema } from "@/lib/teacherTasks";
 import { notifyClassTeachers } from "@/lib/notifyTeachers";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -60,7 +60,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 }
 
-// Admin assigns a task to a class.
+// Admin assigns a task to a class -- or, with categoryId ALL_CLASSES, the
+// same task to every active class at once (one copy per class).
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
@@ -68,42 +69,57 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (role === "TEACHER") return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
 
     const body = taskCreateSchema.parse(await req.json());
-    const category = await db.category.findFirst({
-      where: { id: body.categoryId, organizationId, deletedAt: null },
+    const toAll = body.categoryId === ALL_CLASSES;
+    const categories = await db.category.findMany({
+      where: toAll
+        ? { organizationId, deletedAt: null, archived: false }
+        : { id: body.categoryId, organizationId, deletedAt: null },
       select: { id: true, name: true },
+      orderBy: { name: "asc" },
     });
-    if (!category) return NextResponse.json({ error: "Not found." }, { status: 404 });
+    if (categories.length === 0) {
+      return NextResponse.json({ error: toAll ? "There are no classes yet." : "Not found." }, { status: 404 });
+    }
 
-    const task = await db.teacherTask.create({
-      data: {
+    const details = body.details?.trim() || null;
+    const dueDate = body.dueDate ? schoolDateValue(body.dueDate) : null;
+    const tasks = await db.$transaction(
+      categories.map((category) =>
+        db.teacherTask.create({
+          data: {
+            organizationId,
+            categoryId: category.id,
+            title: body.title,
+            details,
+            dueDate,
+            createdByUserId: userId,
+          },
+          select: taskSelect,
+        })
+      )
+    );
+
+    for (const task of tasks) {
+      await logAudit({
         organizationId,
-        categoryId: category.id,
-        title: body.title,
-        details: body.details?.trim() || null,
-        dueDate: body.dueDate ? schoolDateValue(body.dueDate) : null,
-        createdByUserId: userId,
-      },
-      select: taskSelect,
-    });
+        userId,
+        action: "task.assigned",
+        entityType: "TeacherTask",
+        entityId: task.id,
+        metadata: { className: task.category.name, title: body.title, allClasses: toAll },
+      });
 
-    await logAudit({
-      organizationId,
-      userId,
-      action: "task.assigned",
-      entityType: "TeacherTask",
-      entityId: task.id,
-      metadata: { className: category.name, title: body.title },
-    });
+      // Tell the class's tablets straight away (Dylan, 8 Oct 2026). A normal
+      // notification, not an alarm: it should not wake anyone up at night.
+      await notifyClassTeachers(organizationId, task.category.id, {
+        title: "New task for your class",
+        body: body.dueDate ? `${body.title} — due ${body.dueDate}` : body.title,
+        screen: "todos",
+      }).catch(() => {});
+    }
 
-    // Tell the class's tablets straight away (Dylan, 8 Oct 2026). A normal
-    // notification, not an alarm: it should not wake anyone up at night.
-    await notifyClassTeachers(organizationId, category.id, {
-      title: "New task for your class",
-      body: body.dueDate ? `${body.title} — due ${body.dueDate}` : body.title,
-      screen: "todos",
-    }).catch(() => {});
-
-    return NextResponse.json({ task: shape(task) }, { status: 201 });
+    const shaped = tasks.map(shape);
+    return NextResponse.json({ task: shaped[0], tasks: shaped }, { status: 201 });
   } catch (err) {
     return handleApiError(err);
   }

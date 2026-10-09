@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { isOverdue, taskCreateSchema, taskState } from "./teacherTasks";
+import { ALL_CLASSES, isOverdue, taskCreateSchema, taskState } from "./teacherTasks";
 
 describe("taskCreateSchema", () => {
   it("needs a class and a title", () => {
     expect(taskCreateSchema.safeParse({ categoryId: "", title: "x" }).success).toBe(false);
     expect(taskCreateSchema.safeParse({ categoryId: "c1", title: "  " }).success).toBe(false);
     expect(taskCreateSchema.parse({ categoryId: "c1", title: " Tidy the book corner " }).title).toBe("Tidy the book corner");
+  });
+  it("accepts the all-classes choice", () => {
+    expect(taskCreateSchema.parse({ categoryId: ALL_CLASSES, title: "Fire drill at 10" }).categoryId).toBe(ALL_CLASSES);
   });
   it("accepts an optional due date and rejects a bad one", () => {
     expect(taskCreateSchema.safeParse({ categoryId: "c1", title: "x", dueDate: "2026-10-09" }).success).toBe(true);

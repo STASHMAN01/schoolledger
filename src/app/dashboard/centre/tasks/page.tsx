@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
-import { isOverdue, taskState } from "@/lib/teacherTasks";
+import { ALL_CLASSES, isOverdue, taskState } from "@/lib/teacherTasks";
 
 // Assigned tasks (Dylan, 5 Oct 2026): the admin hands work to a class; the
 // class teacher sees a pop-up, then ticks it off here.
@@ -38,6 +38,7 @@ export default function TasksPage() {
   const [dueDate, setDueDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch(`${base}/tasks`);
@@ -72,6 +73,7 @@ export default function TasksPage() {
   async function assign() {
     setSaving(true);
     setError("");
+    setNotice("");
     const res = await fetch(`${base}/tasks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -86,6 +88,8 @@ export default function TasksPage() {
     setTitle("");
     setDetails("");
     setDueDate("");
+    const count = Array.isArray(data.tasks) ? data.tasks.length : 1;
+    setNotice(count > 1 ? `Sent to all ${count} classes.` : "Task assigned.");
     load();
   }
 
@@ -135,6 +139,7 @@ export default function TasksPage() {
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Class</label>
               <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 {categories.length === 0 && <option value="">No classes yet</option>}
+                {categories.length > 1 && <option value={ALL_CLASSES}>All classes ({categories.length})</option>}
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -163,13 +168,18 @@ export default function TasksPage() {
             aria-label="Details"
           />
           <Button onClick={assign} disabled={saving || !title.trim() || !categoryId}>
-            {saving ? "Assigning…" : "Assign task"}
+            {saving ? "Assigning…" : categoryId === ALL_CLASSES ? "Send to all classes" : "Assign task"}
           </Button>
         </Card>
       )}
 
       {error && (
         <p className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">{error}</p>
+      )}
+      {notice && !error && (
+        <p className="mb-4 rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-success" role="status">
+          {notice}
+        </p>
       )}
 
       {tasks === null ? (
