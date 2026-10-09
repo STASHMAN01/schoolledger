@@ -56,6 +56,14 @@ const ALLOWED: [string, RegExp][] = [
   ["POST", new RegExp(`^/medicine/${ID}/dose$`)],
   ["POST", new RegExp(`^/medicine/${ID}/return$`)],
   ["GET", new RegExp(`^/medicine/${ID}/pdf$`)],
+  // Photos on classwork and incident reports. Each route re-checks that the
+  // target belongs to the teacher's own class (canAttachTo / canView), so
+  // this only opens the door. The /files LIST (the admin Files page) stays
+  // closed: only a single photo can be viewed.
+  ["POST", /^\/uploads$/],
+  ["PUT", new RegExp(`^/uploads/${ID}$`)],
+  ["DELETE", new RegExp(`^/uploads/${ID}$`)],
+  ["GET", new RegExp(`^/files/${ID}$`)],
 ];
 
 /** The part of an API path after /api/organizations/<orgId>, or null. */

@@ -33,6 +33,14 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("GET", api("/medicine/abc/pdf"))).toBe(true);
   });
 
+  it("lets a teacher upload, confirm, remove and view photos, but not browse the Files page", () => {
+    expect(teacherMayCall("POST", api("/uploads"))).toBe(true);
+    expect(teacherMayCall("PUT", api("/uploads/f1"))).toBe(true);
+    expect(teacherMayCall("DELETE", api("/uploads/f1"))).toBe(true);
+    expect(teacherMayCall("GET", api("/files/f1"))).toBe(true);
+    expect(teacherMayCall("GET", api("/files"))).toBe(false);
+  });
+
   it("refuses changes, parent data and admin areas", () => {
     expect(teacherMayCall("PATCH", api("/children/abc123"))).toBe(false);
     expect(teacherMayCall("DELETE", api("/reports/r1"))).toBe(false);
