@@ -287,6 +287,12 @@ export default async function RootPage() {
                   >
                     See how it works
                   </Link>
+                  <Link
+                    href="/download"
+                    className="lift-on-hover inline-flex min-h-11 items-center rounded-xl border border-border-strong bg-surface px-5 text-sm font-semibold text-foreground"
+                  >
+                    Download the app
+                  </Link>
                 </div>
                 <p className="mt-4 text-sm text-muted-foreground">
                   No card required · Full access for {TRIAL_DAYS} days · Cancel any time
