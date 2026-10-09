@@ -132,6 +132,11 @@ export default function ReportsPage() {
   const isTeacher = role === "TEACHER";
   const visibleTypes = isTeacher ? REPORT_TYPES.filter((t) => t === "INCIDENT") : REPORT_TYPES;
   const canChange = canManage && !isTeacher;
+  // Photos (Dylan, 9 Oct 2026: teachers must be able to add them): a
+  // teacher can add to their own class's reports -- the server checks the
+  // class -- but only an admin can delete one, same as classwork photos.
+  const canAddPhotos = canManage;
+  const canRemovePhotos = role === "ADMIN";
   // ?new=INCIDENT opens a blank incident form straight away (the daily
   // summary's "Make the report now"); &back=summary returns there after
   // saving.
@@ -339,8 +344,8 @@ export default function ReportsPage() {
                   kind="REPORT"
                   targetId={r.id}
                   photos={r.photos ?? []}
-                  canAdd={canChange}
-                  canRemove={canChange}
+                  canAdd={canAddPhotos}
+                  canRemove={canRemovePhotos}
                   onChanged={load}
                 />
               </div>
