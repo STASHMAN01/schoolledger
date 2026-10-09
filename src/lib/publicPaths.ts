@@ -97,6 +97,11 @@ export const PUBLIC_PATHS = [
   // instead of verifying. The API route was reachable the whole time
   // (it sits under the public /api/auth); only the page was blocked.
   "/verify-email",
+  // Public app download (Dylan, 9 Oct 2026): the page and the route that
+  // redirects to a short-lived link for the newest APK. Visitors have no
+  // account yet, so both must be reachable signed out.
+  "/download",
+  "/api/download",
 ];
 
 // Areas that genuinely require a session. Everything outside these is

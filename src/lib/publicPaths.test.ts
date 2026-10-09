@@ -69,6 +69,13 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/reset-password/some-token")).toBe(true);
   });
 
+  it("lets signed-out visitors reach the public app download, but not the signed-in one", () => {
+    expect(isPublicPath("/download")).toBe(true);
+    expect(isPublicPath("/api/download/app")).toBe(true);
+    expect(isPublicPath("/api/app/latest")).toBe(false);
+    expect(isPublicPath("/api/platform/app-release")).toBe(false);
+  });
+
   it("matches on path segments, not bare string prefixes", () => {
     // "/brand" being public must not make "/brandnew" public.
     expect(isPublicPath("/brandnew")).toBe(false);

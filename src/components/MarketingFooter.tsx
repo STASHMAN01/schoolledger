@@ -24,6 +24,9 @@ export function MarketingFooter() {
             </Link>
             {/* Kept here because the homepage block that used to carry this
                 link is hidden until there are testimonials to show. */}
+            <Link href="/download" className="hover:text-foreground">
+              Download the app
+            </Link>
             <Link href="/testimonials/new" className="hover:text-foreground">
               Give a testimonial
             </Link>

@@ -5,7 +5,7 @@ import { SITE_URL } from "@/lib/site";
 // indexable marketing pages are listed — dashboard/platform routes are
 // behind auth and excluded via robots.ts instead.
 export default function sitemap(): MetadataRoute.Sitemap {
-  const routes = ["/", "/pricing", "/support", "/register", "/login", "/privacy", "/terms", "/popia", "/refund-policy"];
+  const routes = ["/", "/pricing", "/download", "/support", "/register", "/login", "/privacy", "/terms", "/popia", "/refund-policy"];
   return routes.map((route) => ({
     url: `${SITE_URL}${route}`,
     lastModified: new Date(),
