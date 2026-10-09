@@ -273,6 +273,10 @@ export function UtilityLinks({ isPlatformAdmin }: { isPlatformAdmin: boolean }) 
           Platform
         </Link>
       )}
+      {/* Every role and school can get the Android app here (Dylan, 9 Oct 2026). */}
+      <Link href="/dashboard/updates" title="Download the latest Crechely app" className={small(isActive(pathname, "/dashboard/updates"))}>
+        Updates
+      </Link>
       <Link href={tourHref} title="Replay the guided walkthrough" className={small(false)}>
         Take a tour
       </Link>
@@ -320,6 +324,7 @@ export function MobileMenu({ isPlatformAdmin }: { isPlatformAdmin: boolean }) {
       items: [
         ...(inTheApp ? [{ href: "/dashboard/alarms", label: "Alarms" }] : []),
         ...(isPlatformAdmin ? [{ href: "/platform", label: "Platform" }] : []),
+        { href: "/dashboard/updates", label: "Updates" },
         { href: tourHref, label: "Take a tour" },
         { href: "/support", label: "Support" },
       ],
