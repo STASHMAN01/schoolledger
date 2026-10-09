@@ -17,6 +17,9 @@ type Bridge = {
   setRoutine(json: string): void;
   routineCount(): number;
   registerPush?(): void;
+  /** Only in app builds that can update themselves (versionCode 2+). */
+  appVersionCode?(): number;
+  installUpdate?(url: string): void;
 };
 
 function bridge(): Bridge | null {
@@ -84,4 +87,28 @@ export function appSetRoutine(items: RoutineAlarm[]): void {
  */
 export function appRegisterPush(): void {
   bridge()?.registerPush?.();
+}
+
+/** The installed app's version code, or null in a browser or an app too old to update itself. */
+export function appVersionCode(): number | null {
+  const b = bridge();
+  if (!b?.appVersionCode) return null;
+  try {
+    const v = Number(b.appVersionCode());
+    return Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Asks the app to download and install a new version. Progress comes back
+ * as a "crechely-update" window event whose detail is one of
+ * "downloading" | "installing" | "permission" | "failed".
+ */
+export function appInstallUpdate(url: string): boolean {
+  const b = bridge();
+  if (!b?.installUpdate) return false;
+  b.installUpdate(url);
+  return true;
 }

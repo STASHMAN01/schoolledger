@@ -18,8 +18,10 @@ android {
         applicationId = "za.co.crechely.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        // Bump versionCode by 1 for EVERY build you publish on
+        // /platform/app-updates, or apps won't see it as an update.
+        versionCode = 2
+        versionName = "1.1.0"
         buildConfigField("String", "BASE_URL", "\"https://www.crechely.co.za\"")
     }
 

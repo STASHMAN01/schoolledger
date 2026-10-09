@@ -125,6 +125,26 @@ export async function statObject(key: string): Promise<{ sizeBytes: number; cont
   }
 }
 
+/** Writes a small JSON document straight from the server (e.g. app/latest.json). */
+export async function putJson(key: string, value: unknown): Promise<void> {
+  const { client: s3, bucket } = client();
+  await s3.send(
+    new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: "application/json", Body: JSON.stringify(value) })
+  );
+}
+
+/** Reads a small JSON document; null if it isn't there or isn't valid JSON. */
+export async function getJson<T>(key: string): Promise<T | null> {
+  const { client: s3, bucket } = client();
+  try {
+    const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const text = await res.Body?.transformToString();
+    return text ? (JSON.parse(text) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteObject(key: string): Promise<void> {
   const { client: s3, bucket } = client();
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => {});

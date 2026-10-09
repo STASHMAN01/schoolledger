@@ -3,4 +3,6 @@
     <cache-path name="downloads" path="downloads/" />
     <!-- Photos taken with the tablet camera for an upload (see MainActivity). -->
     <cache-path name="camera" path="camera/" />
+    <!-- A downloaded app update, handed to Android's installer. -->
+    <cache-path name="updates" path="updates/" />
 </paths>

@@ -54,6 +54,12 @@ export default async function PlatformLayout({ children }: { children: React.Rea
               Testimonials
             </Link>
             <Link
+              href="/platform/app-updates"
+              className="transition-standard rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
+            >
+              App updates
+            </Link>
+            <Link
               href="/dashboard"
               className="transition-standard rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-background hover:text-foreground"
             >

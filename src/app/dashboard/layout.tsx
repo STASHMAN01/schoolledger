@@ -17,6 +17,7 @@ import { VerifyEmailGate } from "./VerifyEmailGate";
 import { DeletedSchoolScreen } from "./DeletedSchoolScreen";
 import { RoutineSync } from "./RoutineSync";
 import { PushRegister } from "./PushRegister";
+import { AppUpdateBanner } from "./AppUpdateBanner";
 import { purgeDateFor } from "@/lib/orgDeletion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -119,6 +120,7 @@ export default async function DashboardLayout({
           )}
         </header>
         <div className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-6 sm:py-8">
+          <AppUpdateBanner />
           {isDeleted && org.deletedAt ? (
             <DeletedSchoolScreen
               organizationId={membership.organizationId}

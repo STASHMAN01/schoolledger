@@ -9,6 +9,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- In-app updates: the app installs a newer APK of itself (see
+         MainActivity.installApk). Android still asks the person once to
+         allow it, and shows its own install screen every time. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Exact alarms (register reminder, class routine). Android 13+:
          USE_EXACT_ALARM, granted at install for an alarm app. Android 12:
          SCHEDULE_EXACT_ALARM, granted by default there. Without either,

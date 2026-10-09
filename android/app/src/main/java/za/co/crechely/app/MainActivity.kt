@@ -51,6 +51,8 @@ class MainActivity : Activity() {
     // Where the camera writes a photo taken for an upload, until it's handed back to the page.
     private var cameraUri: Uri? = null
     private var cameraFile: File? = null
+    // A downloaded update waiting for the "install unknown apps" permission.
+    private var pendingUpdate: File? = null
 
     // True only while the page on screen is our own website. The JS bridge
     // refuses to do anything otherwise.
@@ -96,6 +98,13 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         CookieManager.getInstance().flush()
+        // Back from allowing "install unknown apps": carry on with the update.
+        pendingUpdate?.let { file ->
+            if (packageManager.canRequestPackageInstalls()) {
+                pendingUpdate = null
+                installApk(file)
+            }
+        }
     }
 
     override fun onPause() {
@@ -251,6 +260,82 @@ class MainActivity : Activity() {
         return Intent.createChooser(picker, "Add a photo").putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(camera))
     }
 
+    // ---- app updates ----
+    // Dylan, 9 Oct 2026: "new update available ... when you click update it
+    // downloads directly from that app". The website (AppUpdateBanner) gets
+    // a short-lived link to the APK in our private R2 bucket and hands it
+    // here; we download it, check it really is a newer Crechely, and open
+    // Android's own installer. Android only accepts it if it's signed with
+    // the same key as the installed app.
+
+    private fun isUpdateHost(u: Uri): Boolean =
+        u.scheme == "https" && (u.host ?: "").endsWith(".r2.cloudflarestorage.com")
+
+    private fun updateState(state: String) = runOnUiThread {
+        if (trusted) {
+            web.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('crechely-update',{detail:${JSONObject.quote(state)}}));",
+                null,
+            )
+        }
+    }
+
+    private fun downloadAndInstallUpdate(url: String) {
+        updateState("downloading")
+        Thread {
+            val file = runCatching {
+                val dir = File(cacheDir, "updates").apply { mkdirs() }
+                dir.listFiles()?.forEach { it.delete() }
+                val out = File(dir, "crechely-update.apk")
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.connectTimeout = 20000
+                conn.readTimeout = 120000
+                if (conn.responseCode in 200..299) {
+                    conn.inputStream.use { input -> out.outputStream().use { input.copyTo(it) } }
+                    out
+                } else {
+                    null
+                }
+            }.getOrNull()
+            if (file == null || !isNewerCrechelyApk(file)) {
+                file?.delete()
+                Log.e("CrechelyUpdate", "Update download failed or wasn't a newer Crechely APK")
+                updateState("failed")
+            } else {
+                runOnUiThread { installApk(file) }
+            }
+        }.start()
+    }
+
+    /** Only ever install our own app, and only a newer version of it. */
+    private fun isNewerCrechelyApk(file: File): Boolean {
+        val info = runCatching { packageManager.getPackageArchiveInfo(file.path, 0) }.getOrNull() ?: return false
+        val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
+        return info.packageName == packageName && code > BuildConfig.VERSION_CODE
+    }
+
+    private fun installApk(file: File) {
+        if (!packageManager.canRequestPackageInstalls()) {
+            // Android asks once per device: "Allow from this source".
+            pendingUpdate = file
+            updateState("permission")
+            runCatching {
+                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            }
+            return
+        }
+        val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            updateState("installing")
+        } catch (_: ActivityNotFoundException) {
+            updateState("failed")
+        }
+    }
+
     // ---- push ----
 
     /**
@@ -337,6 +422,14 @@ class MainActivity : Activity() {
     /** What the website can ask the app to do. Only works while our own website is on screen. */
     inner class Bridge {
         @JavascriptInterface fun appVersion(): String = this@MainActivity.appVersion()
+
+        /** Lets the website tell whether a newer app is published (AppUpdateBanner). */
+        @JavascriptInterface fun appVersionCode(): Int = BuildConfig.VERSION_CODE
+
+        @JavascriptInterface fun installUpdate(url: String) {
+            if (!trusted || !isUpdateHost(Uri.parse(url))) return
+            runOnUiThread { downloadAndInstallUpdate(url) }
+        }
 
         /** The website calls this every time its dashboard mounts (see PushRegister.tsx),
          *  so push gets registered even after a sign-in that redirected client-side
