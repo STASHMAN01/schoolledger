@@ -4,12 +4,14 @@ import android.Manifest
 import android.app.Activity
 import android.app.NotificationManager
 import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.provider.Settings
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -46,6 +48,9 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private lateinit var progress: ProgressBar
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    // Where the camera writes a photo taken for an upload, until it's handed back to the page.
+    private var cameraUri: Uri? = null
+    private var cameraFile: File? = null
 
     // True only while the page on screen is our own website. The JS bridge
     // refuses to do anything otherwise.
@@ -173,7 +178,7 @@ class MainActivity : Activity() {
                 filePathCallback = callback
                 return try {
                     @Suppress("DEPRECATION")
-                    startActivityForResult(params.createIntent(), REQ_FILE)
+                    startActivityForResult(fileChooserIntent(params), REQ_FILE)
                     true
                 } catch (_: Exception) {
                     filePathCallback = null
@@ -204,10 +209,46 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_FILE) {
-            val result = if (resultCode == RESULT_OK) WebChromeClient.FileChooserParams.parseResult(resultCode, data) else null
+            val picked = if (resultCode == RESULT_OK) WebChromeClient.FileChooserParams.parseResult(resultCode, data) else null
+            // The camera returns no data of its own; it wrote the photo to cameraFile.
+            val shot = cameraFile?.takeIf { resultCode == RESULT_OK && picked.isNullOrEmpty() && it.length() > 0 }
+            val result = picked?.takeIf { it.isNotEmpty() } ?: shot?.let { arrayOf(cameraUri!!) }
             filePathCallback?.onReceiveValue(result)
             filePathCallback = null
+            if (shot == null) cameraFile?.delete()
+            cameraFile = null
+            cameraUri = null
         }
+    }
+
+    /**
+     * Teachers must photograph the activity (Dylan, 8-9 Oct 2026), but a
+     * WebView's own picker only offers files and the gallery: the page's
+     * capture="environment" is ignored. So for photo uploads, offer the
+     * camera alongside the gallery (needs the <queries> entry in the
+     * manifest to find the camera app on Android 11+). Needs no camera permission: the
+     * camera app takes the picture and writes it to a file we share with it.
+     */
+    private fun fileChooserIntent(params: WebChromeClient.FileChooserParams): Intent {
+        val picker = params.createIntent()
+        val wantsImages = params.acceptTypes.any { it.isBlank() || it.startsWith("image") }
+        if (!wantsImages) return picker
+        val camera = runCatching {
+            val dir = File(cacheDir, "camera").apply { mkdirs() }
+            dir.listFiles()?.forEach { it.delete() }
+            val file = File(dir, "photo-${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
+            cameraFile = file
+            cameraUri = uri
+            Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                .putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .apply { clipData = ClipData.newRawUri("", uri) }
+                .takeIf { it.resolveActivity(packageManager) != null }
+        }.getOrNull() ?: return picker
+        // Always offer both: teachers often snap photos during the activity
+        // and record it afterwards, so the gallery must stay available.
+        return Intent.createChooser(picker, "Add a photo").putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(camera))
     }
 
     // ---- push ----

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="downloads" path="downloads/" />
+    <!-- Photos taken with the tablet camera for an upload (see MainActivity). -->
+    <cache-path name="camera" path="camera/" />
 </paths>
