@@ -58,6 +58,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
         contactEmail: org.contactEmail,
         contactPhone: org.contactPhone,
         bankName: org.bankName,
+        bankAccountHolder: org.bankAccountHolder,
+        bankBranchCode: org.bankBranchCode,
         bankAccountNumber: bankAccountNumberDisplay,
         hasBankAccountNumber: Boolean(org.bankAccountNumber),
         timezone: org.timezone,
@@ -92,6 +94,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         contactEmail: body.contactEmail ?? null,
         contactPhone: body.contactPhone ?? null,
         bankName: body.bankName ?? null,
+        bankAccountHolder: body.bankAccountHolder ?? null,
+        bankBranchCode: body.bankBranchCode ?? null,
         // Only overwrite the stored (encrypted) account number when the
         // form actually sent a new value — the GET route only ever returns
         // a masked/decrypted display value, never something safe to write

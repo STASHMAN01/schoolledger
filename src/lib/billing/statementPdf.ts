@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import { formatMoneyCents } from "@/lib/money";
+import { decryptField } from "@/lib/fieldCrypto";
 
 // pdf-lib is pure JavaScript — no native binary, no headless-browser
 // dependency (unlike puppeteer-based PDF generation). That matters for a
@@ -64,6 +65,10 @@ type StatementOrg = {
   province: string | null;
   bankName: string | null;
   bankAccountNumber: string | null;
+  // Optional so callers built before these columns existed still type-check;
+  // every current caller passes the full Organization row.
+  bankAccountHolder?: string | null;
+  bankBranchCode?: string | null;
   currencyCode: string;
   // A data: URL (base64), same format the school profile upload stores —
   // see Organization.letterheadImage. Optional/absent on any org that
@@ -86,6 +91,23 @@ function parseImageDataUrl(
   if (subtype !== "png" && subtype !== "jpg" && subtype !== "jpeg") return null;
   try {
     return { bytes: Buffer.from(base64, "base64"), kind: subtype === "png" ? "png" : "jpg" };
+  } catch {
+    return null;
+  }
+}
+
+// Organization.bankAccountNumber is stored encrypted (see fieldCrypto.ts).
+// Decrypt it here, at the one place that prints it, so every caller (single
+// statement download, reminder send-all, backup export) gets the readable
+// number without each having to remember to decrypt. If it can't be
+// decrypted (wrong/missing key, corrupt value) we print nothing rather than
+// leak ciphertext onto a parent-facing document.
+function readableAccountNumber(stored: string | null): string | null {
+  if (!stored) return null;
+  const looksEncrypted = /^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/.test(stored);
+  if (!looksEncrypted) return stored;
+  try {
+    return decryptField(stored);
   } catch {
     return null;
   }
@@ -179,12 +201,33 @@ export async function generateStatementPdf(
       y -= 14;
     }
   }
-  if (org.bankName || org.bankAccountNumber) {
-    text(
-      `Banking details: ${org.bankName ?? ""} ${org.bankAccountNumber ?? ""}`.trim(),
-      { size: 9, color: rgb(0.4, 0.4, 0.4) }
-    );
-    y -= 14;
+  // Everything a South African parent needs to set up an EFT: bank,
+  // account holder, account number, branch code. Each part is only shown
+  // when the school has filled it in.
+  const bankAccountPlain = readableAccountNumber(org.bankAccountNumber);
+  // Two short lines rather than one long one, so a long bank or account
+  // holder name can't run off the edge of the page.
+  const bankLines = [
+    [
+      org.bankName ? `Bank: ${org.bankName}` : null,
+      org.bankAccountHolder ? `Account holder: ${org.bankAccountHolder}` : null,
+    ],
+    [
+      bankAccountPlain ? `Account no: ${bankAccountPlain}` : null,
+      org.bankBranchCode ? `Branch code: ${org.bankBranchCode}` : null,
+    ],
+  ]
+    .map((parts) => parts.filter(Boolean).join("   ·   "))
+    .filter((line) => line.length > 0);
+  const hasBankDetails = bankLines.length > 0;
+  if (hasBankDetails) {
+    text("Banking details", { size: 9, f: bold, color: rgb(0.3, 0.3, 0.3) });
+    y -= 12;
+    for (const line of bankLines) {
+      text(line, { size: 9, color: rgb(0.3, 0.3, 0.3) });
+      y -= 12;
+    }
+    y -= 2;
   }
   y -= 8;
   page.drawLine({
@@ -241,7 +284,14 @@ export async function generateStatementPdf(
     let childTotalDue = 0;
     let childTotalPaid = 0;
 
-    for (const entry of child.entries) {
+    // A R0 charge with nothing paid against it (e.g. a Registration line
+    // left at R0 on the plan) owes nothing -- listing it as "OUTSTANDING"
+    // just makes a parent think something's wrong. Leave it off.
+    const visibleEntries = child.entries.filter(
+      (e) => e.amountDueCents > 0 || e.amountPaidCents > 0
+    );
+
+    for (const entry of visibleEntries) {
       const isNewPage = y < MARGIN + 30;
       newPageIfNeeded(30);
       if (isNewPage) drawTableHeader(); // repeat the header after a page break
@@ -283,7 +333,17 @@ export async function generateStatementPdf(
         color: rgb(0, 0.4, 0),
       });
     }
-    y -= 28;
+    y -= 14;
+    if (hasBankDetails && childTotalDue - childTotalPaid > 0) {
+      // The child's full name as the EFT reference, so the school can match
+      // a deposit on its bank statement to the right child.
+      text(`Payment reference: ${child.firstName} ${child.lastName}`, {
+        size: 10,
+        f: bold,
+      });
+      y -= 14;
+    }
+    y -= 14;
 
     grandTotalDue += childTotalDue;
     grandTotalPaid += childTotalPaid;

@@ -18,6 +18,8 @@ type Profile = {
   contactEmail: string | null;
   contactPhone: string | null;
   bankName: string | null;
+  bankAccountHolder: string | null;
+  bankBranchCode: string | null;
   bankAccountNumber: string | null;
   hasBankAccountNumber: boolean;
   timezone: string;
@@ -235,6 +237,8 @@ export default function GeneralSettingsPage() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [bankName, setBankName] = useState("");
+  const [bankAccountHolder, setBankAccountHolder] = useState("");
+  const [bankBranchCode, setBankBranchCode] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [bankAccountTouched, setBankAccountTouched] = useState(false);
   const [timezone, setTimezone] = useState("Africa/Johannesburg");
@@ -258,6 +262,8 @@ export default function GeneralSettingsPage() {
       setContactEmail(org.contactEmail ?? "");
       setContactPhone(org.contactPhone ?? "");
       setBankName(org.bankName ?? "");
+      setBankAccountHolder(org.bankAccountHolder ?? "");
+      setBankBranchCode(org.bankBranchCode ?? "");
       setBankAccountNumber(isAdmin ? org.bankAccountNumber ?? "" : "");
       setTimezone(org.timezone);
     }
@@ -289,6 +295,8 @@ export default function GeneralSettingsPage() {
           contactEmail,
           contactPhone,
           bankName,
+          bankAccountHolder,
+          bankBranchCode,
           // Only send the account number if the admin actually typed
           // something new — see the route's comment on why "omitted" and
           // "cleared" are treated differently.
@@ -498,6 +506,30 @@ export default function GeneralSettingsPage() {
                 disabled={!isAdmin}
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
+                placeholder="e.g. FNB"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="bankAccountHolder">Account holder</Label>
+              <Input
+                id="bankAccountHolder"
+                disabled={!isAdmin}
+                value={bankAccountHolder}
+                onChange={(e) => setBankAccountHolder(e.target.value)}
+                placeholder="Name the account is registered in"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="bankBranchCode">Branch code</Label>
+              <Input
+                id="bankBranchCode"
+                disabled={!isAdmin}
+                value={bankBranchCode}
+                onChange={(e) => setBankBranchCode(e.target.value)}
+                placeholder="e.g. 250655"
+                inputMode="numeric"
                 className="mt-1"
               />
             </div>

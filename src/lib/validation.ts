@@ -213,6 +213,8 @@ export const organizationProfileSchema = z.object({
   // Never validated as numeric-only: real account numbers can carry
   // branch/IBAN-style formatting depending on country.
   bankAccountNumber: z.preprocess(emptyStringToUndefined, z.string().trim().max(64).optional()),
+  bankAccountHolder: z.preprocess(emptyStringToUndefined, z.string().trim().max(200).optional()),
+  bankBranchCode: z.preprocess(emptyStringToUndefined, z.string().trim().max(20).optional()),
   timezone: z.string().trim().min(1).max(100),
 });
 

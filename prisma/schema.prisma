@@ -155,6 +155,12 @@ model Organization {
   // sensitive so it can be encrypted-at-rest (see SECURITY.md) without a
   // schema change later (encryption handled at the field level in app code).
   bankAccountNumber String?
+  // Printed on statements alongside the bank name/account number so parents
+  // can pay by EFT (South African banks need the account holder and branch
+  // code). Not secret -- they appear on every parent-facing statement -- so
+  // stored plain, unlike bankAccountNumber.
+  bankAccountHolder String?
+  bankBranchCode    String?
   timezone          String   @default("Africa/Johannesburg")
   // The org's chosen reminder message wording, with {{childName}} /
   // {{parentName}} / {{schoolName}} / {{amount}} placeholder tokens — see

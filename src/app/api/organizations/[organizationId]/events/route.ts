@@ -78,13 +78,18 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
 
-    const result = await db.$transaction((tx) =>
-      createEventWithCharges(tx, organizationId, userId, {
-        name: body.name,
-        date: body.date,
-        amountCents: body.isPaid ? (body.amountCents ?? null) : null,
-        categoryIds: body.categoryIds,
-      })
+    const result = await db.$transaction(
+      (tx) =>
+        createEventWithCharges(tx, organizationId, userId, {
+          name: body.name,
+          date: body.date,
+          amountCents: body.isPaid ? (body.amountCents ?? null) : null,
+          categoryIds: body.categoryIds,
+        }),
+      // Prisma's default is 5s; a large school (or many children holding
+      // credit) can legitimately need longer. Kept well under the Vercel
+      // function limit.
+      { maxWait: 10_000, timeout: 30_000 }
     );
 
     return NextResponse.json(result, { status: 201 });

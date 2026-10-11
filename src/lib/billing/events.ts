@@ -80,9 +80,13 @@ export async function createEventWithCharges(
       input.date
     );
 
-    for (const child of children) {
-      await tx.financialPlanEntry.create({
-        data: {
+    // One createMany instead of a create per child: a create-per-child loop
+    // (plus a credit check per child) made ~30-child events run past
+    // Prisma's interactive-transaction timeout on the production database,
+    // failing the whole event with "Transaction not found" (P2028).
+    if (children.length > 0) {
+      await tx.financialPlanEntry.createMany({
+        data: children.map((child) => ({
           organizationId,
           childId: child.id,
           paymentTypeId: paymentType.id,
@@ -90,11 +94,19 @@ export async function createEventWithCharges(
           month: null,
           description: input.name,
           amountDueCents: input.amountCents!,
-        },
+        })),
       });
+
       // A child holding credit gets it applied to the new charge straight
-      // away, same rule as the annual plan (final inspection B4).
-      await sweepCreditIntoOutstanding(tx, organizationId, child.id, userId);
+      // away, same rule as the annual plan (final inspection B4). Only the
+      // children who actually have credit need the (multi-query) sweep.
+      const withCredit = await tx.creditBalance.findMany({
+        where: { childId: { in: children.map((c) => c.id) }, amountCents: { gt: 0 } },
+        select: { childId: true },
+      });
+      for (const { childId } of withCredit) {
+        await sweepCreditIntoOutstanding(tx, organizationId, childId, userId);
+      }
     }
     chargedChildCount = children.length;
   }

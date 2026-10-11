@@ -32,7 +32,7 @@ export function StatementPreview() {
   return (
     <div className="overflow-hidden rounded-2xl border bg-white p-5 text-stone-900 shadow-[var(--shadow-lift)] sm:p-7">
       <p className="text-lg font-bold">School Demo</p>
-      <p className="mt-0.5 text-[11px] text-stone-500">Banking details: Sample Bank 000 000 0000</p>
+      <p className="mt-0.5 text-[11px] text-stone-500">Bank: Sample Bank · Account holder: School Demo · Account no: 000 000 0000 · Branch code: 000000</p>
       <div className="mt-3 border-t-2 pt-3" style={RULE_DARK}>
         <p className="text-base font-bold">Statement of account — 2026</p>
       </div>
