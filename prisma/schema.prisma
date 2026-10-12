@@ -1057,11 +1057,18 @@ model PaymentAllocation {
 model Receipt {
   id            String   @id @default(cuid())
   paymentId     String   @unique
-  number        String   @unique // REC-{year}-{6-digit sequence}
+  // Receipt numbers run sequentially PER SCHOOL (every school's first
+  // receipt of the year is REC-{year}-000001), so the number alone can't be
+  // unique across the whole table -- only (organizationId, number) is.
+  // Nullable so receipts created before this column existed stay valid; they
+  // are backfilled from their payment's school.
+  organizationId String?
+  number        String   // REC-{year}-{6-digit sequence}
   createdAt     DateTime @default(now())
 
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
+  @@unique([organizationId, number])
   @@map("receipts")
 }
 

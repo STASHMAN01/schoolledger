@@ -182,7 +182,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         body.date.getUTCFullYear()
       );
       const receipt = await tx.receipt.create({
-        data: { paymentId: payment.id, number: receiptNumber },
+        data: { paymentId: payment.id, organizationId, number: receiptNumber },
       });
 
       return { payment, receipt, allocatedLines: lines, remainingCents, creditAppliedCents };
