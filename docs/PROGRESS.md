@@ -1149,3 +1149,45 @@ Schema change, NOT yet applied (needs Dylan's OK, then `npx prisma db push`). Ad
 ALTER TABLE "teacher_tasks" ADD COLUMN "batchId" TEXT;
 CREATE INDEX "teacher_tasks_batchId_idx" ON "teacher_tasks"("batchId");
 ```
+
+## Class groups and grades (15 Oct 2026)
+
+Approved by Dylan 15 Oct 2026 in chat, pending his final OK on the build. **Needs Dylan's approval before merge: the Vercel build runs `prisma db push`, so merging puts the schema change live, and the one-off data step below must be run BEFORE the merge.**
+
+Why: schools run Aftercare / Homeschool with children from Gr R to Gr 12. This deliberately reverses plan decision #11 ("categories are a flat list"); the decision text in `docs/PLAN.md` is updated.
+
+Design (as decided, nothing else changed):
+- A **group** is an ordinary top-level class (`Category.parentId` null): the teacher, register, classwork, daily summary, tasks, lesson plans, medicine, schedule and fees all work on it exactly as for any class, and `Child.categoryId` stays the group. Daycare classes stay standalone.
+- A **grade** is a sub-class (`parentId` = the group). One level only; no fee, teacher or age range; never a child's class.
+- A child in a group has an optional `Child.subCategoryId` = one of that group's grades. It is a label for display, filtering and sorting only and is never used for access control. Teacher scoping (`assignedCategoryId`) is untouched. The group's `monthlyFeeCents` (and per-child `feeOverrideCents`) apply as before; changing a grade never touches fees or plans.
+
+What shipped:
+- `src/lib/classGroups.ts` (+ tests): preset `Gr R, Gr 1 ... Gr 12`, grade order (creation time; same-instant ties fall back to preset order then name), a tolerant matcher (`Gr 3` = `Grade 3` = `gr3` = `3`; `R` = `Grade R` = `Gr R`; case-insensitive), name/duplicate validation, the grade-assignment and "grade in use" rules, the import grade resolver.
+- Categories API: `GET` returns top-level classes only, each with `grades: [{id, name, archived, childCount, createdAt}]` in order. `POST` accepts `parentId` (create a grade: parent must be a live top-level class of the org, no fee/age, duplicate names rejected) or `grades: string[]` (create a group and its grades in one transaction). `PATCH` on a grade renames only; `parentId` can never be changed. Archiving a grade that children are still in is refused with the count. Grade audit actions: `grade.created/updated/archived/restored`.
+- Deletion/Trash: a grade can't be deleted, only archived. Deleting a group (already refused while it has children, so never while a grade has children) soft-deletes its grades with it; Trash lists classes only; restoring a group restores its grades; the purge removes grades before their group (the FK sets any `subCategoryId` to null).
+- Every server-side class lookup (tasks incl. "All classes", todos, events, lesson plans/themes/import, files library, schedule, classwork, WhatsApp checks, profiles, members, parent-submission approval, children create/update/import, attendance register/month/PDF/summary) now requires `parentId: null`.
+- Children: create, update, Excel/CSV import and "approve new applicant" validate `subCategoryId` (must be a non-archived grade whose parent is the child's class); changing class clears an old grade that belongs to the old class. Add child shows a required Grade select when the class has grades; Edit child shows Grade (existing children show "No grade set"). Import has an optional Grade column (tolerant match inside the row's class; unknown grade, archived grade, or a grade for a class with no grades is a row error). "Grade" is no longer read as the class heading, except as a fallback when there is no Class column and the default class has no grades (old sheets). The Excel template has a new Grade column (last) and a note on the "How to fill in" sheet.
+- Display: children lists show `Aftercare · Gr 3` (accounting) and a Grade filter when a group is chosen (accounting and Enrolled); child profiles (centre, accounting, teacher view) show the grade; today's register sorts by grade then first name with a small grade label; the monthly register screen and PDF show the grade after the name (`Thabo Mokoena (Gr 3)` in the PDF).
+- Classes pages: Centre > Classes "Add class" asks Standalone class (default, unchanged form) or Group with grades (name, preset checklist all ticked, "Add another grade"). Each class lists its grades with child counts; MANAGE_CLASSES can add, rename, archive and restore a grade, and turn a standalone class into a group by adding grades (or the Gr R to Gr 12 preset). Accounting > Classes lists a group's grades under its fee (no fee field on a grade); the stale "classes are never nested" comment is gone.
+- Backup: the export already included every category row (so grades, with `parentId`) and every child column (so `subCategoryId`); the README lines now say so. The backup is export-only, there is no restore code to change.
+
+Schema change, NOT yet applied (needs Dylan's OK, then `npx prisma db push`). One nullable column, an index and a foreign key; touches no existing data:
+
+```sql
+ALTER TABLE "children" ADD COLUMN "subCategoryId" TEXT;
+CREATE INDEX "children_subCategoryId_idx" ON "children"("subCategoryId");
+ALTER TABLE "children" ADD CONSTRAINT "children_subCategoryId_fkey"
+  FOREIGN KEY ("subCategoryId") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+```
+
+One-off data step to run BEFORE merging. Any legacy nesting from before decision #11 would otherwise turn into grades on the first deploy:
+
+```sql
+UPDATE "categories" SET "parentId" = NULL WHERE "parentId" IS NOT NULL;
+```
+
+Decisions and limits:
+- Teachers can't set a grade from the web UI: `TEACHER_PERMISSION_CEILING` has no MANAGE_CHILDREN, so a Teacher can't edit a child today and the teacher view stays read-only (it shows the grade). The API allows it for anyone who can edit that child in their own class.
+- A grade is required only in the Add child and approve-applicant forms; the server accepts none (existing children, import rows with a blank Grade).
+- Grades are not deletable (archive only); archived grades hide from pickers but stay on children who already have them.
+- Other lists that show a child's class name (reminders, payments, medicine, reports, admissions) show the class only, not the grade.

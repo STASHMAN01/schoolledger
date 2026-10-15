@@ -34,6 +34,8 @@ prospects specifically asking for enrolment features.
   a risky migration. Flat list — no parent/child hierarchy in the UI
   going forward (existing `parentId` self-reference can stay in the
   schema for now; just stop exposing/using it as a hierarchy in Phase 1).
+  *(Superseded 15 Oct 2026 by decision #11: `parentId` now holds a class
+  group's grades.)*
 - Mode switch, top-left: **Centre Management** / **Accounting**. Existing
   billing screens move under Accounting unchanged. Centre Management
   starts as an empty home (a placeholder dashboard) — its real tiles are
@@ -151,7 +153,22 @@ from a school's own Gmail, any WhatsApp integration.
    replaces "Crechely can't access it" — confirmed, use this wording
    anywhere the old phrasing appears.
 10. Absence notifications: email only to start — confirmed.
-11. Categories are a flat list, no hierarchy — confirmed (see Phase 1).
+11. Categories (classes) are a flat list, with ONE exception: a **class
+    group**. **Reversed 15 Oct 2026 at Dylan's request** (schools run
+    Aftercare / Homeschool with children from Gr R to Gr 12). A class is
+    still an ordinary top-level category, and a group is just such a class
+    that also has **grades** (Gr R, Gr 1 ... Gr 12): sub-categories whose
+    `parentId` is the group. Rules: one level only (a grade can't have
+    grades); a grade has no fee, teacher or age range and is never a
+    child's class; the group is "the room" (teacher, register, classwork,
+    tasks, lesson plans, medicine, schedule and fees all stay on it, and
+    `Child.categoryId` is always the group); a child in a group may carry
+    an optional `Child.subCategoryId` = one of that group's grades, which
+    is a **label for display, filtering and sorting only, never access
+    control**. Daycare classes stay standalone, and every class picker lists
+    top-level classes only. Grades are archived, not deleted (they go to
+    Trash only with their group). The earlier "stop using `parentId` as a
+    hierarchy" note in Phase 1 no longer applies.
 
 ## Phase 2 gate — explicitly skipped 2026-09-21
 
