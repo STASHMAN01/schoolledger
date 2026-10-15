@@ -5,6 +5,8 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { REPORT_TYPE_INFO, blankToNull, reportCreateSchema, resolveReportScope } from "@/lib/reports";
 import { notifyOrgAdmins } from "@/lib/notifyTeachers";
+import { schoolDateRange } from "@/lib/dailySummary";
+import { DATE_RE } from "@/lib/lessonPlan";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -43,6 +45,12 @@ export async function GET(req: NextRequest, { params }: Params) {
     // Teachers see incident reports only (Dylan, 4 Oct 2026).
     const typeParam = role === "TEACHER" ? "INCIDENT" : req.nextUrl.searchParams.get("type");
     const childId = req.nextUrl.searchParams.get("childId");
+    // Optional single school day (YYYY-MM-DD), for the dashboard's
+    // "Incidents today" tile and the Reports page it links to.
+    const dateParam = req.nextUrl.searchParams.get("date");
+    if (dateParam && !DATE_RE.test(dateParam)) {
+      return NextResponse.json({ error: "Invalid date." }, { status: 400 });
+    }
 
     const reports = await db.childReport.findMany({
       where: {
@@ -50,6 +58,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         ...(scope.mode === "single" ? { categoryId: scope.categoryId } : {}),
         ...(typeParam ? { type: typeParam as "INCIDENT" | "ACADEMIC" | "DISCIPLINARY" } : {}),
         ...(childId ? { childId } : {}),
+        ...(dateParam ? { occurredAt: schoolDateRange(dateParam) } : {}),
       },
       orderBy: { occurredAt: "desc" },
       take: 200,

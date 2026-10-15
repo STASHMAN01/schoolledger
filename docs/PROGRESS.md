@@ -1104,3 +1104,10 @@ From comparing a Kimi-made landing page against the live one; only the two ideas
 - `src/components/MobileCtaBar.tsx`: bar pinned to the bottom on phones only (WhatsApp us + Start my free trial). WhatsApp is the outlined button with a green icon, since white on WhatsApp green misses WCAG AA. The page gets matching bottom padding on phones so the footer isn't covered. Hidden from `sm` up.
 - `src/components/StatementPreview.tsx`: the fee statement redrawn as HTML, line for line with `statementPdf.ts` (header, "Statement of account", Charge/Due/Paid/Paid on/Status, totals, PDF money format). Same sample family as the reminder demo (Lerato Mokoena, R1,050 outstanding). Sits under the reminder demo in the money section, captioned as sample data.
 - Note for later: globals.css has an unlayered `* { border-color: var(--border) }`, so Tailwind border-colour utilities (e.g. `border-stone-800`) have no effect anywhere. The statement uses inline border colours for that reason.
+
+## Incidents today tile (15 Oct 2026)
+
+- Centre Management home: new "Incidents today" tile (teachers: own class; office: every class) with today's incident count, and "N parents not yet notified" in red when any report still has `parentNotified` false.
+- `GET /reports` takes an optional `date=YYYY-MM-DD` (school day, via `schoolDateRange`, same matching as the daily summary).
+- Reports page reads `?type=` and `?date=` so the tile opens on today's incidents, with a "Show all" link back to the full list. Switching tab clears the day filter.
+- No schema change.

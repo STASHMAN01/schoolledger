@@ -146,7 +146,16 @@ export default function ReportsPage() {
   const openedFromLink = useRef(false);
   const base = `/api/organizations/${organizationId}`;
 
-  const [activeType, setActiveType] = useState<ReportTypeValue>("INCIDENT");
+  // ?type= picks the opening tab; ?date=YYYY-MM-DD narrows the list to one
+  // day (the dashboard's "Incidents today" tile links here with both).
+  const [activeType, setActiveType] = useState<ReportTypeValue>(() => {
+    const t = searchParams.get("type");
+    return t && (visibleTypes as readonly string[]).includes(t) ? (t as ReportTypeValue) : "INCIDENT";
+  });
+  const [dateFilter, setDateFilter] = useState<string | null>(() => {
+    const d = searchParams.get("date");
+    return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+  });
   const [reports, setReports] = useState<ReportRow[] | null>(null);
   const [children, setChildren] = useState<ChildOption[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -156,14 +165,16 @@ export default function ReportsPage() {
 
   const load = useCallback(async () => {
     setReports(null);
-    const res = await fetch(`${base}/reports?type=${activeType}`);
+    const qs = new URLSearchParams({ type: activeType });
+    if (dateFilter) qs.set("date", dateFilter);
+    const res = await fetch(`${base}/reports?${qs}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Couldn't load reports. Please refresh the page.");
       return;
     }
     setReports(data.reports);
-  }, [base, activeType]);
+  }, [base, activeType, dateFilter]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial/tab-change data load
@@ -304,7 +315,10 @@ export default function ReportsPage() {
           <button
             key={t}
             type="button"
-            onClick={() => setActiveType(t)}
+            onClick={() => {
+              setActiveType(t);
+              setDateFilter(null);
+            }}
             className={`transition-standard rounded-lg px-3 py-2 text-sm font-medium ${
               activeType === t
                 ? "bg-brand-soft text-brand-soft-foreground"
@@ -317,11 +331,34 @@ export default function ReportsPage() {
       </div>
       <p className="mb-4 text-sm text-muted-foreground">{info.hint}</p>
 
+      {dateFilter && (
+        <p className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
+          <span className="text-foreground">
+            Showing {info.plural.toLowerCase()} on{" "}
+            {dateFilter === todayLocal()
+              ? "today"
+              : new Date(`${dateFilter}T00:00:00Z`).toLocaleDateString("en-ZA", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  timeZone: "UTC",
+                })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setDateFilter(null)}
+            className="text-brand underline underline-offset-2"
+          >
+            Show all
+          </button>
+        </p>
+      )}
+
       {reports === null ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : reports.length === 0 ? (
         <EmptyState
-          title={`No ${info.plural.toLowerCase()} yet`}
+          title={dateFilter ? `No ${info.plural.toLowerCase()} on this day` : `No ${info.plural.toLowerCase()} yet`}
           description="Reports you write will show here, newest first."
         />
       ) : (

@@ -93,11 +93,14 @@ export default function CentreManagementHomePage() {
   const canSeeStaff = permissions.includes("MANAGE_CLASSES") || permissions.includes("MANAGE_TEAM");
   const canSeeActivity = permissions.includes("VIEW_ACTIVITY_LOG");
   const canSeeMedicine = permissions.includes("MANAGE_REPORTS");
+  // Teachers see their own class's incidents; office staff see every class.
+  const canSeeIncidents = isTeacher || permissions.includes("MANAGE_REPORTS");
 
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState<ChildStat[] | null>(null);
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
   const [medicine, setMedicine] = useState<{ summary: { children: number; unsigned: number } } | null>(null);
+  const [incidents, setIncidents] = useState<{ total: number; notNotified: number } | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [staffCount, setStaffCount] = useState<number | null>(null);
   const [unassignedTeachers, setUnassignedTeachers] = useState(0);
@@ -113,7 +116,7 @@ export default function CentreManagementHomePage() {
     setLoading(true);
     const base = `/api/organizations/${organizationId}`;
     const activityQs = new URLSearchParams({ entityTypes: CENTRE_ENTITY_TYPES.join(",") }).toString();
-    const [kids, att, subs, staff, events, classes, sched, activity, docs, plan, med] = await Promise.all([
+    const [kids, att, subs, staff, events, classes, sched, activity, docs, plan, med, inc] = await Promise.all([
       getJson<{ children: ChildStat[] }>(`${base}/children`),
       canSeeAttendance ? getJson<AttendanceSummary>(`${base}/attendance/summary?date=${todayLocal()}`) : null,
       canSeeSubmissions ? getJson<{ submissions: unknown[] }>(`${base}/parent-submissions`) : null,
@@ -127,8 +130,14 @@ export default function CentreManagementHomePage() {
       isTeacher ? null : getJson<{ required: string[]; children: unknown[] }>(`${base}/documents/missing`),
       isTeacher ? getJson<{ today: string; days: TodayLesson[] }>(`${base}/lesson-plans`) : null,
       canSeeMedicine ? getJson<{ summary: { children: number; unsigned: number } }>(`${base}/medicine`) : null,
+      canSeeIncidents
+        ? getJson<{ reports: { parentNotified: boolean }[] }>(`${base}/reports?type=INCIDENT&date=${todayLocal()}`)
+        : null,
     ]);
     setMedicine(med);
+    setIncidents(
+      inc ? { total: inc.reports.length, notNotified: inc.reports.filter((r) => !r.parentNotified).length } : null
+    );
     setMissingDocs(docs);
     setChildren(kids?.children ?? null);
     setAttendance(att);
@@ -143,7 +152,7 @@ export default function CentreManagementHomePage() {
     setLesson(plan);
     setEntries(activity ? activity.entries.slice(0, 10) : null);
     setLoading(false);
-  }, [organizationId, canSeeAttendance, canSeeSubmissions, canSeeStaff, isTeacher, canSeeActivity, canSeeMedicine]);
+  }, [organizationId, canSeeAttendance, canSeeSubmissions, canSeeStaff, isTeacher, canSeeActivity, canSeeMedicine, canSeeIncidents]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
@@ -266,6 +275,24 @@ export default function CentreManagementHomePage() {
                       : `Child${medicine?.summary.children === 1 ? "" : "ren"} with medicine`
                 }
                 warn={Boolean(medicine && medicine.summary.unsigned > 0)}
+              />
+            )}
+
+            {canSeeIncidents && (
+              <Tile
+                title="Incidents today"
+                href={`/dashboard/centre/reports?type=INCIDENT&date=${todayLocal()}`}
+                value={num(incidents ? incidents.total : null)}
+                hint={
+                  !incidents
+                    ? "Incident reports written today"
+                    : incidents.total === 0
+                      ? "No incidents today"
+                      : incidents.notNotified > 0
+                        ? `${incidents.notNotified} parent${incidents.notNotified === 1 ? "" : "s"} not yet notified`
+                        : "All parents notified"
+                }
+                warn={Boolean(incidents && incidents.notNotified > 0)}
               />
             )}
 
