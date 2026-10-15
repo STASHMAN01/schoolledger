@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useOrg } from "../../OrgContext";
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
+import { todayLocal } from "@/lib/date";
 import {
   ALL_CLASSES,
   CLASS_STATUS_LABEL,
@@ -12,6 +13,7 @@ import {
   classStatus,
   dayLabel,
   groupTaskItems,
+  TASK_LIST_CAP,
   normaliseTaskDate,
   shiftTaskDate,
   taskState,
@@ -48,6 +50,10 @@ type DayData = {
   noDate: Task[];
   done: Task[];
   batchSiblings: Task[];
+  /** A list hit the server's cap, so some tasks are not shown. */
+  truncated: boolean;
+  /** The school's timezone, to place a completion time on a school date. */
+  timeZone: string;
 };
 
 const STATUS_BADGE: Record<ClassStatus, "success" | "danger" | "neutral"> = {
@@ -94,22 +100,53 @@ function TasksView() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const today = data?.today ?? "";
-  const date = dateParam || data?.date || "";
+  // The school's date comes from the server. If a load fails, keep the last
+  // one we saw (or this device's date) so the day arrows still work.
+  const latestRequest = useRef(0);
+  // (Empty until the first load finishes, so the server and browser render the same.)
+  const today = data ? data.today || todayLocal() : "";
+  const date = dateParam || data?.date || today;
   const loading = !data || data.key !== viewKey;
   const dueValue = dueDate ?? today;
 
   const load = useCallback(async () => {
+    // Only the newest request may update the page: two quick clicks on the
+    // day arrows must not let the older answer land last.
+    const requestId = ++latestRequest.current;
     const qs = new URLSearchParams();
     if (dateParam) qs.set("date", dateParam);
     if (classFilter) qs.set("categoryId", classFilter);
-    const res = await fetch(`${base}/tasks${qs.size ? `?${qs}` : ""}`);
-    const json = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setData({ ...(json as Omit<DayData, "key">), key: viewKey });
+    const query = qs.toString();
+    let ok = false;
+    let json: Record<string, unknown> = {};
+    try {
+      const res = await fetch(`${base}/tasks${query ? `?${query}` : ""}`);
+      ok = res.ok;
+      json = await res.json().catch(() => ({}));
+    } catch {
+      // Offline: shown as a failed load below.
+    }
+    if (requestId !== latestRequest.current) return;
+    if (ok) {
+      const fresh = json as unknown as Omit<DayData, "key">;
+      setData({ ...fresh, key: viewKey });
     } else {
-      setData({ key: viewKey, today: "", date: dateParam, todo: [], overdue: [], noDate: [], done: [], batchSiblings: [] });
-      setError(json.error ?? "Could not load tasks.");
+      setData((prev) => {
+        const known = prev?.today || todayLocal();
+        return {
+          key: viewKey,
+          today: known,
+          date: dateParam || known,
+          todo: [],
+          overdue: [],
+          noDate: [],
+          done: [],
+          batchSiblings: [],
+          truncated: false,
+          timeZone: prev?.timeZone ?? "Africa/Johannesburg",
+        };
+      });
+      setError(typeof json.error === "string" ? json.error : "Could not load tasks.");
     }
   }, [base, dateParam, classFilter, viewKey]);
 
@@ -139,7 +176,8 @@ function TasksView() {
     // Today is the default, so it stays out of the URL.
     if (nextDate && nextDate !== today) qs.set("date", nextDate);
     if (nextClass) qs.set("class", nextClass);
-    router.replace(qs.size ? `${pathname}?${qs}` : pathname, { scroll: false });
+    const query = qs.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     setNotice("");
     setError("");
   }
@@ -217,19 +255,21 @@ function TasksView() {
           { key: "noDate", label: "No date", tone: "plain" as const, rows: data?.noDate ?? [] },
         ]
       : [{ key: "done", label: "", tone: "plain" as const, rows: data?.done ?? [] }];
-  const built = sections.map((s) => ({ ...s, items: groupTaskItems(s.rows, siblings, tab, group) }));
+  // A batch is in Done for a day only if its last copy was ticked off that day.
+  const doneOn = { date, timeZone: data?.timeZone ?? "Africa/Johannesburg" };
+  const built = sections.map((s) => ({ ...s, items: groupTaskItems(s.rows, siblings, tab, group, doneOn) }));
   const countOf = (which: "todo" | "done") => {
     const lists =
       which === "todo"
         ? [data?.overdue ?? [], data?.todo ?? [], data?.noDate ?? []]
         : [data?.done ?? []];
-    return lists.reduce((n, rows) => n + groupTaskItems(rows, siblings, which, group).length, 0);
+    return lists.reduce((n, rows) => n + groupTaskItems(rows, siblings, which, group, doneOn).length, 0);
   };
   const todoCount = countOf("todo");
   const doneCount = countOf("done");
   const shownCount = tab === "todo" ? todoCount : doneCount;
 
-  const hasData = !!data && !!today;
+  const hasData = !!data;
 
   return (
     <div className="animate-in max-w-3xl">
@@ -371,6 +411,12 @@ function TasksView() {
           </button>
         ))}
       </div>
+
+      {!loading && data?.truncated && (
+        <p className="mb-3 text-xs text-muted-foreground" role="status">
+          Showing the first {TASK_LIST_CAP.toLocaleString("en-ZA")} tasks. Pick a class or another day to see the rest.
+        </p>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

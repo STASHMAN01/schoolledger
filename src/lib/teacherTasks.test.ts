@@ -88,6 +88,7 @@ describe("bucketTasks", () => {
     task("done-undated-late", { completedAt: "2026-10-14T22:30:00.000Z" }), // 15th, school time
     task("done-undated-earlier", { completedAt: "2026-10-12T08:00:00.000Z" }),
     task("done-overdue-one", { dueDate: "2026-10-10", completedAt: "2026-10-15T08:00:00.000Z" }),
+    task("done-early", { dueDate: "2026-10-20", completedAt: "2026-10-15T09:00:00.000Z" }),
   ];
   const ids = (list: { id: string }[]) => list.map((t) => t.id);
 
@@ -96,7 +97,18 @@ describe("bucketTasks", () => {
     expect(ids(b.todo)).toEqual(["due-today"]);
     expect(ids(b.overdue)).toEqual(["overdue"]);
     expect(ids(b.noDate)).toEqual(["no-date"]);
-    expect(ids(b.done)).toEqual(["done-today", "done-undated-today", "done-undated-late"]);
+    // Done is what was ticked off today: due today, undated, or overdue.
+    expect(ids(b.done)).toEqual([
+      "done-today",
+      "done-undated-today",
+      "done-undated-late",
+      "done-overdue-one",
+      "done-early",
+    ]);
+  });
+  it("counts a task finished early on the day it was ticked, not its due day", () => {
+    expect(ids(bucketTasks(rows, "2026-10-20", TODAY, TZ).done)).toEqual([]);
+    expect(ids(bucketTasks(rows, "2026-10-10", TODAY, TZ).done)).toEqual([]);
   });
   it("on another day: only that day's tasks, no overdue or no-date", () => {
     const b = bucketTasks(rows, "2026-10-16", TODAY, TZ);
@@ -109,7 +121,6 @@ describe("bucketTasks", () => {
     const b = bucketTasks(rows, "2026-10-12", TODAY, TZ);
     expect(b.todo).toEqual([]);
     expect(ids(b.done)).toEqual(["done-undated-earlier"]);
-    expect(ids(bucketTasks(rows, "2026-10-10", TODAY, TZ).done)).toEqual(["done-overdue-one"]);
   });
 });
 
@@ -170,6 +181,15 @@ describe("groupTaskItems", () => {
     const b = copy("2", "B", { completedAt: DONE });
     expect(groupTaskItems([a, b], [a, b], "done", true)).toHaveLength(1);
     expect(groupTaskItems([a, b], [a, b], "todo", true)).toEqual([]);
+  });
+  it("puts a finished batch in Done only on the day its last copy was ticked off", () => {
+    const early = copy("1", "A", { completedAt: "2026-10-14T08:00:00.000Z" });
+    const last = copy("2", "B", { completedAt: DONE });
+    const all = [early, last];
+    // On the 15th the last copy was ticked off: the batch is there.
+    expect(groupTaskItems([last], all, "done", true, { date: TODAY, timeZone: TZ })).toHaveLength(1);
+    // On the 14th only the first copy was: the batch is not done by then.
+    expect(groupTaskItems([early], all, "done", true, { date: "2026-10-14", timeZone: TZ })).toEqual([]);
   });
   it("shows individual rows when not grouping (a class is picked, or a teacher)", () => {
     const rows = [copy("1", "A"), copy("2", "B")];

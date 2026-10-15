@@ -7,7 +7,14 @@ import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { schoolClock, schoolDateValue } from "@/lib/dailySummary";
 import { addDays } from "@/lib/lessonPlan";
-import { ALL_CLASSES, bucketTasks, normaliseTaskDate, taskCreateSchema } from "@/lib/teacherTasks";
+import {
+  ALL_CLASSES,
+  TASK_LIST_CAP,
+  TASK_SIBLING_CAP,
+  bucketTasks,
+  normaliseTaskDate,
+  taskCreateSchema,
+} from "@/lib/teacherTasks";
 import { notifyClassTeachers } from "@/lib/notifyTeachers";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -31,8 +38,10 @@ function shape<T extends { dueDate: Date | null }>(t: T) {
 
 // Tasks assigned to classes, for one day (Dylan, 15 Oct 2026). A task's day
 // is its due date. ?date= (default today, school time) picks the day; the
-// response has the open tasks due that day (todo), the finished ones (done),
-// and -- on today only -- everything overdue and everything with no date. A
+// response has the open tasks due that day (todo), the tasks ticked off on
+// that school day whatever their due date (done), and -- on today only --
+// everything overdue and everything with no date. `truncated` is true when a
+// list hit its cap. A
 // teacher sees their own class; anyone else with Centre access sees every
 // class, or one with ?categoryId=. For the office's "All classes" view,
 // batchSiblings holds every copy of any batch in the lists so progress counts
@@ -53,7 +62,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     const date = normaliseTaskDate(sp.get("date"), today);
     const unseen = sp.get("unseen") === "1";
 
-    const empty = { today, date, todo: [], overdue: [], noDate: [], done: [], batchSiblings: [] };
+    const empty = { today, date, todo: [], overdue: [], noDate: [], done: [], batchSiblings: [], truncated: false, timeZone };
     let categoryFilter: { categoryId?: string } = {};
     let allClasses = false;
     if (role === "TEACHER") {
@@ -69,7 +78,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       const tasks = await db.teacherTask.findMany({
         where: { organizationId, ...categoryFilter, completedAt: null, acknowledgedAt: null },
         orderBy: { createdAt: "asc" },
-        take: 50,
+        take: TASK_LIST_CAP,
         select: taskSelect,
       });
       return NextResponse.json({ today, tasks: tasks.map(shape) });
@@ -80,8 +89,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     const dateStart = schoolDateValue(date);
     const completedNear = { gte: schoolDateValue(addDays(date, -1)), lt: schoolDateValue(addDays(date, 2)) };
     const wanted: Prisma.TeacherTaskWhereInput[] = [
-      { dueDate: dateStart },
-      { dueDate: null, completedAt: completedNear },
+      { completedAt: null, dueDate: dateStart },
+      { completedAt: completedNear },
     ];
     if (date === today) {
       wanted.push({ completedAt: null, dueDate: { lt: dateStart } }, { completedAt: null, dueDate: null });
@@ -90,10 +99,11 @@ export async function GET(req: NextRequest, { params }: Params) {
     const found = await db.teacherTask.findMany({
       where: { organizationId, ...categoryFilter, OR: wanted },
       orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-      take: 500,
+      take: TASK_LIST_CAP + 1,
       select: taskSelect,
     });
-    const buckets = bucketTasks(found.map(shape), date, today, timeZone);
+    let truncated = found.length > TASK_LIST_CAP;
+    const buckets = bucketTasks(found.slice(0, TASK_LIST_CAP).map(shape), date, today, timeZone);
     buckets.done.sort((a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0));
 
     let batchSiblings: ReturnType<typeof shape>[] = [];
@@ -109,13 +119,14 @@ export async function GET(req: NextRequest, { params }: Params) {
         const siblings = await db.teacherTask.findMany({
           where: { organizationId, batchId: { in: batchIds } },
           orderBy: { id: "asc" },
-          take: 2000,
+          take: TASK_SIBLING_CAP + 1,
           select: taskSelect,
         });
-        batchSiblings = siblings.map(shape);
+        if (siblings.length > TASK_SIBLING_CAP) truncated = true;
+        batchSiblings = siblings.slice(0, TASK_SIBLING_CAP).map(shape);
       }
     }
-    return NextResponse.json({ today, date, ...buckets, batchSiblings });
+    return NextResponse.json({ today, date, timeZone, ...buckets, batchSiblings, truncated });
   } catch (err) {
     return handleApiError(err);
   }

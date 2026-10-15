@@ -50,7 +50,7 @@ export type TaskBuckets<T> = {
   overdue: T[];
   /** Open with no due date. Only when the chosen day is today. */
   noDate: T[];
-  /** Finished: due on the chosen day, or undated and finished on it. */
+  /** Finished on the chosen day (school date), whatever their due date. */
   done: T[];
 };
 
@@ -66,6 +66,10 @@ export function schoolDateOf(ts: Date | string, timeZone: string): string {
   return schoolClock(timeZone, typeof ts === "string" ? new Date(ts) : ts).date;
 }
 
+/** The most task rows one list returns, and the most batch copies fetched. */
+export const TASK_LIST_CAP = 1000;
+export const TASK_SIBLING_CAP = 5000;
+
 /**
  * Sorts tasks into the day's buckets. `date` is the day being looked at,
  * `today` the school's date now; overdue and no-date tasks only show on
@@ -80,9 +84,10 @@ export function bucketTasks<T extends BucketableTask>(
   const out: TaskBuckets<T> = { todo: [], overdue: [], noDate: [], done: [] };
   const isToday = date === today;
   for (const t of rows) {
+    // Done is "what got done on this day": ticking off an overdue task, or
+    // finishing early, counts on the day it was ticked.
     if (t.completedAt) {
-      if (t.dueDate === date) out.done.push(t);
-      else if (!t.dueDate && schoolDateOf(t.completedAt, timeZone) === date) out.done.push(t);
+      if (schoolDateOf(t.completedAt, timeZone) === date) out.done.push(t);
     } else if (t.dueDate === date) {
       out.todo.push(t);
     } else if (isToday && t.dueDate && t.dueDate < today) {
@@ -160,14 +165,17 @@ export function batchProgress(batch: { doneCount: number; total: number }): stri
  * into one. `siblings` holds every copy of the batches involved, finished or
  * not, so progress is right even when some copies sit on another day. A
  * batch belongs to "todo" while any copy is open and to "done" once all are
- * finished. With `group` false (a class is selected, or a teacher) every row
- * stays on its own. Order follows each item's first row.
+ * finished -- and, when `done` is given, the last one was ticked off on that
+ * school date, so a batch finished tomorrow is not in today's Done. With
+ * `group` false (a class is selected, or a teacher) every row stays on its
+ * own. Order follows each item's first row.
  */
 export function groupTaskItems<T extends GroupableTask>(
   rows: T[],
   siblings: T[],
   tab: "todo" | "done",
-  group: boolean
+  group: boolean,
+  done?: { date: string; timeZone: string }
 ): TaskItem<T>[] {
   if (!group) return rows.map((task) => ({ kind: "single", task }));
 
@@ -194,6 +202,10 @@ export function groupTaskItems<T extends GroupableTask>(
     const doneCount = tasks.filter((t) => !!t.completedAt).length;
     const allDone = doneCount === tasks.length;
     if (tab === "todo" ? allDone : !allDone) continue;
+    if (tab === "done" && done) {
+      const last = Math.max(...tasks.map((t) => new Date(t.completedAt as Date | string).getTime()));
+      if (schoolDateOf(new Date(last), done.timeZone) !== done.date) continue;
+    }
     items.push({ kind: "batch", batch: { batchId: task.batchId, first: task, tasks, doneCount, total: tasks.length } });
   }
   return items;
