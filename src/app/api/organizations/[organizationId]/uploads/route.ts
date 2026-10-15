@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { buildKey, signUpload, storageConfigured } from "@/lib/storage";
+import { clearOldStaged, stagedSince } from "@/lib/classworkStaging";
 import { MAX_FILES_PER_ITEM, canAttachTo, canStageClasswork, uploadRequestSchema } from "@/lib/storedFiles";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -26,10 +27,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     const staged = body.kind === "CLASSWORK" && !body.classworkEntryId;
     const targetId = body.kind === "CLASSWORK" ? body.classworkEntryId : body.childReportId;
     if (staged) {
+      // Leftovers from an earlier school day go first, so they can't get in the way.
+      const since = await stagedSince(organizationId);
+      if (role === "TEACHER") await clearOldStaged(organizationId, userId, since);
       const allowedToStage = await canStageClasswork(
         organizationId,
         userId,
         { role, assignedCategoryId, permissions, userId },
+        since,
         body.childId
       );
       if (!allowedToStage.ok) return NextResponse.json({ error: allowedToStage.error }, { status: allowedToStage.status });

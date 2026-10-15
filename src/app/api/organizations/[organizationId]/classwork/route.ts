@@ -7,7 +7,7 @@ import { resolveAttendanceScope } from "@/lib/attendanceScope";
 import { schoolClock, schoolDateValue } from "@/lib/dailySummary";
 import { CLASSWORK_HISTORY_DAYS, addDays, classworkSchema } from "@/lib/lessonPlan";
 import { notifyOrgAdmins } from "@/lib/notifyTeachers";
-import { checkClassworkPhotos, stagedCutoff } from "@/lib/classwork";
+import { checkClassworkPhotos, schoolDayStart } from "@/lib/classwork";
 import { presentToday } from "@/lib/classworkStaging";
 import { z } from "zod";
 
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest, { params }: Params) {
           status: "ACTIVE",
           classworkEntryId: null,
           uploadedByUserId: userId,
-          createdAt: { gte: stagedCutoff() },
+          createdAt: { gte: schoolDayStart(clock) }, // staged today only
         },
         orderBy: { createdAt: "asc" },
         select: photoSelect,
@@ -131,6 +131,7 @@ export async function POST(req: NextRequest, { params }: Params) {
               status: "ACTIVE",
               classworkEntryId: null,
               uploadedByUserId: userId,
+              createdAt: { gte: schoolDayStart(clock) }, // staged today only
             },
             select: { id: true, childId: true },
           });
@@ -179,6 +180,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             status: "ACTIVE",
             classworkEntryId: null,
             uploadedByUserId: userId,
+            createdAt: { gte: schoolDayStart(clock) },
           },
           data: { classworkEntryId: created.id },
         });

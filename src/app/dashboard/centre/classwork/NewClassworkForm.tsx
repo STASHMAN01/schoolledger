@@ -46,6 +46,7 @@ export function NewClassworkForm({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const childRef = useRef<HTMLInputElement>(null);
+  const childGalleryRef = useRef<HTMLInputElement>(null);
   // Which child the next file picked is for (individual activity only).
   const pendingChildId = useRef<string | null>(null);
 
@@ -60,10 +61,14 @@ export function NewClassworkForm({
   const photosDone = check.ok;
   const canSave = photosDone && !!text.trim() && !saving && !busy;
 
-  const byChild = new Map(staged.filter((p) => p.childId).map((p) => [p.childId as string, p]));
+  // Normally one photo per child. If a double tap ever left two, both show
+  // (each with a remove button) rather than one being hidden.
+  const byChild = new Map<string, ClassworkPhoto[]>();
+  for (const p of staged) if (p.childId) byChild.set(p.childId, [...(byChild.get(p.childId) ?? []), p]);
   const presentIds = new Set(presentChildren.map((c) => c.id));
   const strangers = staged.filter((p) => p.childId && !presentIds.has(p.childId)).length;
   const doneCount = presentChildren.filter((c) => byChild.has(c.id)).length;
+  const doubled = [...byChild.values()].some((list) => list.length > 1);
 
   async function addFiles(files: FileList | null, childId: string | null, inputs: (HTMLInputElement | null)[]) {
     const list = Array.from(files ?? []);
@@ -241,18 +246,40 @@ export function NewClassworkForm({
               accept="image/*"
               capture="environment"
               className="hidden"
-              onChange={(e) => addFiles(e.target.files, pendingChildId.current, [childRef.current])}
+              onChange={(e) => addFiles(e.target.files, pendingChildId.current, [childRef.current, childGalleryRef.current])}
+            />
+            <input
+              ref={childGalleryRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => addFiles(e.target.files, pendingChildId.current, [childRef.current, childGalleryRef.current])}
             />
             <p className="mb-2 text-sm font-medium text-foreground">
               {doneCount} of {presentChildren.length} children
             </p>
             <div className="divide-y divide-border rounded-lg border border-border">
               {presentChildren.map((child) => {
-                const photo = byChild.get(child.id);
+                const photos = byChild.get(child.id) ?? [];
+                const pick = (input: HTMLInputElement | null) => {
+                  pendingChildId.current = child.id;
+                  input?.click();
+                };
                 return (
                   <div key={child.id} className="flex items-center gap-3 p-2">
-                    {photo ? (
-                      <Thumb organizationId={organizationId} photo={photo} canRemove busy={busy} onRemove={removePhoto} />
+                    {photos.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {photos.map((photo) => (
+                          <Thumb
+                            key={photo.id}
+                            organizationId={organizationId}
+                            photo={photo}
+                            canRemove
+                            busy={busy}
+                            onRemove={removePhoto}
+                          />
+                        ))}
+                      </div>
                     ) : (
                       <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
                         No photo
@@ -262,28 +289,35 @@ export function NewClassworkForm({
                       <p className="truncate text-sm text-foreground">
                         {child.firstName} {child.lastName}
                       </p>
-                      {photo ? (
+                      {photos.length > 0 ? (
                         <p className="mt-1 text-sm font-medium text-brand">
                           <span aria-hidden="true">&#10003;</span> Photo added
                         </p>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            pendingChildId.current = child.id;
-                            childRef.current?.click();
-                          }}
-                          disabled={busy || saving}
-                          className={`${buttonClass} mt-1`}
-                        >
-                          {busy ? "Adding…" : "Add photo"}
-                        </button>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          <button type="button" onClick={() => pick(childRef.current)} disabled={busy || saving} className={buttonClass}>
+                            {busy ? "Adding…" : "Add photo"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => pick(childGalleryRef.current)}
+                            disabled={busy || saving}
+                            className={buttonClass}
+                          >
+                            From gallery
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
                 );
               })}
             </div>
+            {doubled && (
+              <p className="mt-2 text-xs text-danger">
+                A child has two photos. Remove one of them with the &times; button.
+              </p>
+            )}
             {strangers > 0 && (
               <p className="mt-2 text-xs text-danger">
                 Some photos are of children who aren&apos;t marked present today. Tap Start over and redo them.

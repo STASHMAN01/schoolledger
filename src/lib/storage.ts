@@ -145,6 +145,12 @@ export async function getJson<T>(key: string): Promise<T | null> {
   }
 }
 
+/** Like deleteObject, but a failure is thrown so the caller can keep its database row and retry later. */
+export async function deleteObjectStrict(key: string): Promise<void> {
+  const { client: s3, bucket } = client();
+  await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+}
+
 export async function deleteObject(key: string): Promise<void> {
   const { client: s3, bucket } = client();
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => {});

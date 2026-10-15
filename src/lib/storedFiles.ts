@@ -52,6 +52,7 @@ export async function canStageClasswork(
   organizationId: string,
   userId: string,
   access: Access,
+  since: Date,
   childId?: string
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   if (!access.permissions.includes("VIEW_CENTRE")) {
@@ -60,16 +61,24 @@ export async function canStageClasswork(
   if (access.role !== "TEACHER" || !access.assignedCategoryId) {
     return { ok: false, status: 403, error: "Only a class teacher records classwork." };
   }
+  // Only photos staged today count (`since` is the start of the school's
+  // day): yesterday's leftovers never block today's entry.
   const mine = {
     organizationId,
     kind: "CLASSWORK",
     classworkEntryId: null,
     uploadedByUserId: userId,
+    createdAt: { gte: since },
   } as const;
+  // A photo that is uploaded (ACTIVE), or is still being uploaded right now.
+  const live = [
+    { status: "ACTIVE" },
+    { status: "PENDING", createdAt: { gte: new Date(Date.now() - STAGED_IN_FLIGHT_MS) } },
+  ];
 
   // One activity at a time: group and individual photos can't be mixed.
   const other = await db.storedFile.findFirst({
-    where: { ...mine, status: "ACTIVE", childId: childId ? null : { not: null } },
+    where: { ...mine, OR: live, childId: childId ? null : { not: null } },
     select: { id: true },
   });
   if (other) {
@@ -84,15 +93,26 @@ export async function canStageClasswork(
 
   if (childId) {
     const child = await db.child.findFirst({
-      where: { id: childId, organizationId, categoryId: access.assignedCategoryId, archived: false, deletedAt: null },
+      where: {
+        id: childId,
+        organizationId,
+        categoryId: access.assignedCategoryId,
+        archived: false,
+        deletedAt: null,
+        exitDate: null,
+      },
       select: { id: true },
     });
     if (!child) return { ok: false, status: 404, error: "That child isn't in this class." };
+    // Staging is idempotent per child: one photo each, never a second.
     const already = await db.storedFile.findFirst({
-      where: { ...mine, childId, status: "ACTIVE" },
+      where: { ...mine, OR: live, childId },
       select: { id: true },
     });
-    if (already) return { ok: false, status: 400, error: "This child already has a photo waiting." };
+    if (already) {
+      return { ok: false, status: 400, error: "This child already has a photo waiting. Remove it first to replace it." };
+    }
+    // A failed earlier try (PENDING for a while) is cleared so a retry works.
     const stale = await db.storedFile.findMany({
       where: { ...mine, childId, status: "PENDING" },
       select: { id: true, key: true },
@@ -104,12 +124,7 @@ export async function canStageClasswork(
     return { ok: true };
   }
 
-  const count = await db.storedFile.count({
-    where: {
-      ...mine,
-      OR: [{ status: "ACTIVE" }, { status: "PENDING", createdAt: { gte: new Date(Date.now() - STAGED_IN_FLIGHT_MS) } }],
-    },
-  });
+  const count = await db.storedFile.count({ where: { ...mine, OR: live } });
   if (count >= MAX_GROUP_PHOTOS) {
     return { ok: false, status: 400, error: `A group activity can have up to ${MAX_GROUP_PHOTOS} photos.` };
   }

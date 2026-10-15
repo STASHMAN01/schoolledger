@@ -46,13 +46,22 @@ export async function uploadClassworkPhoto(
   const started = await start.json().catch(() => ({}));
   if (!start.ok) throw new Error(started.error ?? "Could not start the upload.");
 
-  const put = await fetch(started.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
-  if (!put.ok) throw new Error("The photo didn't upload. Check the signal and try again.");
+  try {
+    const put = await fetch(started.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
+    if (!put.ok) throw new Error("The photo didn't upload. Check the signal and try again.");
 
-  const confirm = await fetch(`/api/organizations/${organizationId}/uploads/${started.fileId}`, { method: "PUT" });
-  if (!confirm.ok) {
-    const problem = await confirm.json().catch(() => ({}));
-    throw new Error(problem.error ?? "The photo didn't save.");
+    const confirm = await fetch(`/api/organizations/${organizationId}/uploads/${started.fileId}`, { method: "PUT" });
+    if (!confirm.ok) {
+      const problem = await confirm.json().catch(() => ({}));
+      throw new Error(problem.error ?? "The photo didn't save.");
+    }
+  } catch (err) {
+    // A staged photo that never arrived would block a retry for that child,
+    // so take it back out (a teacher may delete her own staged photo).
+    if (!options.entryId) {
+      await fetch(`/api/organizations/${organizationId}/uploads/${started.fileId}`, { method: "DELETE" }).catch(() => {});
+    }
+    throw err instanceof Error ? err : new Error("The photo didn't upload.");
   }
   return started.fileId as string;
 }

@@ -74,6 +74,18 @@ export function checkClassworkPhotos(input: {
   return { ok: true };
 }
 
+/**
+ * When the school's current day began, as an instant: staged photos only
+ * count if they were taken today (school date, the school's time zone), so
+ * yesterday's leftovers never block or leak into today's entry. Built from
+ * the school clock (minutes since local midnight), which is exact for
+ * South Africa (no daylight saving).
+ */
+export function schoolDayStart(clock: { minutes: number }, now: Date = new Date()): Date {
+  const wholeMinute = Math.floor(now.getTime() / 60_000) * 60_000;
+  return new Date(wholeMinute - clock.minutes * 60_000);
+}
+
 // ---- Cleanup of staged photos that never became part of an entry --------
 
 export type StagedCandidate = {

@@ -6,6 +6,7 @@ import {
   expiredStagedWhere,
   isExpiredStaged,
   isStaged,
+  schoolDayStart,
   stagedCutoff,
 } from "./classwork";
 
@@ -132,5 +133,19 @@ describe("staged photo cleanup selection", () => {
     expect(where.classworkEntryId).toBeNull();
     expect(where.createdAt.lt).toEqual(stagedCutoff(now));
     expect("status" in where).toBe(false); // ACTIVE and PENDING both go
+  });
+});
+
+describe("schoolDayStart", () => {
+  it("is the start of the school's day: 10:30 school time is 630 minutes after it", () => {
+    // 08:30 UTC is 10:30 in South Africa (UTC+2).
+    const now = new Date("2026-10-15T08:30:45.000Z");
+    expect(schoolDayStart({ minutes: 630 }, now)).toEqual(new Date("2026-10-14T22:00:00.000Z"));
+  });
+
+  it("treats a photo from last night as not staged today", () => {
+    const start = schoolDayStart({ minutes: 630 }, new Date("2026-10-15T08:30:00.000Z"));
+    expect(new Date("2026-10-14T21:59:00.000Z") < start).toBe(true);
+    expect(new Date("2026-10-14T22:01:00.000Z") >= start).toBe(true);
   });
 });
