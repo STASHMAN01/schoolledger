@@ -1111,3 +1111,11 @@ From comparing a Kimi-made landing page against the live one; only the two ideas
 - `GET /reports` takes an optional `date=YYYY-MM-DD` (school day, via `schoolDateRange`, same matching as the daily summary).
 - Reports page reads `?type=` and `?date=` so the tile opens on today's incidents, with a "Show all" link back to the full list. Switching tab clears the day filter.
 - No schema change.
+
+## Attendance: monthly register on the Attendance page (15 Oct 2026)
+
+- Attendance page (office staff only) gets "Today's register | Monthly register" tabs (`?view=month`). Monthly: pick class + month (this month and the 11 before), see every child against every weekday (P / A, blank = not taken) with P/A totals, then Download PDF / Open to print / Share (Android app + Web Share, same as Files).
+- The PDF is the existing one (`attendance/register/pdf`, also in Files > Attendance registers). Its child/marks query moved into `src/lib/attendanceMonth.ts` (`loadMonthlyRegister`) and is shared with the new JSON route `GET attendance/register/month`, so the screen and the PDF always match.
+- Teachers: unchanged (neither route is on the teacher allowlist; the month route also refuses TEACHER).
+- Known limit, same as before: children are listed by their current class.
+- No schema change.

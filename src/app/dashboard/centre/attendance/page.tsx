@@ -8,10 +8,12 @@
 // with MANAGE_ATTENDANCE picks a class first.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useOrg } from "../../OrgContext";
 import { Badge, Button, Card, EmptyState, PageHeader, Select } from "@/components/ui";
 import { todayLocal } from "@/lib/date";
 import { isWeekendDate } from "@/lib/lessonPlan";
+import { MonthlyRegister } from "./MonthlyRegister";
 
 type Category = { id: string; name: string; archived: boolean };
 type ChildRow = {
@@ -28,6 +30,16 @@ export default function AttendancePage() {
   const isTeacher = role === "TEACHER";
   const [date] = useState(todayLocal);
   const weekend = isWeekendDate(date);
+  // Office staff can switch to the month view (Dylan, 15 Oct 2026). Kept in
+  // the URL (?view=month) so refresh and Back stay on it.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const view: "today" | "month" = searchParams.get("view") === "month" ? "month" : "today";
+  const monthView = !isTeacher && view === "month";
+  function switchView(next: "today" | "month") {
+    router.replace(next === "month" ? `${pathname}?view=month` : pathname, { scroll: false });
+  }
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [pickedCategoryId, setPickedCategoryId] = useState("");
@@ -142,7 +154,9 @@ export default function AttendancePage() {
       <PageHeader
         title="Attendance"
         description={
-          weekend
+          monthView
+            ? "Every child in a class against every school day of the month -- view it here, then download or print it."
+            : weekend
             ? "Attendance is taken Monday to Friday."
             : `Today, ${new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
                 weekday: "long",
@@ -163,6 +177,41 @@ export default function AttendancePage() {
         }
       />
 
+      {!isTeacher && (
+        <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Attendance view">
+          {(
+            [
+              ["today", "Today's register"],
+              ["month", "Monthly register"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={view === key}
+              onClick={() => switchView(key)}
+              className={`transition-standard rounded-lg px-3 py-2 text-sm font-medium ${
+                view === key
+                  ? "bg-brand-soft text-brand-soft-foreground"
+                  : "bg-surface text-muted-foreground hover:bg-background"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {monthView ? (
+        <MonthlyRegister
+          organizationId={organizationId}
+          categories={categories}
+          categoryId={pickedCategoryId}
+          onCategoryChange={setPickedCategoryId}
+        />
+      ) : (
+      <>
       {!isTeacher && (
         <Card as="div" className="mb-4 p-4">
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Class</label>
@@ -260,6 +309,8 @@ export default function AttendancePage() {
             </Button>
           </div>
         </>
+      )}
+      </>
       )}
     </div>
   );
