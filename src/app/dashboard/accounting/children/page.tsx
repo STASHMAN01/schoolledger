@@ -9,8 +9,10 @@ import { DeletionControl, type DeletionRequestInfo } from "@/components/Deletion
 import { ImportChildrenCsv } from "@/components/ImportChildrenCsv";
 import { AddChildForm } from "@/components/AddChildForm";
 import { formatDateZA } from "@/lib/date";
+import { classLabel, gradeInfo, sortChildrenByGrade } from "@/lib/classGroups";
 
-type Category = { id: string; name: string; archived: boolean };
+type Grade = { id: string; name: string; archived: boolean; createdAt: string };
+type Category = { id: string; name: string; archived: boolean; grades?: Grade[] };
 type Child = {
   id: string;
   firstName: string;
@@ -22,6 +24,9 @@ type Child = {
   exitDate: string | null;
   archived: boolean;
   category: { id: string; name: string };
+  // Grade within a class group (label only).
+  subCategoryId?: string | null;
+  subCategory?: { id: string; name: string } | null;
   deletionRequest: DeletionRequestInfo | null;
 };
 
@@ -32,6 +37,8 @@ export default function ChildrenPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
   const [filterCategory, setFilterCategory] = useState("");
+  // Only when a class group is filtered: "" = all grades, "none" = no grade set.
+  const [filterGrade, setFilterGrade] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -77,13 +84,20 @@ export default function ChildrenPage() {
   // filter (and "show archived") already narrow the fetched set to
   // something small, and it avoids a round-trip on every keystroke.
   const searchLower = search.trim().toLowerCase();
-  const visibleChildren = searchLower
+  const searched = searchLower
     ? children.filter((c) =>
         `${c.firstName} ${c.lastName} ${c.parentName}`
           .toLowerCase()
           .includes(searchLower)
       )
     : children;
+  // A class group is filtered: offer its grades, and list children by grade.
+  const grades = gradeInfo(categories.find((c) => c.id === filterCategory)?.grades ?? []);
+  const gradeFiltered =
+    grades.hasGrades && filterGrade
+      ? searched.filter((c) => (filterGrade === "none" ? !c.subCategoryId : c.subCategoryId === filterGrade))
+      : searched;
+  const visibleChildren = grades.hasGrades ? sortChildrenByGrade(gradeFiltered, grades.rank) : gradeFiltered;
 
   async function toggleArchive(child: Child) {
     if (!child.archived) {
@@ -186,7 +200,10 @@ export default function ChildrenPage() {
         <Select
           className="max-w-xs"
           value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
+          onChange={(e) => {
+            setFilterCategory(e.target.value);
+            setFilterGrade("");
+          }}
         >
           <option value="">All classes</option>
           {categories.map((c) => (
@@ -195,6 +212,24 @@ export default function ChildrenPage() {
             </option>
           ))}
         </Select>
+        {grades.hasGrades && (
+          <Select
+            className="max-w-[10rem]"
+            aria-label="Filter by grade"
+            value={filterGrade}
+            onChange={(e) => setFilterGrade(e.target.value)}
+          >
+            <option value="">All grades</option>
+            {grades.ordered
+              .filter((g) => !g.archived)
+              .map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            <option value="none">No grade set</option>
+          </Select>
+        )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input
             type="checkbox"
@@ -228,7 +263,7 @@ export default function ChildrenPage() {
                 <span aria-hidden="true" className="text-muted">›</span>
               </Link>
               <p className="text-sm text-muted-foreground">
-                {c.category.name} · since {formatDateZA(c.enrollmentDate)}
+                {classLabel(c.category.name, c.subCategory?.name)} · since {formatDateZA(c.enrollmentDate)}
               </p>
               <p className="text-sm text-muted-foreground">{c.parentName}</p>
               {canManage && (
@@ -276,7 +311,7 @@ export default function ChildrenPage() {
                       {c.firstName} {c.lastName}
                     </Link>
                   </td>
-                  <td className="px-3 py-2">{c.category.name}</td>
+                  <td className="px-3 py-2">{classLabel(c.category.name, c.subCategory?.name)}</td>
                   <td className="px-3 py-2">{c.parentName}</td>
                   <td className="px-3 py-2">
                     {formatDateZA(c.enrollmentDate)}

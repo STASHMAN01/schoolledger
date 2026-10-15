@@ -149,15 +149,29 @@ export function gradeRankMap<T extends OrderableGrade & { id: string }>(grades: 
   return new Map(orderGrades(grades).map((g, i) => [g.id, i]));
 }
 
-// Sorts children by grade (display order; no grade last) and then by name.
+// Sorts children by grade (display order; no grade last) and then by name
+// (surname first by default; "firstName" for registers, which list by first name).
 export function sortChildrenByGrade<T extends { subCategoryId?: string | null; lastName: string; firstName: string }>(
   children: readonly T[],
-  rank: ReadonlyMap<string, number>
+  rank: ReadonlyMap<string, number>,
+  nameOrder: "lastName" | "firstName" = "lastName"
 ): T[] {
   const r = (c: T) => (c.subCategoryId && rank.has(c.subCategoryId) ? rank.get(c.subCategoryId)! : Number.MAX_SAFE_INTEGER);
-  return [...children].sort(
-    (a, b) => r(a) - r(b) || a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName)
-  );
+  const [k1, k2] = nameOrder === "lastName" ? (["lastName", "firstName"] as const) : (["firstName", "lastName"] as const);
+  return [...children].sort((a, b) => r(a) - r(b) || a[k1].localeCompare(b[k1]) || a[k2].localeCompare(b[k2]));
+}
+
+// The grades of one class as the screens need them: display order, whether
+// the class has any live (non-archived) grade, and lookups by id. Pass the
+// grade rows of ONE class, archived ones included.
+export function gradeInfo<T extends OrderableGrade & { id: string; archived: boolean }>(grades: readonly T[]) {
+  const ordered = orderGrades(grades);
+  return {
+    ordered,
+    hasGrades: ordered.some((g) => !g.archived),
+    rank: gradeRankMap(ordered),
+    nameById: new Map(ordered.map((g) => [g.id, g.name])),
+  };
 }
 
 // ---- Display -----------------------------------------------------------

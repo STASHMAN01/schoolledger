@@ -20,6 +20,8 @@ type ChildRow = {
   id: string;
   firstName: string;
   lastName: string;
+  // Grade within a class group (label only); null when the child has none.
+  gradeName?: string | null;
   status: "PRESENT" | "ABSENT" | null;
 };
 type Status = "PRESENT" | "ABSENT";
@@ -290,6 +292,9 @@ export default function AttendancePage() {
                   >
                     <span className="text-sm font-medium text-foreground">
                       {c.firstName} {c.lastName}
+                      {c.gradeName && (
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">{c.gradeName}</span>
+                      )}
                     </span>
                     <Badge variant={absent ? "danger" : "success"}>
                       {absent ? "Absent" : "Present"}

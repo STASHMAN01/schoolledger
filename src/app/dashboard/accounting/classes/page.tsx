@@ -13,6 +13,10 @@ type Category = {
   parentId: string | null;
   monthlyFeeCents: number | null;
   archived: boolean;
+  // Grades of a class group (Aftercare: Gr R to Gr 12). Display only here:
+  // the fee below is the class's and applies to every child in it, whatever
+  // their grade. Grades are managed in Centre Management > Classes.
+  grades?: { id: string; name: string; archived: boolean; childCount: number }[];
   deletionRequest: DeletionRequestInfo | null;
 };
 
@@ -66,8 +70,8 @@ export default function CategoriesPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        // Flat list by decision (Phase 1 centre-management restructure) —
-        // classes are never nested. The API no longer accepts parentId.
+        // A standalone class. Grades (class groups) are added in Centre
+        // Management > Classes.
         name,
         monthlyFeeCents: inputToCents(fee),
       }),
@@ -188,6 +192,12 @@ export default function CategoriesPage() {
               <span className="ml-2 text-xs text-muted-foreground">
                 {formatCents(category.monthlyFeeCents, currencyCode)}/mo
               </span>
+            )}
+            {category.grades && category.grades.some((g) => !g.archived) && (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Grades: {category.grades.filter((g) => !g.archived).map((g) => g.name).join(", ")}. The fee covers every
+                grade.
+              </p>
             )}
           </div>
           {canManage && (

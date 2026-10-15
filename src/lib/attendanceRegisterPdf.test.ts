@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildRegisterFilename,
   generateAttendanceRegisterPdf,
+  registerChildLabel,
   weekdaysOfMonth,
 } from "./attendanceRegisterPdf";
 
@@ -30,6 +31,21 @@ describe("attendance register PDF", () => {
     }));
     const full = await generateAttendanceRegisterPdf(org, "Butterflies", "2026-09", many);
     expect(Buffer.from(full).subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("puts the grade after the child's name (class groups)", async () => {
+    expect(registerChildLabel({ firstName: "Thabo", lastName: "Mokoena", gradeName: "Gr 3" })).toBe("Thabo Mokoena (Gr 3)");
+    expect(registerChildLabel({ firstName: "Thabo", lastName: "Mokoena", gradeName: null })).toBe("Thabo Mokoena");
+    expect(registerChildLabel({ firstName: "Thabo", lastName: "Mokoena" })).toBe("Thabo Mokoena");
+
+    const org = { name: "Test School", addressLine1: null, addressLine2: null, province: null };
+    const kids = [
+      { firstName: "Thabo", lastName: "Mokoena", gradeName: "Gr 3", marks: new Map<number, "PRESENT" | "ABSENT">([[1, "PRESENT"]]) },
+      { firstName: "A very long first name indeed", lastName: "With an even longer surname", gradeName: "Gr 12", marks: new Map() },
+      { firstName: "Ungraded", lastName: "Child", gradeName: null, marks: new Map() },
+    ];
+    const pdf = await generateAttendanceRegisterPdf(org, "Aftercare", "2026-09", kids);
+    expect(Buffer.from(pdf).subarray(0, 5).toString()).toBe("%PDF-");
   });
 
   it("builds a safe filename", () => {

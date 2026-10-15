@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { monthRange } from "@/lib/files";
+import { gradeRankMap, sortChildrenByGrade } from "@/lib/classGroups";
 
 // One class's attendance for one month (Dylan, 15 Oct 2026): shared by the
 // printable PDF (attendance/register/pdf) and the on-screen month view on
@@ -17,6 +18,9 @@ export type MonthRow = {
   childId: string;
   firstName: string;
   lastName: string;
+  // Grade within a class group (label only); null for a child with none.
+  gradeId: string | null;
+  gradeName: string | null;
   // day-of-month (1-31) -> status
   marks: Map<number, MonthMark>;
 };
@@ -33,7 +37,14 @@ export async function loadMonthlyRegister(
   const [children, records] = await Promise.all([
     db.child.findMany({
       where: { organizationId, categoryId, deletedAt: null },
-      select: { id: true, firstName: true, lastName: true, archived: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        archived: true,
+        subCategoryId: true,
+        subCategory: { select: { id: true, name: true, createdAt: true } },
+      },
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     }),
     db.attendanceRecord.findMany({
@@ -49,12 +60,27 @@ export async function loadMonthlyRegister(
     marksByChild.set(r.childId, marks);
   }
 
-  return children
+  const rows = children
     .filter((c) => !c.archived || marksByChild.has(c.id))
     .map((c) => ({
       childId: c.id,
       firstName: c.firstName,
       lastName: c.lastName,
+      gradeId: c.subCategory?.id ?? null,
+      gradeName: c.subCategory?.name ?? null,
       marks: marksByChild.get(c.id) ?? new Map<number, MonthMark>(),
     }));
+
+  // A class group: sort by grade (display order), then first name, last name.
+  const gradeRows = new Map(children.flatMap((c) => (c.subCategory ? [[c.subCategory.id, c.subCategory] as const] : [])));
+  if (gradeRows.size === 0) return rows;
+  const rank = gradeRankMap([...gradeRows.values()]);
+  const byFirstName = [...rows].sort(
+    (a, b) => a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName)
+  );
+  return sortChildrenByGrade(
+    byFirstName.map((r) => ({ ...r, subCategoryId: r.gradeId })),
+    rank,
+    "firstName"
+  );
 }

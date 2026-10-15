@@ -48,7 +48,15 @@ export async function GET(req: NextRequest, { params }: Params) {
           if (status === "PRESENT") present++;
           else absent++;
         }
-        return { childId: r.childId, firstName: r.firstName, lastName: r.lastName, marks, present, absent };
+        return {
+          childId: r.childId,
+          firstName: r.firstName,
+          lastName: r.lastName,
+          gradeName: r.gradeName,
+          marks,
+          present,
+          absent,
+        };
       }),
     });
   } catch (err) {

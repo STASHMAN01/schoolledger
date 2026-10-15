@@ -142,6 +142,11 @@ export async function buildOrgBackupZip(
     db.whatsAppGroupCheck.findMany({ where }),
   ]);
 
+  // Classes AND the grades of class groups (parentId = the class; the
+  // category query has no parentId filter), and children with their
+  // subCategoryId. This backup is export-only (there is no restore code).
+  // When one is written: restore classes before grades and grades before
+  // children, because Child.subCategoryId points at a grade.
   json("classes.json", classes);
   json("children.json", children);
   json("guardians.json", guardians);
@@ -327,8 +332,8 @@ function readme(schoolName: string, at: Date, counts: Record<string, number>): s
     ``,
     `WHAT'S INSIDE`,
     `data/organization.json      School profile and banking details`,
-    `data/classes.json           Classes`,
-    `data/children.json          Children (incl. items in the trash - see deletedAt)`,
+    `data/classes.json           Classes; a grade of a class group is a row whose parentId is its class`,
+    `data/children.json          Children (incl. items in the trash - see deletedAt); subCategoryId is the child's grade`,
     `data/guardians.json         Parents / guardians`,
     `data/payment-types.json     Fee and payment types`,
     `data/events.json            Events, with the class ids they apply to`,

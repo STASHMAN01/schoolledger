@@ -21,7 +21,8 @@ import { DOCUMENT_TYPES, normaliseRequired } from "@/lib/documents";
 type PickedDoc = { type: string; guardianIndex?: number; dataUrl: string; fileName: string };
 const docKey = (type: string, guardianIndex?: number) => `${type}:${guardianIndex ?? ""}`;
 
-type ClassOption = { id: string; name: string };
+// grades: the class's grades when it is a class group (Aftercare: Gr R to Gr 12).
+type ClassOption = { id: string; name: string; grades?: { id: string; name: string; archived: boolean }[] };
 
 export function AddChildForm({
   organizationId,
@@ -44,6 +45,7 @@ export function AddChildForm({
     dateOfBirth: "",
     gender: "",
     categoryId: classes[0]?.id ?? "",
+    subCategoryId: "",
     enrollmentDate: todayLocal(),
     childIdNumber: "",
     homeAddress: "",
@@ -95,6 +97,10 @@ export function AddChildForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<typeof f>) => setF((prev) => ({ ...prev, ...patch }));
+  // Grades of the chosen class (class groups). When it has any, a grade is
+  // required for a new child.
+  const chosenClass = classes.find((c) => c.id === (f.categoryId || classes[0]?.id));
+  const activeGrades = (chosenClass?.grades ?? []).filter((g) => !g.archived);
 
   // One upload line per required document; a parent's ID once per parent.
   function documentSlots(withSecond: boolean) {
@@ -135,6 +141,7 @@ export function AddChildForm({
       [f.gLastName, "the parent/guardian's surname"],
       [f.gPhone, "the parent/guardian's phone number"],
     ];
+    if (activeGrades.length > 0) required.push([f.subCategoryId, "a grade"]);
     const hasSecond =
       !quick &&
       showSecond &&
@@ -193,12 +200,14 @@ export function AddChildForm({
             ? {
                 quickAdd: true,
                 categoryId: f.categoryId || classes[0]?.id,
+                subCategoryId: f.subCategoryId || undefined,
                 firstName: f.firstName.trim(),
                 lastName: f.lastName.trim(),
                 enrollmentDate: f.enrollmentDate,
               }
             : {
           categoryId: f.categoryId || classes[0]?.id,
+          subCategoryId: f.subCategoryId || undefined,
           firstName: f.firstName.trim(),
           lastName: f.lastName.trim(),
           dateOfBirth: f.dateOfBirth,
@@ -340,7 +349,7 @@ export function AddChildForm({
           </Field>
           </>)}
           <Field label="Class *" id="ac-class">
-            <Select id="ac-class" value={f.categoryId || classes[0]?.id || ""} onChange={(e) => set({ categoryId: e.target.value })}>
+            <Select id="ac-class" value={f.categoryId || classes[0]?.id || ""} onChange={(e) => set({ categoryId: e.target.value, subCategoryId: "" })}>
               {classes.length === 0 && <option value="">No classes yet — add one under Classes</option>}
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -349,6 +358,18 @@ export function AddChildForm({
               ))}
             </Select>
           </Field>
+          {activeGrades.length > 0 && (
+            <Field label="Grade *" id="ac-grade">
+              <Select id="ac-grade" value={f.subCategoryId} onChange={(e) => set({ subCategoryId: e.target.value })}>
+                <option value="">Choose…</option>
+                {activeGrades.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
           <Field label="Start date *" id="ac-start">
             <Input id="ac-start" type="date" value={f.enrollmentDate} onChange={(e) => set({ enrollmentDate: e.target.value })} />
           </Field>

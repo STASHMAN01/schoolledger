@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, PageHeader } from "@/components/ui";
+import { classLabel } from "@/lib/classGroups";
 
 // What a Teacher sees when they open a child (Dylan, 4 Oct 2026): name,
 // class, gender, age, allergies and emergency contact, read-only. The
@@ -17,6 +18,8 @@ type TeacherChild = {
   emergencyContactRelationship: string | null;
   emergencyContactPhone: string | null;
   category: { name: string } | null;
+  // Grade within a class group (label only).
+  subCategory?: { name: string } | null;
 };
 
 const GENDER_LABEL: Record<string, string> = { MALE: "Boy", FEMALE: "Girl", OTHER: "Other" };
@@ -81,7 +84,7 @@ export function TeacherChildView({ organizationId, childId }: { organizationId: 
       <Link href="/dashboard/centre/enrolled" className="mb-3 inline-block text-sm text-brand hover:underline">
         ← Back to Enrolled
       </Link>
-      <PageHeader title={`${child.firstName} ${child.lastName}`} description={child.category?.name ?? undefined} />
+      <PageHeader title={`${child.firstName} ${child.lastName}`} description={child.category ? classLabel(child.category.name, child.subCategory?.name) : undefined} />
       <Card className="divide-y divide-border px-4">
         <Row label="Gender" value={child.gender ? GENDER_LABEL[child.gender] ?? child.gender : "Not recorded"} />
         <Row label="Age" value={ageText(child.dateOfBirth)} />

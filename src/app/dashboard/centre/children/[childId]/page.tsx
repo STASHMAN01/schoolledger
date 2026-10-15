@@ -16,6 +16,7 @@ import { pickBillingGuardianId } from "@/lib/billingContact";
 import { EditChildDetails } from "@/components/EditChildDetails";
 import { ChildDocumentsCard } from "@/components/ChildDocumentsCard";
 import { formatDateZA } from "@/lib/date";
+import { classLabel } from "@/lib/classGroups";
 import { TeacherChildView } from "./TeacherChildView";
 
 type ParentFormLinkRow = {
@@ -54,6 +55,9 @@ type ChildProfile = {
   lastName: string;
   category: { name: string };
   categoryId: string;
+  // Grade within a class group (label only).
+  subCategoryId?: string | null;
+  subCategory?: { id: string; name: string } | null;
   enrollmentDate: string;
   exitDate: string | null;
   feeOverrideCents?: number | null;
@@ -530,7 +534,7 @@ function FullChildProfile() {
     <div className="animate-in">
       <PageHeader
         title={`${child.firstName} ${child.lastName}`}
-        description={`${child.category.name}${child.exitDate ? ` · left ${formatDateZA(child.exitDate)}` : ""}`}
+        description={`${classLabel(child.category.name, child.subCategory?.name)}${child.exitDate ? ` · left ${formatDateZA(child.exitDate)}` : ""}`}
       />
 
       {canManage && (

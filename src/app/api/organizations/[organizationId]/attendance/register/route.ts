@@ -7,6 +7,7 @@ import { handleApiError } from "@/lib/apiError";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
 import { todayInTimeZone } from "@/lib/date";
 import { isWeekendDate } from "@/lib/lessonPlan";
+import { gradeInfo, sortChildrenByGrade } from "@/lib/classGroups";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const [children, records] = await Promise.all([
+    const [children, records, gradeRows] = await Promise.all([
       db.child.findMany({
         where: {
           organizationId,
@@ -56,21 +57,32 @@ export async function GET(req: NextRequest, { params }: Params) {
           deletedAt: null,
           exitDate: null,
         },
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, subCategoryId: true },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
       }),
       db.attendanceRecord.findMany({
         where: { organizationId, date, child: { categoryId: scope.categoryId } },
         select: { childId: true, status: true, notifiedAt: true },
       }),
+      // Grades of a class group (label only): the register lists children by
+      // grade and shows a small grade label per child.
+      db.category.findMany({
+        where: { organizationId, parentId: scope.categoryId, deletedAt: null },
+        select: { id: true, name: true, archived: true, createdAt: true },
+      }),
     ]);
 
     const byChildId = new Map(records.map((r) => [r.childId, r]));
+    const grades = gradeInfo(gradeRows);
+    const ordered = grades.hasGrades ? sortChildrenByGrade(children, grades.rank, "firstName") : children;
 
     return NextResponse.json({
       category,
-      children: children.map((c) => ({
+      hasGrades: grades.hasGrades,
+      children: ordered.map(({ subCategoryId, ...c }) => ({
         ...c,
+        gradeId: subCategoryId,
+        gradeName: subCategoryId ? (grades.nameById.get(subCategoryId) ?? null) : null,
         status: byChildId.get(c.id)?.status ?? null,
         notifiedAt: byChildId.get(c.id)?.notifiedAt ?? null,
       })),

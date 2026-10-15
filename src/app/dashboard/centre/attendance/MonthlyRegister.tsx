@@ -13,6 +13,8 @@ type Row = {
   childId: string;
   firstName: string;
   lastName: string;
+  // Grade within a class group (label only); null when the child has none.
+  gradeName?: string | null;
   marks: Record<number, "P" | "A">;
   present: number;
   absent: number;
@@ -242,6 +244,9 @@ export function MonthlyRegister({
                   <tr key={r.childId} className="border-t border-border">
                     <td className="sticky left-0 z-10 whitespace-nowrap bg-surface px-3 py-2 font-medium text-foreground">
                       {r.firstName} {r.lastName}
+                      {r.gradeName && (
+                        <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">{r.gradeName}</span>
+                      )}
                     </td>
                     {data.days.map((d) => {
                       const mark = r.marks[d];

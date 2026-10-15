@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serializeChild } from "./childView";
+import { serializeChild, serializeChildForTeacher } from "./childView";
 import { redactMoneyMetadata } from "./auditLabel";
 
 const base = {
@@ -36,6 +36,42 @@ describe("serializeChild", () => {
   it("does not add fields that were not there", () => {
     const out = serializeChild({ id: "c2", firstName: "A", childIdNumber: null }, false);
     expect(out).toEqual({ id: "c2", firstName: "A", childIdNumber: null });
+  });
+});
+
+describe("serializeChildForTeacher", () => {
+  const teacherSource = {
+    id: "c1",
+    categoryId: "k1",
+    firstName: "Test",
+    lastName: "Child",
+    dateOfBirth: null,
+    gender: null,
+    allergies: null,
+    emergencyContactName: null,
+    emergencyContactRelationship: null,
+    emergencyContactPhone: null,
+    enrollmentDate: new Date("2026-01-05"),
+    exitDate: null,
+    archived: false,
+    category: { id: "k1", name: "Aftercare" },
+  };
+
+  it("includes the grade label (class groups)", () => {
+    const out = serializeChildForTeacher({
+      ...teacherSource,
+      subCategoryId: "g3",
+      subCategory: { id: "g3", name: "Gr 3" },
+    });
+    expect(out.subCategoryId).toBe("g3");
+    expect(out.subCategory).toEqual({ id: "g3", name: "Gr 3" });
+    expect(out.categoryId).toBe("k1");
+  });
+
+  it("has no grade for a child without one", () => {
+    const out = serializeChildForTeacher(teacherSource);
+    expect(out.subCategoryId).toBeNull();
+    expect(out.subCategory).toBeNull();
   });
 });
 

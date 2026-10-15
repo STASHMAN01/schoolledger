@@ -16,17 +16,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useOrg } from "../../OrgContext";
-import { Badge, Button, Card, EmptyState, Input, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, PageHeader, Select } from "@/components/ui";
 import { HorizontalBars, type BarRow } from "@/components/HorizontalBars";
 import { AddChildForm } from "@/components/AddChildForm";
 import { ImportChildrenCsv } from "@/components/ImportChildrenCsv";
 import { isProfileIncomplete, missingCoreDetails } from "@/lib/childProfile";
+import { gradeInfo, sortChildrenByGrade } from "@/lib/classGroups";
 
 type ChildRow = {
   id: string;
   firstName: string;
   lastName: string;
   category: { id: string; name: string };
+  // Grade within a class group (label only).
+  subCategoryId?: string | null;
+  subCategory?: { id: string; name: string } | null;
   dateOfBirth: string | null;
   gender: "MALE" | "FEMALE" | "OTHER" | null;
   parentPhone: string | null;
@@ -35,7 +39,8 @@ type ChildRow = {
   archived: boolean;
 };
 
-type ClassRow = { id: string; name: string; archived: boolean };
+type GradeRow = { id: string; name: string; archived: boolean; createdAt: string; childCount?: number };
+type ClassRow = { id: string; name: string; archived: boolean; grades?: GradeRow[] };
 
 const NOT_SPECIFIED = "var(--muted)";
 
@@ -83,6 +88,8 @@ export default function EnrolledPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [search, setSearch] = useState("");
+  // Grade filter per open class group: "" = all, "none" = no grade set, else a grade id.
+  const [gradeFilter, setGradeFilter] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -169,10 +176,10 @@ export default function EnrolledPage() {
         (!onlyIncomplete || isProfileIncomplete(c)) &&
         (!q || `${c.firstName} ${c.lastName}`.toLowerCase().includes(q))
     );
-    const byCategory = new Map<string, { name: string; children: ChildRow[] }>();
-    for (const k of classList) byCategory.set(k.id, { name: k.name, children: [] });
+    const byCategory = new Map<string, { name: string; grades: GradeRow[]; children: ChildRow[] }>();
+    for (const k of classList) byCategory.set(k.id, { name: k.name, grades: k.grades ?? [], children: [] });
     for (const c of shown) {
-      const entry = byCategory.get(c.category.id) ?? { name: c.category.name, children: [] };
+      const entry = byCategory.get(c.category.id) ?? { name: c.category.name, grades: [], children: [] };
       entry.children.push(c);
       byCategory.set(c.category.id, entry);
     }
@@ -265,6 +272,12 @@ export default function EnrolledPage() {
               <div className="divide-y divide-border">
                 {classes.map((cat) => {
                   const open = filtering || openCategory === cat.id;
+                  // A class group (Aftercare): grades filter and sort the list.
+                  const grades = gradeInfo(cat.grades);
+                  const chosenGrade = grades.hasGrades ? (gradeFilter[cat.id] ?? "") : "";
+                  const visible = cat.children.filter((c) =>
+                    !chosenGrade ? true : chosenGrade === "none" ? !c.subCategoryId : c.subCategoryId === chosenGrade
+                  );
                   return (
                     <div key={cat.id}>
                       <button
@@ -280,10 +293,30 @@ export default function EnrolledPage() {
                           {cat.children.length === 0 && (
                             <p className="py-1.5 text-sm text-muted-foreground">No children in this class yet.</p>
                           )}
-                          {cat.children
-                            .slice()
-                            .sort((a, b) => a.lastName.localeCompare(b.lastName))
-                            .map((c) => {
+                          {grades.hasGrades && cat.children.length > 0 && (
+                            <div className="py-1.5">
+                              <Select
+                                aria-label={`Filter ${cat.name} by grade`}
+                                value={chosenGrade}
+                                onChange={(e) => setGradeFilter((prev) => ({ ...prev, [cat.id]: e.target.value }))}
+                                className="w-44"
+                              >
+                                <option value="">All grades</option>
+                                {grades.ordered
+                                  .filter((g) => !g.archived)
+                                  .map((g) => (
+                                    <option key={g.id} value={g.id}>
+                                      {g.name}
+                                    </option>
+                                  ))}
+                                <option value="none">No grade set</option>
+                              </Select>
+                            </div>
+                          )}
+                          {(grades.hasGrades
+                            ? sortChildrenByGrade(visible, grades.rank)
+                            : visible.slice().sort((a, b) => a.lastName.localeCompare(b.lastName))
+                          ).map((c) => {
                               const missing = isTeacher ? [] : missingCoreDetails(c);
                               return (
                                 <Link
@@ -294,6 +327,11 @@ export default function EnrolledPage() {
                                   <span className="underline">
                                     {c.firstName} {c.lastName}
                                   </span>
+                                  {grades.hasGrades && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {c.subCategory?.name ?? "No grade set"}
+                                    </span>
+                                  )}
                                   {missing.length > 0 && (
                                     <span title={`Missing: ${missing.join(", ")}`}>
                                       <Badge variant="danger">Incomplete profile</Badge>

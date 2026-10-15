@@ -7,6 +7,7 @@ import { useOrg } from "../../../OrgContext";
 import { Card, Input } from "@/components/ui";
 import { formatCents } from "@/lib/formatMoney";
 import { EditChildDetails } from "@/components/EditChildDetails";
+import { classLabel } from "@/lib/classGroups";
 import { formatDateZA } from "@/lib/date";
 import { canShareFiles as detectCanShare, sharePdfFromUrl } from "@/lib/sharePdf";
 
@@ -28,6 +29,9 @@ type ChildDetail = {
   parentName: string;
   category: { name: string };
   categoryId: string;
+  // Grade within a class group (label only).
+  subCategoryId?: string | null;
+  subCategory?: { id: string; name: string } | null;
   enrollmentDate: string;
   exitDate: string | null;
   feeOverrideCents: number | null;
@@ -157,7 +161,7 @@ export default function ChildDetailPage() {
         {child.firstName} {child.lastName}
       </h1>
       <p className="mb-4 text-sm text-muted-foreground">
-        {child.category.name} · Parent/guardian: {child.parentName || "not added yet"}
+        {classLabel(child.category.name, child.subCategory?.name)} · Parent/guardian: {child.parentName || "not added yet"}
         {child.exitDate ? ` · left ${formatDateZA(child.exitDate)}` : ""}
       </p>
 

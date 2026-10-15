@@ -18,6 +18,8 @@ export type EditableChild = {
   firstName: string;
   lastName: string;
   categoryId: string;
+  // Grade within a class group (label only); null/absent = "No grade set".
+  subCategoryId?: string | null;
   enrollmentDate: string;
   exitDate: string | null;
   feeOverrideCents?: number | null;
@@ -59,7 +61,8 @@ export function EditChildDetails({
   onSaved: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  type ClassWithGrades = { id: string; name: string; grades?: { id: string; name: string; archived: boolean }[] };
+  const [classes, setClasses] = useState<ClassWithGrades[]>([]);
   const [f, setF] = useState(() => initial(child));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +74,7 @@ export function EditChildDetails({
       firstName: c.firstName,
       lastName: c.lastName,
       categoryId: c.categoryId,
+      subCategoryId: c.subCategoryId ?? "",
       enrollmentDate: dateOnly(c.enrollmentDate),
       exitDate: dateOnly(c.exitDate),
       fee: c.feeOverrideCents != null ? String(c.feeOverrideCents / 100) : "",
@@ -94,7 +98,7 @@ export function EditChildDetails({
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setClasses(
-          (data.categories as { id: string; name: string; archived: boolean }[]).filter(
+          (data.categories as (ClassWithGrades & { archived: boolean })[]).filter(
             (c) => !c.archived || c.id === child.categoryId
           )
         );
@@ -106,12 +110,26 @@ export function EditChildDetails({
     }
   }
 
+  // Grades offered for the chosen class: its live grades, plus the child's own
+  // current grade even if it has since been archived.
+  const gradeChoices = (classes.find((c) => c.id === f.categoryId)?.grades ?? []).filter(
+    (g) => !g.archived || g.id === child.subCategoryId
+  );
+
   /** Only the fields that actually changed. */
   function buildPatch(): Record<string, unknown> | string {
     const p: Record<string, unknown> = {};
     if (!f.firstName.trim() || !f.lastName.trim()) return "The child's first name and surname can't be empty.";
     if (f.firstName.trim() !== child.firstName) p.firstName = f.firstName.trim();
     if (f.lastName.trim() !== child.lastName) p.lastName = f.lastName.trim();
+    // Grade: a label within a class group. Moving class drops the old grade on
+    // the server; a grade is only sent when one is chosen (or cleared in the
+    // same class).
+    if (f.categoryId !== child.categoryId) {
+      if (f.subCategoryId) p.subCategoryId = f.subCategoryId;
+    } else if (f.subCategoryId !== (child.subCategoryId ?? "")) {
+      p.subCategoryId = f.subCategoryId || null;
+    }
     if (canChangeDates) {
       if (f.categoryId !== child.categoryId) p.categoryId = f.categoryId;
       if (!f.enrollmentDate) return "Please add a start date.";
@@ -282,11 +300,34 @@ export function EditChildDetails({
             </Field>
             {canChangeDates && (
               <Field label="Class" id="ed-class">
-                <Select id="ed-class" value={f.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>
+                <Select
+                  id="ed-class"
+                  value={f.categoryId}
+                  onChange={(e) =>
+                    set({
+                      categoryId: e.target.value,
+                      // Back to the child's own class: keep their grade; another class: pick again.
+                      subCategoryId: e.target.value === child.categoryId ? (child.subCategoryId ?? "") : "",
+                    })
+                  }
+                >
                   {classes.length === 0 && <option value={child.categoryId}>Loading…</option>}
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
+            {gradeChoices.length > 0 && (
+              <Field label="Grade" id="ed-grade">
+                <Select id="ed-grade" value={f.subCategoryId} onChange={(e) => set({ subCategoryId: e.target.value })}>
+                  <option value="">No grade set</option>
+                  {gradeChoices.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                      {g.archived ? " (archived)" : ""}
                     </option>
                   ))}
                 </Select>

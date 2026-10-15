@@ -7,6 +7,7 @@ import {
   gradeInUseProblem,
   gradeKey,
   gradeNameProblem,
+  gradeInfo,
   gradeRankMap,
   matchGrade,
   nextSubCategoryId,
@@ -125,6 +126,31 @@ describe("ordering", () => {
       "Gr 2/Zulu/A",
       "null/Adams/A",
     ]);
+  });
+});
+
+describe("gradeInfo", () => {
+  it("reports the order, whether the class has live grades, and names by id", () => {
+    const info = gradeInfo([g("Gr 2", 1), g("Gr 1", 0)]);
+    expect(info.ordered.map((x) => x.name)).toEqual(["Gr 1", "Gr 2"]);
+    expect(info.hasGrades).toBe(true);
+    expect(info.nameById.get("Gr 2")).toBe("Gr 2");
+    expect(info.rank.get("Gr 1")).toBe(0);
+  });
+
+  it("treats a class with only archived (or no) grades as having none", () => {
+    expect(gradeInfo([]).hasGrades).toBe(false);
+    expect(gradeInfo([g("Gr 1", 0, true)]).hasGrades).toBe(false);
+  });
+
+  it("sorts a register by grade, then first name (registers list by first name)", () => {
+    const rank = gradeRankMap([g("Gr 1", 0), g("Gr 2", 1)]);
+    const kids = [
+      { subCategoryId: "Gr 2", firstName: "Amy", lastName: "Zulu" },
+      { subCategoryId: "Gr 1", firstName: "Zola", lastName: "Dube" },
+      { subCategoryId: "Gr 1", firstName: "Anele", lastName: "Nkosi" },
+    ];
+    expect(sortChildrenByGrade(kids, rank, "firstName").map((k) => k.firstName)).toEqual(["Anele", "Zola", "Amy"]);
   });
 });
 

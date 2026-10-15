@@ -17,6 +17,8 @@ export type RegisterOrg = {
 export type RegisterChild = {
   firstName: string;
   lastName: string;
+  // Grade within a class group (e.g. "Gr 3"); shown after the name.
+  gradeName?: string | null;
   // day-of-month (1-31) -> status
   marks: Map<number, "PRESENT" | "ABSENT">;
 };
@@ -25,6 +27,12 @@ const PAGE_WIDTH = 841.89; // A4 landscape
 const PAGE_HEIGHT = 595.28;
 const MARGIN = 36;
 const ROW_HEIGHT = 18;
+
+// "Thabo Mokoena (Gr 3)", or just the name for a child with no grade.
+export function registerChildLabel(child: { firstName: string; lastName: string; gradeName?: string | null }): string {
+  const name = `${child.firstName} ${child.lastName}`;
+  return child.gradeName ? `${name} (${child.gradeName})` : name;
+}
 
 export function weekdaysOfMonth(monthKey: string): number[] {
   const [y, m] = monthKey.split("-").map(Number);
@@ -48,7 +56,8 @@ export async function generateAttendanceRegisterPdf(
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
   const days = weekdaysOfMonth(monthKey);
-  const nameWidth = 150;
+  // A little wider when grades are printed after the names.
+  const nameWidth = children.some((c) => c.gradeName) ? 190 : 150;
   const totalWidth = 38;
   const dayWidth = Math.min(
     26,
@@ -116,12 +125,14 @@ export async function generateAttendanceRegisterPdf(
       thickness: 0.4,
       color: rgb(0.8, 0.8, 0.8),
     });
+    // Too long: shorten the name but always keep the grade at the end.
     const name = `${child.firstName} ${child.lastName}`;
+    const suffix = child.gradeName ? ` (${child.gradeName})` : "";
     let shown = name;
-    while (shown.length > 3 && font.widthOfTextAtSize(shown, 8.5) > nameWidth - 8) {
+    while (shown.length > 3 && font.widthOfTextAtSize(shown + suffix, 8.5) > nameWidth - 8) {
       shown = shown.slice(0, -2);
     }
-    page.drawText(shown === name ? name : `${shown}…`, { x: MARGIN + 4, y: y - 12.5, size: 8.5, font });
+    page.drawText(shown === name ? name + suffix : `${shown}…${suffix}`, { x: MARGIN + 4, y: y - 12.5, size: 8.5, font });
 
     let present = 0;
     let absent = 0;

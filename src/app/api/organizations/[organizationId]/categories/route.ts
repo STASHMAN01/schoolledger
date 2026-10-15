@@ -72,6 +72,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
             name: g.name,
             archived: g.archived,
             childCount: g._count.gradeLearners,
+            // Lets clients re-sort with orderGrades() without losing the order.
+            createdAt: g.createdAt,
           })),
           teachers: teacherAssignments.map((t) => ({ id: t.id, name: t.user.name })),
           childCount: _count.learners,

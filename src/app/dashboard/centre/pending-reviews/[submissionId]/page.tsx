@@ -86,8 +86,11 @@ export default function ReviewSubmissionPage() {
   // redirect fee reminders. See lib/billingContact.ts.
   const [updateBilling, setUpdateBilling] = useState(false);
   // New family only: which class and from when (fees start from this date).
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  type ClassOpt = { id: string; name: string; grades?: { id: string; name: string; archived: boolean }[] };
+  const [classes, setClasses] = useState<ClassOpt[]>([]);
   const [classId, setClassId] = useState("");
+  // Grade within a class group (label only); required when the class has grades.
+  const [gradeId, setGradeId] = useState("");
   const [startDate, setStartDate] = useState("");
 
   const load = useCallback(async () => {
@@ -102,7 +105,7 @@ export default function ReviewSubmissionPage() {
         const cRes = await fetch(`/api/organizations/${organizationId}/categories`);
         const cData = await cRes.json().catch(() => ({}));
         if (cRes.ok) {
-          const active = (cData.categories as { id: string; name: string; archived: boolean }[]).filter(
+          const active = (cData.categories as (ClassOpt & { archived: boolean })[]).filter(
             (k) => !k.archived
           );
           setClasses(active);
@@ -120,9 +123,15 @@ export default function ReviewSubmissionPage() {
     load();
   }, [load]);
 
+  const classGrades = (classes.find((k) => k.id === classId)?.grades ?? []).filter((g) => !g.archived);
+
   async function decide(action: "approve" | "reject") {
-    setDeciding(true);
     setError(null);
+    if (action === "approve" && submission?.isNewApplicant && classGrades.length > 0 && !gradeId) {
+      setError("Please choose a grade for this class.");
+      return;
+    }
+    setDeciding(true);
     const res = await fetch(
       `/api/organizations/${organizationId}/parent-submissions/${params.submissionId}/${action}`,
       {
@@ -132,7 +141,7 @@ export default function ReviewSubmissionPage() {
           action === "reject"
             ? { reviewNotes }
             : submission?.isNewApplicant
-              ? { categoryId: classId, enrollmentDate: startDate }
+              ? { categoryId: classId, subCategoryId: gradeId || undefined, enrollmentDate: startDate }
               : { updateBillingContact: updateBilling }
         ),
       }
@@ -358,7 +367,14 @@ export default function ReviewSubmissionPage() {
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="approveClass">Enrol in class</Label>
-                <Select id="approveClass" value={classId} onChange={(e) => setClassId(e.target.value)}>
+                <Select
+                  id="approveClass"
+                  value={classId}
+                  onChange={(e) => {
+                    setClassId(e.target.value);
+                    setGradeId("");
+                  }}
+                >
                   {classes.length === 0 && <option value="">No classes yet</option>}
                   {classes.map((k) => (
                     <option key={k.id} value={k.id}>
@@ -367,6 +383,19 @@ export default function ReviewSubmissionPage() {
                   ))}
                 </Select>
               </div>
+              {classGrades.length > 0 && (
+                <div>
+                  <Label htmlFor="approveGrade">Grade</Label>
+                  <Select id="approveGrade" value={gradeId} onChange={(e) => setGradeId(e.target.value)}>
+                    <option value="">Choose…</option>
+                    {classGrades.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label htmlFor="approveStart">Start date (fees start from here)</Label>
                 <Input id="approveStart" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
