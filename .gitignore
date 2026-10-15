@@ -39,6 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Product video sources and rendered exports
+/video/media/
+/video/out/
+/video/transcripts/
+/.venv-video/
 
 # Claude helper worktrees (local only)
 .claude/worktrees/
