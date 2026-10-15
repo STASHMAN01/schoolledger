@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { handleApiError } from "@/lib/apiError";
 import { buildKey, signUpload, storageConfigured } from "@/lib/storage";
-import { MAX_FILES_PER_ITEM, canAttachTo, uploadRequestSchema } from "@/lib/storedFiles";
+import { MAX_FILES_PER_ITEM, canAttachTo, canStageClasswork, uploadRequestSchema } from "@/lib/storedFiles";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -20,21 +20,35 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const body = uploadRequestSchema.parse(await req.json());
-    const targetId = (body.kind === "CLASSWORK" ? body.classworkEntryId : body.childReportId)!;
-    // Classwork's own caps (5 shared group photos, or one per child for an
-    // individual activity) are enforced inside canAttachTo, where the
-    // entry's activityType is already being looked up.
-    const allowed = await canAttachTo(
-      organizationId,
-      body.kind,
-      targetId,
-      { role, assignedCategoryId, permissions },
-      body.kind === "CLASSWORK" ? body.childId : undefined
-    );
-    if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status });
+    // A CLASSWORK upload with no entry is a staged photo (photos first, then
+    // the description -- Dylan, 15 Oct 2026). It belongs to the teacher who
+    // took it until they submit the entry.
+    const staged = body.kind === "CLASSWORK" && !body.classworkEntryId;
+    const targetId = body.kind === "CLASSWORK" ? body.classworkEntryId : body.childReportId;
+    if (staged) {
+      const allowedToStage = await canStageClasswork(
+        organizationId,
+        userId,
+        { role, assignedCategoryId, permissions, userId },
+        body.childId
+      );
+      if (!allowedToStage.ok) return NextResponse.json({ error: allowedToStage.error }, { status: allowedToStage.status });
+    } else {
+      // Classwork's own caps (5 shared group photos, or one per child for an
+      // individual activity) are enforced inside canAttachTo, where the
+      // entry's activityType is already being looked up.
+      const allowed = await canAttachTo(
+        organizationId,
+        body.kind,
+        targetId!,
+        { role, assignedCategoryId, permissions },
+        body.kind === "CLASSWORK" ? body.childId : undefined
+      );
+      if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status });
+    }
 
     if (body.kind === "REPORT") {
-      const already = await db.storedFile.count({ where: { childReportId: targetId, status: "ACTIVE" } });
+      const already = await db.storedFile.count({ where: { childReportId: targetId!, status: "ACTIVE" } });
       if (already >= MAX_FILES_PER_ITEM) {
         return NextResponse.json({ error: `That already has ${MAX_FILES_PER_ITEM} photos.` }, { status: 400 });
       }
@@ -49,8 +63,8 @@ export async function POST(req: NextRequest, { params }: Params) {
         sizeBytes: body.sizeBytes,
         caption: body.caption || null,
         uploadedByUserId: userId,
-        classworkEntryId: body.kind === "CLASSWORK" ? targetId : null,
-        childReportId: body.kind === "REPORT" ? targetId : null,
+        classworkEntryId: body.kind === "CLASSWORK" ? (targetId ?? null) : null,
+        childReportId: body.kind === "REPORT" ? (targetId ?? null) : null,
         childId: body.kind === "CLASSWORK" ? (body.childId ?? null) : null,
       },
       select: { id: true },

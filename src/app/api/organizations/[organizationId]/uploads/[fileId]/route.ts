@@ -5,6 +5,7 @@ import { handleApiError } from "@/lib/apiError";
 import { logAudit } from "@/lib/audit";
 import { deleteObject, statObject } from "@/lib/storage";
 import { canView } from "@/lib/storedFiles";
+import { isStaged } from "@/lib/classwork";
 
 type Params = { params: Promise<{ organizationId: string; fileId: string }> };
 
@@ -14,14 +15,14 @@ type Params = { params: Promise<{ organizationId: string; fileId: string }> };
 export async function PUT(_req: Request, { params }: Params) {
   try {
     const { organizationId, fileId } = await params;
-    const { role, permissions, assignedCategoryId } = await requireMembership(organizationId, "VIEW_CENTRE");
+    const { userId, role, permissions, assignedCategoryId } = await requireMembership(organizationId, "VIEW_CENTRE");
 
     const file = await db.storedFile.findFirst({
       where: { id: fileId, organizationId },
-      select: { id: true, key: true, kind: true, classworkEntryId: true, childReportId: true },
+      select: { id: true, key: true, kind: true, classworkEntryId: true, childReportId: true, uploadedByUserId: true },
     });
     if (!file) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    if (!(await canView(organizationId, file, { role, assignedCategoryId, permissions }))) {
+    if (!(await canView(organizationId, file, { role, assignedCategoryId, permissions, userId }))) {
       return NextResponse.json({ error: "Not allowed." }, { status: 403 });
     }
 
@@ -43,20 +44,25 @@ export async function PUT(_req: Request, { params }: Params) {
 // (Dylan, 8 Oct 2026: "the admin is the only one who can delete the
 // uploaded pictures") -- a teacher can add photos but never remove one,
 // including their own, once it's uploaded.
+//
+// One exception (Dylan, 15 Oct 2026): a teacher may remove a STAGED photo of
+// their own -- one not yet on a saved entry -- so a wrong photo can be fixed
+// before the entry is submitted.
 export async function DELETE(_req: Request, { params }: Params) {
   try {
     const { organizationId, fileId } = await params;
     const { userId, role, permissions, assignedCategoryId } = await requireMembership(organizationId, "VIEW_CENTRE");
-    if (role !== "ADMIN") {
-      return NextResponse.json({ error: "Only an admin can delete a photo." }, { status: 403 });
-    }
 
     const file = await db.storedFile.findFirst({
       where: { id: fileId, organizationId },
-      select: { id: true, key: true, kind: true, classworkEntryId: true, childReportId: true },
+      select: { id: true, key: true, kind: true, classworkEntryId: true, childReportId: true, uploadedByUserId: true },
     });
+    const ownStaged = !!file && isStaged(file) && role === "TEACHER" && file.uploadedByUserId === userId;
+    if (role !== "ADMIN" && !ownStaged) {
+      return NextResponse.json({ error: "Only an admin can delete a photo." }, { status: 403 });
+    }
     if (!file) return NextResponse.json({ ok: true });
-    if (!(await canView(organizationId, file, { role, assignedCategoryId, permissions }))) {
+    if (!(await canView(organizationId, file, { role, assignedCategoryId, permissions, userId }))) {
       return NextResponse.json({ error: "Not allowed." }, { status: 403 });
     }
 

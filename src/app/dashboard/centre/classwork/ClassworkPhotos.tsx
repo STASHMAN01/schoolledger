@@ -16,7 +16,48 @@ import { MAX_GROUP_PHOTOS } from "@/lib/lessonPlan";
 export type ClassworkPhoto = { id: string; caption: string | null; contentType: string; childId: string | null };
 export type RosterChild = { id: string; firstName: string; lastName: string };
 
-function Thumb({
+/**
+ * Shrinks a photo and gets it into the bucket: ask our server for a link,
+ * PUT the file straight to the bucket, then confirm. With an `entryId` it
+ * goes onto that saved entry; without one it is "staged" -- taken before
+ * the entry exists (Dylan, 15 Oct 2026: photos first, then the description)
+ * -- and belongs to the teacher until they submit. Throws an Error with a
+ * message fit to show the teacher.
+ */
+export async function uploadClassworkPhoto(
+  organizationId: string,
+  file: File,
+  options: { entryId?: string; childId?: string | null } = {}
+): Promise<string> {
+  const blob = await shrinkPhoto(file);
+  const contentType = blob.type === "application/pdf" ? "application/pdf" : "image/jpeg";
+
+  const start = await fetch(`/api/organizations/${organizationId}/uploads`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      kind: "CLASSWORK",
+      contentType,
+      sizeBytes: blob.size,
+      ...(options.entryId ? { classworkEntryId: options.entryId } : {}),
+      ...(options.childId ? { childId: options.childId } : {}),
+    }),
+  });
+  const started = await start.json().catch(() => ({}));
+  if (!start.ok) throw new Error(started.error ?? "Could not start the upload.");
+
+  const put = await fetch(started.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
+  if (!put.ok) throw new Error("The photo didn't upload. Check the signal and try again.");
+
+  const confirm = await fetch(`/api/organizations/${organizationId}/uploads/${started.fileId}`, { method: "PUT" });
+  if (!confirm.ok) {
+    const problem = await confirm.json().catch(() => ({}));
+    throw new Error(problem.error ?? "The photo didn't save.");
+  }
+  return started.fileId as string;
+}
+
+export function Thumb({
   organizationId,
   photo,
   canRemove,
@@ -91,31 +132,7 @@ export function ClassworkPhotos({
     setError(null);
     setBusy(true);
     try {
-      const blob = await shrinkPhoto(file);
-      const contentType = blob.type === "application/pdf" ? "application/pdf" : "image/jpeg";
-
-      const start = await fetch(`/api/organizations/${organizationId}/uploads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "CLASSWORK",
-          contentType,
-          sizeBytes: blob.size,
-          classworkEntryId: entryId,
-          ...(childId ? { childId } : {}),
-        }),
-      });
-      const started = await start.json().catch(() => ({}));
-      if (!start.ok) throw new Error(started.error ?? "Could not start the upload.");
-
-      const put = await fetch(started.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
-      if (!put.ok) throw new Error("The photo didn't upload. Check the signal and try again.");
-
-      const confirm = await fetch(`/api/organizations/${organizationId}/uploads/${started.fileId}`, { method: "PUT" });
-      if (!confirm.ok) {
-        const problem = await confirm.json().catch(() => ({}));
-        throw new Error(problem.error ?? "The photo didn't save.");
-      }
+      await uploadClassworkPhoto(organizationId, file, { entryId, childId });
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add that photo.");

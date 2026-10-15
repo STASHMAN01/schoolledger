@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../OrgContext";
-import { Button, Card, EmptyState, PageHeader, Select, Textarea } from "@/components/ui";
+import { Card, EmptyState, PageHeader, Select } from "@/components/ui";
 import { useConfirmDialog } from "@/components/useConfirmDialog";
 import { ClassworkPhotos, type ClassworkPhoto, type RosterChild } from "./ClassworkPhotos";
+import { NewClassworkForm, type PresentChild } from "./NewClassworkForm";
 
 // Classwork (Dylan, 5 Oct 2026; split into group/individual activities and
 // Cloudflare R2 photos, 8 Oct 2026): the class teacher records what they
@@ -48,9 +49,9 @@ export default function ClassworkPage() {
   const [today, setToday] = useState("");
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [roster, setRoster] = useState<RosterChild[]>([]);
-  const [activityType, setActivityType] = useState<ActivityType>("GROUP");
-  const [text, setText] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [staged, setStaged] = useState<ClassworkPhoto[]>([]);
+  const [presentChildren, setPresentChildren] = useState<PresentChild[]>([]);
+  const [registerTaken, setRegisterTaken] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -78,6 +79,9 @@ export default function ClassworkPage() {
       setEntries(data.entries);
       setClassName(data.category.name);
       setToday(data.today);
+      setStaged(data.staged ?? []);
+      setPresentChildren(data.presentChildren ?? []);
+      setRegisterTaken(!!data.registerTaken);
       setError("");
     } else {
       setEntries([]);
@@ -92,25 +96,6 @@ export default function ClassworkPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load when the class changes
     load();
   }, [isTeacher, categoryId, load]);
-
-  async function add() {
-    setSaving(true);
-    setError("");
-    const res = await fetch(`/api/organizations/${organizationId}/classwork`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ activityType, description: text }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setSaving(false);
-    if (!res.ok) {
-      setError(data.error ?? "Could not save. Please try again.");
-      return;
-    }
-    setText("");
-    setActivityType("GROUP");
-    load();
-  }
 
   async function remove(id: string) {
     const ok = await confirm({
@@ -139,7 +124,7 @@ export default function ClassworkPage() {
         title="Classwork"
         description={
           isTeacher
-            ? "Record what you did with the children today. Entries can't be changed once added."
+            ? "Add the photos first, then describe what you did with the children today. Entries can't be changed once added."
             : "What each class has been doing, as recorded by its teacher."
         }
       />
@@ -158,51 +143,14 @@ export default function ClassworkPage() {
         </Card>
       )}
 
-      {isTeacher && (
-        <Card as="div" className="mb-5 p-4">
-          <label className="mb-1 block text-sm font-medium text-foreground">Activity</label>
-          <div className="mb-3 flex gap-2">
-            {(["GROUP", "INDIVIDUAL"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setActivityType(t)}
-                className={`transition-standard min-h-11 rounded-lg border px-3 text-sm font-medium ${
-                  activityType === t
-                    ? "border-brand bg-brand-soft text-brand-soft-foreground"
-                    : "border-border text-muted-foreground hover:bg-background"
-                }`}
-              >
-                {t === "GROUP" ? "Group activity" : "Individual activity"}
-              </button>
-            ))}
-          </div>
-          <p className="mb-3 text-xs text-muted-foreground">
-            {activityType === "GROUP"
-              ? "One description and up to 5 shared photos of the class doing it together."
-              : "One description, then a photo of each child doing it on their own."}
-          </p>
-
-          <label htmlFor="classwork-text" className="mb-1 block text-sm font-medium text-foreground">
-            What did you do with the children today?
-          </label>
-          <Textarea
-            id="classwork-text"
-            rows={4}
-            maxLength={5000}
-            value={text}
-            placeholder="e.g. Painted leaves and counted to 10 in groups"
-            onChange={(e) => setText(e.target.value)}
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Please don&apos;t put medical or private details here. A photo is required -- you&apos;ll add it right after saving.
-          </p>
-          <div className="mt-3">
-            <Button onClick={add} disabled={saving || !text.trim()}>
-              {saving ? "Saving…" : "Add to today"}
-            </Button>
-          </div>
-        </Card>
+      {isTeacher && entries !== null && (
+        <NewClassworkForm
+          organizationId={organizationId}
+          staged={staged}
+          presentChildren={presentChildren}
+          registerTaken={registerTaken}
+          onChanged={load}
+        />
       )}
 
       {error && (

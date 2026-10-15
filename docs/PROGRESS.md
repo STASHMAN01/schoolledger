@@ -1118,4 +1118,15 @@ From comparing a Kimi-made landing page against the live one; only the two ideas
 - The PDF is the existing one (`attendance/register/pdf`, also in Files > Attendance registers). Its child/marks query moved into `src/lib/attendanceMonth.ts` (`loadMonthlyRegister`) and is shared with the new JSON route `GET attendance/register/month`, so the screen and the PDF always match.
 - Teachers: unchanged (neither route is on the teacher allowlist; the month route also refuses TEACHER).
 - Known limit, same as before: children are listed by their current class.
+
+## Classwork: photos first, then the description (15 Oct 2026)
+
+Teachers could save a description and skip the photos. Now the photos come first and the server refuses an entry without them.
+
+- Photos are uploaded "staged": `POST /uploads` with `kind: CLASSWORK` and no `classworkEntryId` creates a `StoredFile` with `classworkEntryId` null, owned by the teacher. Only a teacher with an assigned class can stage; `childId` must be a current child in their class; group max 5 (`MAX_GROUP_PHOTOS`); a second photo for the same child is rejected; group and individual photos can't be mixed. Confirm (`PUT /uploads/[fileId]`) works the same as for attached photos. Adding photos to an already-saved entry is unchanged.
+- A teacher may delete their own staged photo (`DELETE /uploads/[fileId]`); deleting an attached photo stays admin-only. Only the uploader can view a staged photo.
+- `GET /classwork` also returns `staged` (this user's active staged photos from the last 24h), `presentChildren` (marked PRESENT in today's register, current children of the class) and `registerTaken`.
+- `POST /classwork` takes `photoIds`. Checked in order: each is this teacher's own active staged classwork photo; group needs at least one (child-less) photo; individual needs the register taken, someone present, and exactly one photo of every child marked present (the error names who is missing by first name); then the description. The entry is created and the photos attached in one transaction. The rules live in `checkClassworkPhotos` (`src/lib/classwork.ts`, unit-tested), which the form uses too.
+- Cleanup: the existing daily `purge-deleted-schools` cron (01:00) now also deletes staged classwork photos older than 24 hours (active or still pending) from the bucket and database (`purgeStagedClassworkPhotos`). Report photos and photos on a saved entry are never touched.
+- Classwork page (teacher): a 3-step form (`NewClassworkForm.tsx`). Step 1 group/individual (locked once a photo is staged, with a confirmed "Start over"), step 2 photos (group: camera or gallery with thumbnails; individual: each child present today with "Add photo" and "5 of 8 children", or a link to the register if it isn't taken), step 3 description, disabled with "Add the photos first" until step 2 is complete. The upload code in `ClassworkPhotos.tsx` is now `uploadClassworkPhoto`, used with or without an entry id. Admin view and the saved-entries list are unchanged.
 - No schema change.

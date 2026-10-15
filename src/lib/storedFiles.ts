@@ -3,8 +3,12 @@
 // view and delete endpoints can't drift apart on permissions.
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES } from "@/lib/storage";
+import { ALLOWED_UPLOAD_TYPES, MAX_UPLOAD_BYTES, deleteObject } from "@/lib/storage";
 import { MAX_GROUP_PHOTOS } from "@/lib/lessonPlan";
+import { isStaged } from "@/lib/classwork";
+
+/** A PENDING staged upload this young may still be in flight, so it counts toward the cap. */
+const STAGED_IN_FLIGHT_MS = 5 * 60 * 1000;
 
 export const FILE_KINDS = ["CLASSWORK", "REPORT"] as const;
 export type FileKind = (typeof FILE_KINDS)[number];
@@ -24,7 +28,9 @@ export const uploadRequestSchema = z
     // child this photo is of. Ignored for REPORT and for GROUP entries.
     childId: z.string().cuid().optional(),
   })
-  .refine((v) => (v.kind === "CLASSWORK" ? !!v.classworkEntryId : !!v.childReportId), {
+  // A CLASSWORK upload with no classworkEntryId is a "staged" photo, taken
+  // before the entry exists (Dylan, 15 Oct 2026). Reports still need theirs.
+  .refine((v) => (v.kind === "CLASSWORK" ? true : !!v.childReportId), {
     message: "The file must be attached to something.",
   });
 
@@ -32,7 +38,83 @@ export type Access = {
   role: string;
   assignedCategoryId: string | null;
   permissions: readonly string[];
+  /** Needed to view a staged photo, which only its uploader may see. */
+  userId?: string;
 };
+
+/**
+ * Checks a teacher may stage a classwork photo (one taken before the entry
+ * exists). Only a teacher with an assigned class records classwork. A
+ * failed earlier try for the same child (a PENDING row) is cleared here so
+ * a retry isn't blocked by it.
+ */
+export async function canStageClasswork(
+  organizationId: string,
+  userId: string,
+  access: Access,
+  childId?: string
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (!access.permissions.includes("VIEW_CENTRE")) {
+    return { ok: false, status: 403, error: "Not allowed." };
+  }
+  if (access.role !== "TEACHER" || !access.assignedCategoryId) {
+    return { ok: false, status: 403, error: "Only a class teacher records classwork." };
+  }
+  const mine = {
+    organizationId,
+    kind: "CLASSWORK",
+    classworkEntryId: null,
+    uploadedByUserId: userId,
+  } as const;
+
+  // One activity at a time: group and individual photos can't be mixed.
+  const other = await db.storedFile.findFirst({
+    where: { ...mine, status: "ACTIVE", childId: childId ? null : { not: null } },
+    select: { id: true },
+  });
+  if (other) {
+    return {
+      ok: false,
+      status: 400,
+      error: childId
+        ? "You already have group photos waiting. Start over to switch to an individual activity."
+        : "You already have photos of individual children waiting. Start over to switch to a group activity.",
+    };
+  }
+
+  if (childId) {
+    const child = await db.child.findFirst({
+      where: { id: childId, organizationId, categoryId: access.assignedCategoryId, archived: false, deletedAt: null },
+      select: { id: true },
+    });
+    if (!child) return { ok: false, status: 404, error: "That child isn't in this class." };
+    const already = await db.storedFile.findFirst({
+      where: { ...mine, childId, status: "ACTIVE" },
+      select: { id: true },
+    });
+    if (already) return { ok: false, status: 400, error: "This child already has a photo waiting." };
+    const stale = await db.storedFile.findMany({
+      where: { ...mine, childId, status: "PENDING" },
+      select: { id: true, key: true },
+    });
+    for (const f of stale) {
+      if (f.key) await deleteObject(f.key).catch(() => {});
+      await db.storedFile.deleteMany({ where: { id: f.id, classworkEntryId: null, status: "PENDING" } });
+    }
+    return { ok: true };
+  }
+
+  const count = await db.storedFile.count({
+    where: {
+      ...mine,
+      OR: [{ status: "ACTIVE" }, { status: "PENDING", createdAt: { gte: new Date(Date.now() - STAGED_IN_FLIGHT_MS) } }],
+    },
+  });
+  if (count >= MAX_GROUP_PHOTOS) {
+    return { ok: false, status: 400, error: `A group activity can have up to ${MAX_GROUP_PHOTOS} photos.` };
+  }
+  return { ok: true };
+}
 
 /**
  * Checks the thing a file hangs off exists in this school and that the
@@ -99,10 +181,14 @@ export async function canAttachTo(
 /** Viewing follows the same rule as attaching, minus the write permission. */
 export async function canView(
   organizationId: string,
-  file: { kind: string; classworkEntryId: string | null; childReportId: string | null },
+  file: { kind: string; classworkEntryId: string | null; childReportId: string | null; uploadedByUserId?: string },
   access: Access
 ): Promise<boolean> {
   if (!access.permissions.includes("VIEW_CENTRE")) return false;
+  // A staged photo hangs off nothing yet: only the teacher who took it sees it.
+  if (isStaged(file)) {
+    return access.role === "TEACHER" && !!access.userId && file.uploadedByUserId === access.userId;
+  }
   const targetId = file.kind === "CLASSWORK" ? file.classworkEntryId : file.childReportId;
   if (!targetId) return false;
   const categoryId =

@@ -13,14 +13,14 @@ type Params = { params: Promise<{ organizationId: string; fileId: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId, fileId } = await params;
-    const { role, permissions, assignedCategoryId } = await requireMembership(organizationId, "VIEW_CENTRE");
+    const { userId, role, permissions, assignedCategoryId } = await requireMembership(organizationId, "VIEW_CENTRE");
 
     const file = await db.storedFile.findFirst({
       where: { id: fileId, organizationId, status: "ACTIVE" },
-      select: { key: true, kind: true, contentType: true, classworkEntryId: true, childReportId: true },
+      select: { key: true, kind: true, contentType: true, classworkEntryId: true, childReportId: true, uploadedByUserId: true },
     });
     if (!file) return NextResponse.json({ error: "Not found." }, { status: 404 });
-    if (!(await canView(organizationId, file, { role, assignedCategoryId, permissions }))) {
+    if (!(await canView(organizationId, file, { role, assignedCategoryId, permissions, userId }))) {
       return NextResponse.json({ error: "Not allowed." }, { status: 403 });
     }
 
