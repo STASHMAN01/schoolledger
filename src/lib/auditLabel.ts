@@ -40,6 +40,14 @@ export function describeAuditAction(row: AuditRow): string {
       return "archived a class";
     case "category.restored":
       return "restored a class";
+    case "grade.created":
+      return `added grade "${m.name ?? ""}"${m.className ? ` to ${m.className}` : ""}`;
+    case "grade.updated":
+      return `renamed a grade${m.name ? ` to "${m.name}"` : ""}`;
+    case "grade.archived":
+      return "archived a grade";
+    case "grade.restored":
+      return "restored a grade";
     case "child.created":
       return `added ${m.name ?? "a child"}`;
     case "child.updated":

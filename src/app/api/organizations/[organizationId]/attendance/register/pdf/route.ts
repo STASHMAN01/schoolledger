@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     const [category, organization] = await Promise.all([
       db.category.findFirst({
-        where: { id: categoryId, organizationId, deletedAt: null },
+        where: { id: categoryId, organizationId, deletedAt: null, parentId: null },
         select: { id: true, name: true },
       }),
       db.organization.findUnique({

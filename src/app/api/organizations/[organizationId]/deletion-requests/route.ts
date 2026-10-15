@@ -109,6 +109,17 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (!category) {
         return NextResponse.json({ error: "Class not found." }, { status: 404 });
       }
+      // Grades (sub-classes of a class group) can be archived, not deleted:
+      // they go to Trash only together with their class.
+      if (category.parentId) {
+        return NextResponse.json(
+          { error: "A grade can't be deleted, only archived. Archive it from the Classes page." },
+          { status: 400 }
+        );
+      }
+      // A class group's graded children all have categoryId = the group, so
+      // this one check also stops a group being deleted while any grade
+      // still has children.
       const childCount = await db.child.count({
         where: { categoryId: category.id, deletedAt: null },
       });

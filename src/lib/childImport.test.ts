@@ -142,3 +142,26 @@ describe("addresses", () => {
     expect(row.parents[0].address).toBe("");
   });
 });
+
+describe("Grade column (class groups)", () => {
+  it("reads a Grade column separately from the Class column", () => {
+    const [raw] = rows([
+      ["Child's Name", "Child's Surname", "Class", "Grade", "Parent 1 Name"],
+      ["Anna", "Botha", "Aftercare", "Gr 3", "Marie"],
+    ]);
+    const r = readImportRow(raw);
+    expect(r.className).toBe("Aftercare");
+    expect(r.gradeName).toBe("Gr 3");
+  });
+
+  it("no longer reads Grade as the class", () => {
+    const r = readImportRow({ Name: "Mia", Surname: "Nel", Grade: "3", "Parent Name": "Ilse Nel" });
+    expect(r.className).toBe("");
+    expect(r.gradeName).toBe("3");
+  });
+
+  it("leaves the grade empty when there is no Grade column", () => {
+    const r = readImportRow({ Name: "Mia", Surname: "Nel", Class: "Ducks", "Parent Name": "Ilse Nel" });
+    expect(r.gradeName).toBe("");
+  });
+});

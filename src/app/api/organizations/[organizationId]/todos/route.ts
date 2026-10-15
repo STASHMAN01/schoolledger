@@ -97,7 +97,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         }
       } else if (scope.mode === "all") {
         const categories = await db.category.findMany({
-          where: { organizationId, archived: false, deletedAt: null },
+          where: { organizationId, archived: false, deletedAt: null, parentId: null },
           select: { id: true },
         });
         let classesNeeded = 0;
@@ -424,7 +424,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     if (permissions.includes("APPROVE_DELETION")) {
       const window = finalReviewWindow();
       const [classes, children] = await Promise.all([
-        db.category.count({ where: { organizationId, deletedAt: window } }),
+        db.category.count({ where: { organizationId, deletedAt: window, parentId: null } }),
         db.child.count({ where: { organizationId, deletedAt: window } }),
       ]);
       const due = classes + children;

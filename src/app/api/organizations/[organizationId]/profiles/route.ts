@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const [organization, category] = await Promise.all([
       db.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
       db.category.findFirst({
-        where: { id: body.categoryId, organizationId, deletedAt: null },
+        where: { id: body.categoryId, organizationId, deletedAt: null, parentId: null },
         select: { id: true, name: true },
       }),
     ]);

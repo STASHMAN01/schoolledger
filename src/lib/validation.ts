@@ -45,15 +45,23 @@ export const moneyCentsSchema = z
   .int("Amounts must not have sub-cent precision")
   .min(0, "Amount cannot be negative");
 
-// A class. Classes are a flat list (plan decision #11) -- the old
-// parentId/sub-category field is no longer accepted (final inspection U3;
-// the column stays in the schema, unused). Age group is stored in months.
+// A class. A top-level class may be a "group" with grades (plan decision
+// #11, reversed 15 Oct 2026 -- see src/lib/classGroups.ts). PATCH uses this
+// schema as-is, so parentId can never be changed after creation. Age group
+// is stored in months.
 const ageMonthsSchema = z.number().int().min(0).max(240).optional().nullable();
 export const categorySchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   monthlyFeeCents: moneyCentsSchema.optional().nullable(),
   ageMinMonths: ageMonthsSchema,
   ageMaxMonths: ageMonthsSchema,
+});
+
+// Creating a class: optionally a grade of an existing class (parentId), or a
+// group created together with its grades (grades: ["Gr R", "Gr 1", ...]).
+export const categoryCreateSchema = categorySchema.extend({
+  parentId: z.string().cuid().optional().nullable(),
+  grades: z.array(z.string().trim().min(1, "Grade name is required").max(60)).max(30).optional(),
 });
 
 export function ageRangeProblem(min?: number | null, max?: number | null): string | null {
@@ -67,6 +75,9 @@ const emptyToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
 export const childSchema = z.object({
   categoryId: z.string().cuid(),
+  // Optional grade within a class group; checked against the class on the
+  // server (see gradeAssignmentProblem). Display/filter only.
+  subCategoryId: z.string().cuid().optional().nullable(),
   firstName: z.string().trim().min(1).max(100),
   lastName: z.string().trim().min(1).max(100),
   parentName: z.string().trim().min(1).max(200),
@@ -332,6 +343,8 @@ export const newApplicantSchema = z.object({
 // Staff approving a new applicant choose where the child goes.
 export const approveNewApplicantSchema = z.object({
   categoryId: z.string().cuid(),
+  // Optional grade within the chosen class group (label only).
+  subCategoryId: z.string().cuid().optional().nullable(),
   enrollmentDate: z.coerce.date(),
 });
 

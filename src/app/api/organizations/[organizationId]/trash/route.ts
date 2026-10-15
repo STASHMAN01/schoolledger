@@ -18,7 +18,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const [categories, children] = await Promise.all([
       db.category.findMany({
-        where: { organizationId, deletedAt: { not: null } },
+        // Grades travel with their class; only classes are listed.
+        where: { organizationId, deletedAt: { not: null }, parentId: null },
         orderBy: { deletedAt: "desc" },
       }),
       db.child.findMany({

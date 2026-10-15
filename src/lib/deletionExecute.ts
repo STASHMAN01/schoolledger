@@ -26,9 +26,16 @@ export async function executeDeletion(
   targetId: string
 ): Promise<PaymentReversal | null> {
   if (targetType === "CATEGORY") {
+    const deletedAt = new Date();
     await tx.category.updateMany({
       where: { id: targetId, organizationId, deletedAt: null },
-      data: { deletedAt: new Date() },
+      data: { deletedAt },
+    });
+    // A class group takes its grades to Trash with it (grades are never
+    // trashed on their own) and brings them back on restore.
+    await tx.category.updateMany({
+      where: { parentId: targetId, organizationId, deletedAt: null },
+      data: { deletedAt },
     });
     return null;
   }

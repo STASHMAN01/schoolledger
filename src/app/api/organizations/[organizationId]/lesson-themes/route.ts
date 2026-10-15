@@ -14,7 +14,7 @@ type Params = { params: Promise<{ organizationId: string }> };
 /** Real classes in this school, for checking categoryIds. */
 async function validClassIds(organizationId: string, ids: string[]) {
   if (ids.length === 0) return true;
-  const found = await db.category.count({ where: { organizationId, id: { in: ids }, deletedAt: null } });
+  const found = await db.category.count({ where: { organizationId, id: { in: ids }, deletedAt: null, parentId: null } });
   return found === new Set(ids).size;
 }
 

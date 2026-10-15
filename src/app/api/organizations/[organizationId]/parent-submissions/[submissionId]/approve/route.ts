@@ -12,6 +12,7 @@ import {
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
 import { billingFieldsFromGuardian } from "@/lib/billingContact";
 import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
+import { gradeAssignmentProblem } from "@/lib/classGroups";
 import { z } from "zod";
 import { activateSubmissionDocuments } from "@/lib/publicDocuments";
 
@@ -193,10 +194,15 @@ async function approveNewApplicant(
 ) {
   const choice = approveNewApplicantSchema.parse(await req.json().catch(() => ({})));
   const category = await db.category.findFirst({
-    where: { id: choice.categoryId, organizationId, deletedAt: null },
+    where: { id: choice.categoryId, organizationId, deletedAt: null, parentId: null },
   });
   if (!category) {
     return NextResponse.json({ error: "Class not found." }, { status: 400 });
+  }
+  if (choice.subCategoryId) {
+    const grade = await db.category.findFirst({ where: { id: choice.subCategoryId, organizationId } });
+    const gradeProblem = gradeAssignmentProblem(grade, category.id);
+    if (gradeProblem) return NextResponse.json({ error: gradeProblem }, { status: 400 });
   }
 
   const parsed = newApplicantSchema.omit({ attachments: true }).parse(JSON.parse(rawData));
@@ -223,6 +229,7 @@ async function approveNewApplicant(
       data: {
         organizationId,
         categoryId: category.id,
+        subCategoryId: choice.subCategoryId ?? null,
         firstName: parsed.child.firstName,
         lastName: parsed.child.lastName,
         // Normalised the same way as "Use for fees & reminders", so a

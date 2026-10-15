@@ -9,6 +9,7 @@ import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
 import { readImportRow } from "@/lib/childImport";
 import { normalizePhone } from "@/lib/phone";
 import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
+import { orderGrades, resolveImportGrade } from "@/lib/classGroups";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -32,8 +33,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
 
+    // Classes only (never grades); each carries its grades for the optional
+    // Grade column.
+    const withGrades = {
+      children: { where: { deletedAt: null }, select: { id: true, name: true, archived: true, createdAt: true } },
+    } as const;
     const defaultCategory = await db.category.findFirst({
-      where: { id: body.defaultCategoryId, organizationId, deletedAt: null },
+      where: { id: body.defaultCategoryId, organizationId, deletedAt: null, parentId: null },
+      include: withGrades,
     });
     if (!defaultCategory) {
       return NextResponse.json({ error: "Default class not found." }, { status: 400 });
@@ -41,7 +48,10 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const categories = teacherOnly
       ? [defaultCategory]
-      : await db.category.findMany({ where: { organizationId, deletedAt: null } });
+      : await db.category.findMany({
+          where: { organizationId, deletedAt: null, parentId: null },
+          include: withGrades,
+        });
     const categoryByName = new Map(categories.map((c) => [c.name.trim().toLowerCase(), c]));
 
     let created = 0;
@@ -85,6 +95,14 @@ export async function POST(req: NextRequest, { params }: Params) {
         }
 
         let category = defaultCategory;
+        // Older sheets used a "Grade" heading for the class. With no Class
+        // column, a Grade value that the default class can't use as a grade
+        // is still read as the class name, as before.
+        let gradeText = row.gradeName;
+        if (!parsed.categoryName && gradeText && defaultCategory.children.every((g) => g.archived)) {
+          parsed.categoryName = gradeText;
+          gradeText = "";
+        }
         if (parsed.categoryName) {
           const match = categoryByName.get(parsed.categoryName.trim().toLowerCase());
           if (!match) {
@@ -97,6 +115,13 @@ export async function POST(req: NextRequest, { params }: Params) {
           category = match;
         }
 
+        // Grade within the row's class (tolerant: "Gr 3" = "Grade 3" = "3").
+        const gradeResult = resolveImportGrade(category.name, orderGrades(category.children), gradeText);
+        if (gradeResult.error) {
+          errors.push({ row: rowNumber, error: gradeResult.error });
+          continue;
+        }
+
         const enrollmentDate = parsed.enrollmentDate ?? body.defaultEnrollmentDate;
 
         await db.$transaction(async (tx) => {
@@ -104,6 +129,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             data: {
               organizationId,
               categoryId: category.id,
+              subCategoryId: gradeResult.grade?.id ?? null,
               firstName: parsed.firstName,
               lastName: parsed.lastName,
               parentName: parsed.parentName,

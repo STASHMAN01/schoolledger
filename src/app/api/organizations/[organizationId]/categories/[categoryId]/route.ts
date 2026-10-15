@@ -4,6 +4,7 @@ import { requireMembership } from "@/lib/tenant";
 import { ageRangeProblem, categorySchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
+import { gradeInUseProblem, gradeNameProblem } from "@/lib/classGroups";
 
 type Params = { params: Promise<{ organizationId: string; categoryId: string }> };
 
@@ -19,7 +20,41 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
+    // categorySchema has no parentId, so a PATCH can never move a class or
+    // turn a grade into a class (or the reverse).
     const body = categorySchema.partial().parse(await req.json());
+
+    // A grade can only be renamed (archive/restore have their own routes).
+    if (existing.parentId) {
+      if (
+        body.monthlyFeeCents !== undefined ||
+        body.ageMinMonths !== undefined ||
+        body.ageMaxMonths !== undefined
+      ) {
+        return NextResponse.json({ error: "A grade has no fee or age range." }, { status: 400 });
+      }
+      if (body.name !== undefined) {
+        const siblings = await db.category.findMany({
+          where: { organizationId, parentId: existing.parentId, deletedAt: null, id: { not: existing.id } },
+          select: { name: true },
+        });
+        const nameProblem = gradeNameProblem(body.name, siblings.map((g) => g.name));
+        if (nameProblem) return NextResponse.json({ error: nameProblem }, { status: 400 });
+      }
+      const grade = await db.category.update({
+        where: { id: categoryId },
+        data: { name: body.name ?? undefined },
+      });
+      await logAudit({
+        organizationId,
+        userId,
+        action: "grade.updated",
+        entityType: "Category",
+        entityId: grade.id,
+        metadata: { name: grade.name },
+      });
+      return NextResponse.json({ category: grade });
+    }
 
     const ageProblem = ageRangeProblem(
       body.ageMinMonths === undefined ? existing.ageMinMonths : body.ageMinMonths,
@@ -72,6 +107,16 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
+    // A grade children are still labelled with can't be archived: they'd be
+    // left pointing at a hidden grade. Say how many so the owner can move them.
+    if (existing.parentId) {
+      const inUse = await db.child.count({
+        where: { subCategoryId: existing.id, archived: false, deletedAt: null, exitDate: null },
+      });
+      const problem = gradeInUseProblem(existing.name, inUse);
+      if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+    }
+
     const category = await db.category.update({
       where: { id: categoryId },
       data: { archived: true },
@@ -80,7 +125,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     await logAudit({
       organizationId,
       userId,
-      action: "category.archived",
+      action: existing.parentId ? "grade.archived" : "category.archived",
       entityType: "Category",
       entityId: category.id,
     });

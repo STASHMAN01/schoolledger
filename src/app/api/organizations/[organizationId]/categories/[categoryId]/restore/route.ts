@@ -26,7 +26,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     await logAudit({
       organizationId,
       userId,
-      action: "category.restored",
+      action: existing.parentId ? "grade.restored" : "category.restored",
       entityType: "Category",
       entityId: category.id,
     });

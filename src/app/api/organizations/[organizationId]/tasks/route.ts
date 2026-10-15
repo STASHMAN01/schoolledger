@@ -144,8 +144,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     const toAll = body.categoryId === ALL_CLASSES;
     const categories = await db.category.findMany({
       where: toAll
-        ? { organizationId, deletedAt: null, archived: false }
-        : { id: body.categoryId, organizationId, deletedAt: null },
+        ? { organizationId, deletedAt: null, archived: false, parentId: null }
+        : { id: body.categoryId, organizationId, deletedAt: null, parentId: null },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });

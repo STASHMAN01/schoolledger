@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const categories = await db.category.findMany({
-      where: { id: { in: body.categoryIds }, organizationId, archived: false },
+      where: { id: { in: body.categoryIds }, organizationId, archived: false, parentId: null },
     });
     if (categories.length !== body.categoryIds.length) {
       return NextResponse.json(

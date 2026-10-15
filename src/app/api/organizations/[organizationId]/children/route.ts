@@ -7,6 +7,7 @@ import { handleApiError } from "@/lib/apiError";
 import { generateAnnualPlanForChild } from "@/lib/billing/financialPlan";
 import { serializeChild, serializeChildForTeacher } from "@/lib/childView";
 import { emergencyContactProblem, storedEmergencyPhone } from "@/lib/emergencyContact";
+import { gradeAssignmentProblem } from "@/lib/classGroups";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         deletedAt: null,
       },
       // Guardian phones feed the "incomplete profile" badge (lib/childProfile.ts).
-      include: { category: true, guardians: { select: { phone: true } } },
+      include: { category: true, subCategory: { select: { id: true, name: true } }, guardians: { select: { phone: true } } },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
 
@@ -115,14 +116,23 @@ export async function POST(req: NextRequest, { params }: Params) {
     // The category MUST belong to this organization — same reasoning as
     // categories.parentId: never trust a foreign-key id from the client
     // without re-checking it's inside the caller's own tenant.
+    // A grade is a sub-class, never a child's class (class groups, 15 Oct 2026).
     const category = await db.category.findFirst({
-      where: { id: body.categoryId, organizationId, deletedAt: null },
+      where: { id: body.categoryId, organizationId, deletedAt: null, parentId: null },
     });
     if (!category) {
       return NextResponse.json(
         { error: "Class not found." },
         { status: 400 }
       );
+    }
+
+    // Optional grade within the class: a live, non-archived grade of THIS
+    // class. A label only -- teacher access is still decided by categoryId.
+    if (body.subCategoryId) {
+      const grade = await db.category.findFirst({ where: { id: body.subCategoryId, organizationId } });
+      const gradeProblem = gradeAssignmentProblem(grade, category.id);
+      if (gradeProblem) return NextResponse.json({ error: gradeProblem }, { status: 400 });
     }
 
     // Parent 1 is required by the form; parent 2 is optional. `guardian`
@@ -176,6 +186,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         data: {
           organizationId,
           categoryId: body.categoryId,
+          subCategoryId: body.subCategoryId ?? null,
           firstName: body.firstName,
           lastName: body.lastName,
           parentName,

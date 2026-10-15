@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const body = lessonPlanReviewSchema.parse(await req.json());
     const category = await db.category.findFirst({
-      where: { id: body.categoryId, organizationId, deletedAt: null },
+      where: { id: body.categoryId, organizationId, deletedAt: null, parentId: null },
       select: { id: true, name: true },
     });
     if (!category) return NextResponse.json({ error: "Not found." }, { status: 404 });

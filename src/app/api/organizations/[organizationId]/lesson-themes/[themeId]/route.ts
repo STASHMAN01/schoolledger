@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const body = parsed.data;
     const ids = [...new Set(body.categoryIds)];
     if (ids.length) {
-      const found = await db.category.count({ where: { organizationId, id: { in: ids }, deletedAt: null } });
+      const found = await db.category.count({ where: { organizationId, id: { in: ids }, deletedAt: null, parentId: null } });
       if (found !== ids.length) return NextResponse.json({ error: "One of those classes doesn't exist." }, { status: 400 });
     }
 

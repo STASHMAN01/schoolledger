@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     if (scope.mode === "all") return NextResponse.json({ error: "categoryId is required." }, { status: 400 });
 
     const category = await db.category.findFirst({
-      where: { id: scope.categoryId, organizationId, deletedAt: null },
+      where: { id: scope.categoryId, organizationId, deletedAt: null, parentId: null },
       select: { id: true, name: true },
     });
     if (!category) return NextResponse.json({ error: "Not found." }, { status: 404 });
@@ -104,7 +104,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     const body = lessonPlanPutSchema.parse(await req.json());
     const category = await db.category.findFirst({
-      where: { id: body.categoryId, organizationId, deletedAt: null },
+      where: { id: body.categoryId, organizationId, deletedAt: null, parentId: null },
       select: { id: true, name: true },
     });
     if (!category) return NextResponse.json({ error: "Not found." }, { status: 404 });

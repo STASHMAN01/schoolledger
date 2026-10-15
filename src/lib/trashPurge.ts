@@ -31,10 +31,14 @@ export async function purgeExpiredTrash(organizationId?: string) {
     }
   }
 
-  const expiredCategories = await db.category.findMany({
-    where: { ...scope, deletedAt: { lt: cutoff } },
-    select: { id: true },
-  });
+  // Grades before their class (a class group is trashed with its grades).
+  // Deleting a grade just un-sets Child.subCategoryId (FK SetNull).
+  const expiredCategories = (
+    await db.category.findMany({
+      where: { ...scope, deletedAt: { lt: cutoff } },
+      select: { id: true, parentId: true },
+    })
+  ).sort((a, b) => Number(b.parentId != null) - Number(a.parentId != null));
   for (const { id } of expiredCategories) {
     try {
       await db.category.delete({ where: { id } });

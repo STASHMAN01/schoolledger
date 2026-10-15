@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     } else if (body.assignedCategoryId !== undefined) {
       if (body.assignedCategoryId) {
         const category = await db.category.findFirst({
-          where: { id: body.assignedCategoryId, organizationId, deletedAt: null },
+          where: { id: body.assignedCategoryId, organizationId, deletedAt: null, parentId: null },
         });
         if (!category) {
           return NextResponse.json({ error: "Class not found." }, { status: 400 });

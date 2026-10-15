@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     }
 
     const category = await db.category.findFirst({
-      where: { id: categoryId, organizationId, deletedAt: null },
+      where: { id: categoryId, organizationId, deletedAt: null, parentId: null },
       select: { id: true, name: true },
     });
     if (!category) return NextResponse.json({ error: "Not found." }, { status: 404 });

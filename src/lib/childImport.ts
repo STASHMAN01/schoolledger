@@ -24,7 +24,10 @@ const CHILD_FIELDS = {
   idNumber: ["childid", "childidno", "childidnumber", "idno", "idnumber", "id", "childsid"],
   dateOfBirth: ["dateofbirth", "dob", "birthdate", "birthday", "childdob", "childdateofbirth"],
   gender: ["gender", "sex", "childgender"],
-  className: ["class", "category", "grade", "classname", "group"],
+  className: ["class", "category", "classname", "group"],
+  // Grade within a class group (Aftercare -> Gr 3). "Grade" used to be read
+  // as the class; see the fallback in the import route.
+  gradeName: ["grade", "gradename", "subclass", "subcategory"],
   enrollmentDate: ["enrollmentdate", "enrolmentdate", "startdate", "datestarted", "dateofenrolment", "dateofenrollment"],
   allergies: ["allergies", "allergy", "childallergies", "knownallergies", "allergiesmedicalconditions"],
   homeAddress: ["homeaddress", "address", "residentialaddress", "physicaladdress", "streetaddress", "childaddress", "childhomeaddress", "addressline1"],
@@ -76,6 +79,7 @@ export type ImportedRow = {
   dateOfBirth: string;
   gender: string;
   className: string;
+  gradeName: string;
   enrollmentDate: string;
   allergies: string;
   homeAddress: string;
@@ -160,6 +164,7 @@ export function readImportRow(raw: Record<string, string>): ImportedRow {
     dateOfBirth: first(m, CHILD_FIELDS.dateOfBirth),
     gender: first(m, CHILD_FIELDS.gender),
     className: first(m, CHILD_FIELDS.className),
+    gradeName: first(m, CHILD_FIELDS.gradeName),
     enrollmentDate: first(m, CHILD_FIELDS.enrollmentDate),
     allergies: first(m, CHILD_FIELDS.allergies),
     homeAddress: first(m, CHILD_FIELDS.homeAddress),

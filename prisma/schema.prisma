@@ -402,9 +402,16 @@ model Category {
   updatedAt      DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Class groups (Dylan, 15 Oct 2026): a top-level Category (parentId null)
+  // can be a "group" (Aftercare, Homeschool) whose sub-categories are its
+  // GRADES (Gr R ... Gr 12). One level only: a grade has no fee, teacher
+  // or age range and is never a child's categoryId. See src/lib/classGroups.ts.
   parent       Category?    @relation("CategoryToParent", fields: [parentId], references: [id])
   children     Category[]   @relation("CategoryToParent")
-  learners     Child[]
+  learners     Child[]      @relation("ChildClass")
+  // Children carrying this category as their grade label (this category is
+  // a grade). Display/filter/sort only -- never used for access control.
+  gradeLearners Child[]     @relation("ChildGrade")
   eventCategories EventCategory[]
   teacherAssignments Membership[]
   scheduleItems ClassScheduleItem[]
@@ -480,7 +487,14 @@ model Child {
   updatedAt      DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  category     Category     @relation(fields: [categoryId], references: [id])
+  category     Category     @relation("ChildClass", fields: [categoryId], references: [id])
+  // Optional grade within a class group (Dylan, 15 Oct 2026): a display
+  // label only. Must be a grade (Category.parentId) of `category`; the
+  // server clears it when the class changes. Deleting the grade just
+  // un-sets it. NEVER used for access control -- teachers are scoped by
+  // categoryId, which stays the group.
+  subCategoryId String?
+  subCategory  Category?    @relation("ChildGrade", fields: [subCategoryId], references: [id], onDelete: SetNull)
   planEntries  FinancialPlanEntry[]
   payments     Payment[]
   creditBalance CreditBalance?
@@ -499,6 +513,7 @@ model Child {
 
   @@index([organizationId])
   @@index([categoryId])
+  @@index([subCategoryId])
   @@index([organizationId, lastName])
   // Class registers / enrolled lists filter on all of these together.
   @@index([organizationId, categoryId, archived, deletedAt])

@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     }
 
     const category = await db.category.findFirst({
-      where: { id: scope.categoryId, organizationId },
+      where: { id: scope.categoryId, organizationId, parentId: null },
       select: { id: true, name: true },
     });
     if (!category) {
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
 
     const category = await db.category.findFirst({
-      where: { id: body.categoryId, organizationId },
+      where: { id: body.categoryId, organizationId, parentId: null },
       select: { id: true, name: true },
     });
     if (!category) {

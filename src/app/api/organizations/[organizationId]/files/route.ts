@@ -117,6 +117,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       where: {
         organizationId,
         deletedAt: null,
+        parentId: null, // classes only, never grades
         ...(role === "TEACHER" ? { id: assignedCategoryId ?? "__none__" } : {}),
       },
       select: { id: true, name: true, archived: true },

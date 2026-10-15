@@ -70,7 +70,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         select: { status: true },
       }),
       scope.mode === "single"
-        ? db.category.findFirst({ where: { id: scope.categoryId, organizationId }, select: { name: true } })
+        ? db.category.findFirst({ where: { id: scope.categoryId, organizationId, parentId: null }, select: { name: true } })
         : Promise.resolve(null),
     ]);
 

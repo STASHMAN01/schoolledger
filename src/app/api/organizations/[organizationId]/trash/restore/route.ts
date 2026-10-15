@@ -20,12 +20,17 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     if (body.targetType === "CATEGORY") {
       const category = await db.category.findFirst({
-        where: { id: body.targetId, organizationId, deletedAt: { not: null } },
+        where: { id: body.targetId, organizationId, deletedAt: { not: null }, parentId: null },
       });
       if (!category) {
         return NextResponse.json({ error: "Not found in trash." }, { status: 404 });
       }
       await db.category.update({ where: { id: category.id }, data: { deletedAt: null } });
+      // Its grades were trashed with it.
+      await db.category.updateMany({
+        where: { parentId: category.id, organizationId, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
       await logAudit({
         organizationId,
         userId,

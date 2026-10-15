@@ -57,6 +57,9 @@ type TeacherChildSource = {
   exitDate: Date | null;
   archived: boolean;
   category?: { id: string; name: string } | null;
+  // Grade within a class group (label only).
+  subCategoryId?: string | null;
+  subCategory?: { id: string; name: string } | null;
 };
 
 export function serializeChildForTeacher(child: TeacherChildSource) {
@@ -64,6 +67,8 @@ export function serializeChildForTeacher(child: TeacherChildSource) {
     id: child.id,
     categoryId: child.categoryId,
     category: child.category ? { id: child.category.id, name: child.category.name, monthlyFeeCents: null } : null,
+    subCategoryId: child.subCategoryId ?? null,
+    subCategory: child.subCategory ? { id: child.subCategory.id, name: child.subCategory.name } : null,
     firstName: child.firstName,
     lastName: child.lastName,
     dateOfBirth: child.dateOfBirth,

@@ -58,7 +58,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     if (scope.mode === "all") return NextResponse.json({ error: "categoryId is required." }, { status: 400 });
 
     const category = await db.category.findFirst({
-      where: { id: scope.categoryId, organizationId, deletedAt: null },
+      where: { id: scope.categoryId, organizationId, deletedAt: null, parentId: null },
       select: { id: true, name: true },
     });
     if (!category) return NextResponse.json({ error: "Not found." }, { status: 404 });

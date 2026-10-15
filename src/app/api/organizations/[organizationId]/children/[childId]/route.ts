@@ -13,6 +13,7 @@ import {
 import { planAdjustments, summariseAdjustments, ymFromDate } from "@/lib/billing/planAdjust";
 import { serializeChild, serializeChildForTeacher } from "@/lib/childView";
 import { PROFILE_VIEW_ENTITY_TYPE } from "@/lib/activityArea";
+import { gradeAssignmentProblem, nextSubCategoryId } from "@/lib/classGroups";
 
 type Params = { params: Promise<{ organizationId: string; childId: string }> };
 
@@ -25,6 +26,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       where: { id: childId, organizationId },
       include: {
         category: true,
+        subCategory: { select: { id: true, name: true } },
         creditBalance: true,
         planEntries: {
           include: { paymentType: true },
@@ -174,11 +176,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const oldCategory = await db.category.findFirst({ where: { id: existing.categoryId, organizationId } });
     const newCategory = body.categoryId
-      ? await db.category.findFirst({ where: { id: body.categoryId, organizationId, deletedAt: null } })
+      ? await db.category.findFirst({ where: { id: body.categoryId, organizationId, deletedAt: null, parentId: null } })
       : oldCategory;
     if (!newCategory || !oldCategory) {
       return NextResponse.json({ error: "Class not found." }, { status: 400 });
     }
+
+    // Grade (label only, never used for access): a requested grade must be a
+    // live, non-archived grade of the class the child ends up in; a grade
+    // that belonged to the old class is cleared when the class changes.
+    if (body.subCategoryId) {
+      const grade = await db.category.findFirst({ where: { id: body.subCategoryId, organizationId } });
+      const gradeProblem = gradeAssignmentProblem(grade, newCategory.id);
+      if (gradeProblem) return NextResponse.json({ error: gradeProblem }, { status: 400 });
+    }
+    const nextGradeId = nextSubCategoryId({
+      current: existing.subCategoryId,
+      requested: body.subCategoryId,
+      oldClassId: existing.categoryId,
+      newClassId: newCategory.id,
+    });
 
     const newStart = body.enrollmentDate ?? existing.enrollmentDate;
     const newExit = body.exitDate === undefined ? existing.exitDate : body.exitDate;
@@ -230,6 +247,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         where: { id: childId },
         data: {
           categoryId: body.categoryId ?? undefined,
+          subCategoryId: nextGradeId,
           firstName: body.firstName ?? undefined,
           lastName: body.lastName ?? undefined,
           parentName: body.parentName ?? undefined,

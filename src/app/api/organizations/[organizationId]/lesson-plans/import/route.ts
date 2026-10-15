@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (!parsed.success) return NextResponse.json({ error: "That file is too big or not a table." }, { status: 400 });
 
     const classes = await db.category.findMany({
-      where: { organizationId, deletedAt: null, archived: false },
+      where: { organizationId, deletedAt: null, archived: false, parentId: null },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });
