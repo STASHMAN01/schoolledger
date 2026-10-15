@@ -1131,3 +1131,21 @@ Teachers could save a description and skip the photos. Now the photos come first
 - Cleanup: the existing daily `purge-deleted-schools` cron (01:00) now also deletes staged classwork photos older than 24 hours (active or still pending) from the bucket and database (`purgeStagedClassworkPhotos`; the row is kept if the bucket delete fails, so the next run retries it). Report photos and photos on a saved entry are never touched.
 - Classwork page (teacher): a 3-step form (`NewClassworkForm.tsx`). Step 1 group/individual (locked once a photo is staged, with a confirmed "Start over"), step 2 photos (group: camera or gallery with thumbnails; individual: each child present today with "Add photo" and "5 of 8 children", or a link to the register if it isn't taken), step 3 description, disabled with "Add the photos first" until step 2 is complete. The upload code in `ClassworkPhotos.tsx` is now `uploadClassworkPhoto`, used with or without an entry id. Admin view and the saved-entries list are unchanged.
 - No schema change.
+
+## Tasks by day (15 Oct 2026)
+
+Centre Management > Tasks is organised by day instead of one long list. **Needs Dylan's approval before merge: the Vercel build runs `prisma db push`, so merging puts the schema change live.**
+
+- Page opens on today. Top bar: previous/next day, label (Today / Tomorrow / Yesterday / "Thu 16 Oct"), a Today button when away from today, a date input to jump, and (office only) a class dropdown. URL keeps the view: `?date=YYYY-MM-DD&class=<categoryId>` (today is left out of the URL).
+- Tabs "To do (n)" and "Done (n)". To do shows Overdue (red, with its due date), the day's tasks, then No date. A task's day is its due date; the assign form's Due date now defaults to today (still editable or clearable).
+- "All classes" assignments share a `batchId`. With "All classes" selected the office sees one row ("Sent to all classes", "4 of 6 classes done"), tap to list each class (Not opened yet / Opened / Done / Overdue) with a per-class Take back. A batch sits in To do while any copy is open and moves to Done when all are done. With a class selected, and for teachers, every copy is its own row. Old tasks have no batchId and stay ungrouped.
+- `GET /tasks?date=&categoryId=` returns `todo`, `overdue` and `noDate` (the last two only for today), `done` (due that day, plus undated tasks finished that school day) and `batchSiblings` (all copies of any batch shown, for progress counts). The old 7-day "done" window is gone. `?unseen=1` gives the teacher pop-up the open, unopened tasks of any day, so a task due next week still pops up (its "Open tasks" link jumps to that date).
+- The teacher to-do "N tasks assigned to your class" now counts only tasks due today or earlier, or with no date, to match what the Tasks page shows on opening.
+- Pure logic (day buckets, school-date matching, batch grouping, progress, day labels) is in `src/lib/teacherTasks.ts` with tests.
+
+Schema change, NOT yet applied (needs Dylan's OK, then `npx prisma db push`). Adds one nullable column and an index, touches no existing data:
+
+```sql
+ALTER TABLE "teacher_tasks" ADD COLUMN "batchId" TEXT;
+CREATE INDEX "teacher_tasks_batchId_idx" ON "teacher_tasks"("batchId");
+```

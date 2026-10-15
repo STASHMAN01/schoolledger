@@ -1,11 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireMembership } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 import { handleApiError } from "@/lib/apiError";
 import { schoolClock, schoolDateValue } from "@/lib/dailySummary";
 import { addDays } from "@/lib/lessonPlan";
-import { ALL_CLASSES, DONE_VISIBLE_DAYS, taskCreateSchema } from "@/lib/teacherTasks";
+import { ALL_CLASSES, bucketTasks, normaliseTaskDate, taskCreateSchema } from "@/lib/teacherTasks";
 import { notifyClassTeachers } from "@/lib/notifyTeachers";
 
 type Params = { params: Promise<{ organizationId: string }> };
@@ -18,6 +20,7 @@ const taskSelect = {
   createdAt: true,
   acknowledgedAt: true,
   completedAt: true,
+  batchId: true,
   category: { select: { id: true, name: true } },
   createdBy: { select: { name: true } },
 } as const;
@@ -26,35 +29,93 @@ function shape<T extends { dueDate: Date | null }>(t: T) {
   return { ...t, dueDate: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : null };
 }
 
-// Tasks assigned to classes. A teacher sees their own class's: everything
-// still open, plus anything finished in the last week. Anyone else with
-// Centre access sees every class (or ?categoryId=).
+// Tasks assigned to classes, for one day (Dylan, 15 Oct 2026). A task's day
+// is its due date. ?date= (default today, school time) picks the day; the
+// response has the open tasks due that day (todo), the finished ones (done),
+// and -- on today only -- everything overdue and everything with no date. A
+// teacher sees their own class; anyone else with Centre access sees every
+// class, or one with ?categoryId=. For the office's "All classes" view,
+// batchSiblings holds every copy of any batch in the lists so progress counts
+// are right.
+//
+// ?unseen=1 is for the teacher pop-up: the open tasks nobody has opened yet,
+// whatever their day.
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
     const { role, assignedCategoryId } = await requireMembership(organizationId, "VIEW_CENTRE");
 
     const org = await db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } });
-    const clock = schoolClock(org?.timezone ?? "Africa/Johannesburg");
-    const recently = new Date(`${addDays(clock.date, -DONE_VISIBLE_DAYS)}T00:00:00.000Z`);
-    const visible = { OR: [{ completedAt: null }, { completedAt: { gte: recently } }] };
+    const timeZone = org?.timezone ?? "Africa/Johannesburg";
+    const clock = schoolClock(timeZone);
+    const today = clock.date;
+    const sp = req.nextUrl.searchParams;
+    const date = normaliseTaskDate(sp.get("date"), today);
+    const unseen = sp.get("unseen") === "1";
 
+    const empty = { today, date, todo: [], overdue: [], noDate: [], done: [], batchSiblings: [] };
     let categoryFilter: { categoryId?: string } = {};
+    let allClasses = false;
     if (role === "TEACHER") {
-      if (!assignedCategoryId) return NextResponse.json({ today: clock.date, tasks: [] });
+      if (!assignedCategoryId) return NextResponse.json(unseen ? { today, tasks: [] } : empty);
       categoryFilter = { categoryId: assignedCategoryId };
     } else {
-      const requested = req.nextUrl.searchParams.get("categoryId");
+      const requested = sp.get("categoryId");
       if (requested) categoryFilter = { categoryId: requested };
+      else allClasses = true;
     }
 
-    const tasks = await db.teacherTask.findMany({
-      where: { organizationId, ...categoryFilter, ...visible },
-      orderBy: [{ completedAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
-      take: 200,
+    if (unseen) {
+      const tasks = await db.teacherTask.findMany({
+        where: { organizationId, ...categoryFilter, completedAt: null, acknowledgedAt: null },
+        orderBy: { createdAt: "asc" },
+        take: 50,
+        select: taskSelect,
+      });
+      return NextResponse.json({ today, tasks: tasks.map(shape) });
+    }
+
+    // completedAt falls on a school date, which depends on the timezone, so
+    // fetch a day either side and let bucketTasks do the exact match.
+    const dateStart = schoolDateValue(date);
+    const completedNear = { gte: schoolDateValue(addDays(date, -1)), lt: schoolDateValue(addDays(date, 2)) };
+    const wanted: Prisma.TeacherTaskWhereInput[] = [
+      { dueDate: dateStart },
+      { dueDate: null, completedAt: completedNear },
+    ];
+    if (date === today) {
+      wanted.push({ completedAt: null, dueDate: { lt: dateStart } }, { completedAt: null, dueDate: null });
+    }
+
+    const found = await db.teacherTask.findMany({
+      where: { organizationId, ...categoryFilter, OR: wanted },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      take: 500,
       select: taskSelect,
     });
-    return NextResponse.json({ today: clock.date, tasks: tasks.map(shape) });
+    const buckets = bucketTasks(found.map(shape), date, today, timeZone);
+    buckets.done.sort((a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0));
+
+    let batchSiblings: ReturnType<typeof shape>[] = [];
+    if (allClasses) {
+      const batchIds = [
+        ...new Set(
+          [...buckets.todo, ...buckets.overdue, ...buckets.noDate, ...buckets.done]
+            .map((t) => t.batchId)
+            .filter((id): id is string => !!id)
+        ),
+      ];
+      if (batchIds.length > 0) {
+        const siblings = await db.teacherTask.findMany({
+          where: { organizationId, batchId: { in: batchIds } },
+          orderBy: { id: "asc" },
+          take: 2000,
+          select: taskSelect,
+        });
+        batchSiblings = siblings.map(shape);
+      }
+    }
+    return NextResponse.json({ today, date, ...buckets, batchSiblings });
   } catch (err) {
     return handleApiError(err);
   }
@@ -83,6 +144,9 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const details = body.details?.trim() || null;
     const dueDate = body.dueDate ? schoolDateValue(body.dueDate) : null;
+    // Every copy from one "All classes" send shares a batchId so the Tasks
+    // page can show them as one row. A single-class task has none.
+    const batchId = toAll ? randomUUID() : null;
     const tasks = await db.$transaction(
       categories.map((category) =>
         db.teacherTask.create({
@@ -92,6 +156,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             title: body.title,
             details,
             dueDate,
+            batchId,
             createdByUserId: userId,
           },
           select: taskSelect,

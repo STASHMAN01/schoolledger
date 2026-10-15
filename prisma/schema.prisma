@@ -1429,6 +1429,10 @@ model TeacherTask {
   acknowledgedByUserId String?
   completedAt          DateTime?
   completedByUserId    String?
+  // Shared by every copy made by one "All classes" assignment, so the Tasks
+  // page can show them as one row. Null for a single-class task and for
+  // tasks made before this existed (they stay ungrouped).
+  batchId              String?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category     Category     @relation(fields: [categoryId], references: [id])
@@ -1436,6 +1440,7 @@ model TeacherTask {
 
   @@index([organizationId, completedAt])
   @@index([categoryId, completedAt])
+  @@index([batchId])
   @@map("teacher_tasks")
 }
 

@@ -21,15 +21,17 @@ export function TaskPopup() {
   const isTeacher = role === "TEACHER";
   const [task, setTask] = useState<Task | null>(null);
   const [busy, setBusy] = useState(false);
+  const [today, setToday] = useState("");
 
   const check = useCallback(async () => {
     try {
-      const res = await fetch(`/api/organizations/${organizationId}/tasks`);
+      const res = await fetch(`/api/organizations/${organizationId}/tasks?unseen=1`);
       if (!res.ok) return;
       const data = await res.json();
-      const fresh = (data.tasks as Task[])
-        .filter((t) => !t.acknowledgedAt && !t.completedAt)
-        .sort((a, b) => a.id.localeCompare(b.id));
+      // The server sends the open, unopened tasks oldest first, whatever day
+      // they are due.
+      const fresh = (data.tasks as Task[]).filter((t) => !t.acknowledgedAt && !t.completedAt);
+      setToday(data.today ?? "");
       setTask(fresh[0] ?? null);
     } catch {
       // Offline: try again on the next tick.
@@ -55,6 +57,12 @@ export function TaskPopup() {
 
   if (!isTeacher || !task) return null;
 
+  // The Tasks page opens on today; a task due on a later day is found there.
+  const tasksHref =
+    task.dueDate && today && task.dueDate > today
+      ? `/dashboard/centre/tasks?date=${task.dueDate}`
+      : "/dashboard/centre/tasks";
+
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <Card className="animate-in max-h-[85dvh] w-full max-w-sm overflow-y-auto p-5 sm:p-6">
@@ -65,7 +73,7 @@ export function TaskPopup() {
         {task.details && <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{task.details}</p>}
         {task.dueDate && <p className="mt-2 text-sm text-muted-foreground">Due {task.dueDate}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          <Link href="/dashboard/centre/tasks" onClick={gotIt} className="self-center text-sm text-brand underline underline-offset-2">
+          <Link href={tasksHref} onClick={gotIt} className="self-center text-sm text-brand underline underline-offset-2">
             Open tasks
           </Link>
           <Button onClick={gotIt} disabled={busy}>

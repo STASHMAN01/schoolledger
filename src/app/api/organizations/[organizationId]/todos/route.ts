@@ -395,8 +395,17 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     // Tasks an admin assigned to this teacher's class and nobody has done.
     if (inCentre && role === "TEACHER" && assignedCategoryId && permissions.includes("VIEW_CENTRE")) {
+      // The Tasks page opens on today, so a task due on a later day is not
+      // counted until its day.
+      const taskOrg = await db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } });
+      const taskToday = schoolDateValue(schoolClock(taskOrg?.timezone ?? "Africa/Johannesburg").date);
       const open = await db.teacherTask.count({
-        where: { organizationId, categoryId: assignedCategoryId, completedAt: null },
+        where: {
+          organizationId,
+          categoryId: assignedCategoryId,
+          completedAt: null,
+          OR: [{ dueDate: null }, { dueDate: { lte: taskToday } }],
+        },
       });
       if (open > 0) {
         todos.push({
