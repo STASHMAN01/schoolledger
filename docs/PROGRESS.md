@@ -1149,3 +1149,12 @@ Schema change, NOT yet applied (needs Dylan's OK, then `npx prisma db push`). Ad
 ALTER TABLE "teacher_tasks" ADD COLUMN "batchId" TEXT;
 CREATE INDEX "teacher_tasks_batchId_idx" ON "teacher_tasks"("batchId");
 ```
+
+## Platform: school contact details for the owner (19 Oct 2026)
+
+Dylan asked to see the email addresses of schools that sign up so he can contact and help them. No schema change.
+
+- `/platform/organizations` (owner/platform-admin only, same `requirePlatformAdmin` gate) has a new Contact column: the person who signed up (the school's first ADMIN, name + clickable email, marked "not verified" if they never confirmed it), plus the school's own Settings contact name/email/phone if filled in. Phone has a call link and a WhatsApp link (South African 0xx numbers converted to 27xx).
+- Search now matches signup name/email and contact name/email as well as school and country.
+- "Copy emails (n)" copies every distinct email in the current filtered list, comma-separated, for pasting into Gmail's To/BCC. "Download CSV" exports the filtered list (school, who signed up, emails, phone, status, signup date, children count); cells starting with = + - @ are neutralised so Excel doesn't treat them as formulas.
+- `GET /api/platform/organizations` adds `signupName`, `signupEmail`, `signupEmailVerified`, `contactName`, `contactEmail`, `contactPhone`. Account-holder contact data only; still no children/parent rows.

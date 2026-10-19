@@ -20,6 +20,12 @@ type Org = {
   childrenCount: number;
   hasPaystackCustomer: boolean;
   purgeAfter: string | null;
+  signupName: string | null;
+  signupEmail: string | null;
+  signupEmailVerified: boolean;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
 };
 
 const planLabel: Record<Org["plan"], string> = {
@@ -62,6 +68,126 @@ function daysSince(iso: string) {
   if (days < 60) return `${days} days`;
   const months = Math.floor(days / 30);
   return `${months} mo`;
+}
+
+// Phone from Settings is free text ("082 123 4567", "+27 82 ..."). wa.me
+// wants international digits only, so a South African number written with
+// a leading 0 gets 27 in its place. Returns null when there's no usable number.
+function whatsAppHref(phone: string | null, countryCode: string): string | null {
+  if (!phone) return null;
+  let digits = phone.replace(/[^\d]/g, "");
+  if (countryCode === "ZA" && digits.length === 10 && digits.startsWith("0")) {
+    digits = `27${digits.slice(1)}`;
+  }
+  return digits.length >= 9 ? `https://wa.me/${digits}` : null;
+}
+
+// Every distinct email worth contacting for a school: the person who
+// signed up first, then the school's contact email if it's different.
+function emailsFor(org: Org): string[] {
+  const all = [org.signupEmail, org.contactEmail]
+    .filter((e): e is string => Boolean(e))
+    .map((e) => e.trim());
+  return all.filter((e, i) => all.findIndex((x) => x.toLowerCase() === e.toLowerCase()) === i);
+}
+
+function csvCell(value: string | number | null | undefined): string {
+  const text = value == null ? "" : String(value);
+  // Quote everything; neutralise a leading = + - @ so Excel doesn't run it.
+  const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(orgs: Org[]) {
+  const header = [
+    "School",
+    "Signed up by",
+    "Sign-up email",
+    "Email verified",
+    "Contact name",
+    "Contact email",
+    "Contact phone",
+    "Country",
+    "Status",
+    "Signed up",
+    "Children",
+  ];
+  const rows = orgs.map((o) => [
+    o.name,
+    o.signupName,
+    o.signupEmail,
+    o.signupEmailVerified ? "yes" : "no",
+    o.contactName,
+    o.contactEmail,
+    o.contactPhone,
+    o.countryName,
+    o.purgeAfter ? "deleted" : o.plan === "lifetime" ? "lifetime" : o.subscriptionStatus,
+    new Date(o.createdAt).toISOString().slice(0, 10),
+    o.childrenCount,
+  ]);
+  const csv = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `crechely-schools-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function ContactCell({ org }: { org: Org }) {
+  const wa = whatsAppHref(org.contactPhone, org.countryCode);
+  const extraEmail =
+    org.contactEmail && org.contactEmail.toLowerCase() !== org.signupEmail?.toLowerCase()
+      ? org.contactEmail
+      : null;
+  const extraName = org.contactName && org.contactName !== org.signupName ? org.contactName : null;
+
+  if (!org.signupEmail && !org.contactEmail && !org.contactPhone) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      {org.signupName && <span className="text-foreground">{org.signupName}</span>}
+      {org.signupEmail && (
+        <span className="flex flex-wrap items-center gap-1">
+          <a className="text-brand underline-offset-2 hover:underline" href={`mailto:${org.signupEmail}`}>
+            {org.signupEmail}
+          </a>
+          {!org.signupEmailVerified && (
+            <span className="text-xs text-muted-foreground">(not verified)</span>
+          )}
+        </span>
+      )}
+      {(extraName || extraEmail) && (
+        <span className="text-xs text-muted-foreground">
+          Contact: {extraName}
+          {extraName && extraEmail ? " · " : ""}
+          {extraEmail && (
+            <a className="text-brand underline-offset-2 hover:underline" href={`mailto:${extraEmail}`}>
+              {extraEmail}
+            </a>
+          )}
+        </span>
+      )}
+      {org.contactPhone && (
+        <span className="text-xs text-muted-foreground">
+          <a className="underline-offset-2 hover:underline" href={`tel:${org.contactPhone.replace(/\s+/g, "")}`}>
+            {org.contactPhone}
+          </a>
+          {wa && (
+            <>
+              {" · "}
+              <a className="text-brand underline-offset-2 hover:underline" href={wa} target="_blank" rel="noreferrer">
+                WhatsApp
+              </a>
+            </>
+          )}
+        </span>
+      )}
+    </div>
+  );
 }
 
 // One row's manual-override control: pick a status, apply it. Kept as its
@@ -143,6 +269,7 @@ export default function PlatformOrganizationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "paying" | "trial" | "past_due" | "canceled">("all");
+  const [copied, setCopied] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,13 +291,31 @@ export default function PlatformOrganizationsPage() {
 
   const searchLower = search.trim().toLowerCase();
   const visible = orgs.filter((o) => {
-    if (searchLower && !`${o.name} ${o.countryName}`.toLowerCase().includes(searchLower)) return false;
+    const haystack = [o.name, o.countryName, o.signupName, o.signupEmail, o.contactName, o.contactEmail]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (searchLower && !haystack.includes(searchLower)) return false;
     if (filter === "paying" && !o.isPaying) return false;
     if (filter === "trial" && !o.isTrialing) return false;
     if (filter === "past_due" && o.subscriptionStatus !== "past_due") return false;
     if (filter === "canceled" && o.subscriptionStatus !== "canceled") return false;
     return true;
   });
+
+  const visibleEmails = Array.from(
+    new Map(visible.flatMap(emailsFor).map((e) => [e.toLowerCase(), e])).values()
+  );
+
+  async function copyEmails() {
+    try {
+      await navigator.clipboard.writeText(visibleEmails.join(", "));
+      setCopied(`Copied ${visibleEmails.length} email${visibleEmails.length === 1 ? "" : "s"}`);
+    } catch {
+      setCopied("Couldn't copy — your browser blocked the clipboard.");
+    }
+    setTimeout(() => setCopied(null), 3000);
+  }
 
   return (
     <div className="animate-in">
@@ -180,7 +325,7 @@ export default function PlatformOrganizationsPage() {
         <Input
           className="max-w-xs"
           type="search"
-          placeholder="Search by name or country…"
+          placeholder="Search by school, name or email…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -195,7 +340,28 @@ export default function PlatformOrganizationsPage() {
           <option value="past_due">Past due</option>
           <option value="canceled">Canceled</option>
         </Select>
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={visibleEmails.length === 0}
+            onClick={copyEmails}
+          >
+            Copy emails ({visibleEmails.length})
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={visible.length === 0}
+            onClick={() => downloadCsv(visible)}
+          >
+            Download CSV
+          </Button>
+        </div>
       </div>
+      {copied && <p className="mb-4 text-sm text-muted-foreground">{copied}</p>}
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
@@ -205,10 +371,11 @@ export default function PlatformOrganizationsPage() {
         <p className="text-sm text-muted-foreground">No schools match.</p>
       ) : (
         <Card className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[960px] text-sm">
             <thead className="bg-background text-left text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 font-medium">School</th>
+                <th className="px-3 py-2 font-medium">Contact</th>
                 <th className="px-3 py-2 font-medium">Country</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">Signed up</th>
@@ -222,6 +389,9 @@ export default function PlatformOrganizationsPage() {
               {visible.map((o) => (
                 <tr key={o.id}>
                   <td className="px-3 py-2 text-foreground">{o.name}</td>
+                  <td className="px-3 py-2">
+                    <ContactCell org={o} />
+                  </td>
                   <td className="px-3 py-2 text-foreground">
                     {o.countryName} <span className="text-muted-foreground">({o.countryCode})</span>
                   </td>
