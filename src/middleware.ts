@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { edgeAuth as auth } from "@/lib/authEdge";
 import { REQUEST_METHOD_HEADER, REQUEST_PATH_HEADER } from "@/lib/requestMethod";
 // The list of session-free paths lives in its own module so it can be
 // unit-tested without booting NextAuth -- see src/lib/publicPaths.test.ts.

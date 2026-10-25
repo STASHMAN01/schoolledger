@@ -1,8 +1,7 @@
-import type { Prisma } from "@prisma/client";
+import type { Tx } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { sweepCreditIntoOutstanding } from "@/lib/billing/financialPlan";
 
-type Tx = Prisma.TransactionClient;
 
 /**
  * Which children an Event charges: every active child (not archived,

@@ -1,6 +1,5 @@
-import type { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, type Tx } from "@/lib/db";
 import { contentTypeOf, documentTypeDef, documentUploadSchema, normaliseRequired } from "@/lib/documents";
 
 // Documents parents upload through an online form (Dylan, 30 Sept 2026).
@@ -97,7 +96,7 @@ export function uncoveredRequirements(
 }
 
 /** Attach the uploads to the submission; false if any were taken meanwhile. */
-export async function attachStaged(tx: Prisma.TransactionClient, docs: Staged[], submissionId: string) {
+export async function attachStaged(tx: Tx, docs: Staged[], submissionId: string) {
   if (docs.length === 0) return true;
   const { count } = await tx.childDocument.updateMany({
     where: { id: { in: docs.map((d) => d.id) }, status: "PENDING", submissionId: null },
@@ -111,7 +110,7 @@ export async function attachStaged(tx: Prisma.TransactionClient, docs: Staged[],
  * IDs linked to the guardians just created (same order as submitted).
  */
 export async function activateSubmissionDocuments(
-  tx: Prisma.TransactionClient,
+  tx: Tx,
   submissionId: string,
   childId: string,
   createdGuardianIds: string[]
