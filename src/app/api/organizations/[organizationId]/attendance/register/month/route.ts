@@ -5,26 +5,29 @@ import { handleApiError } from "@/lib/apiError";
 import { isMonthKey } from "@/lib/files";
 import { loadMonthlyRegister } from "@/lib/attendanceMonth";
 import { weekdaysOfMonth } from "@/lib/attendanceRegisterPdf";
+import { resolveAttendanceScope } from "@/lib/attendanceScope";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
 // The Attendance page's "Monthly register" view (Dylan, 15 Oct 2026): the
 // same children and marks as the printable PDF, as JSON, so the office can
-// look through a month on screen before downloading it. Office staff only
-// -- a TEACHER isn't on the allowlist for this route and is refused here too.
+// look through a month on screen before downloading it. Teachers can see
+// their own class's past registers too (Dylan, 3 Nov 2026): for a TEACHER
+// the categoryId is ignored and their assigned class is used instead.
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { organizationId } = await params;
-    const { role } = await requireMembership(organizationId, "MANAGE_ATTENDANCE");
-    if (role === "TEACHER") {
-      return NextResponse.json({ error: "Not allowed for your role." }, { status: 403 });
-    }
+    const { role, assignedCategoryId } = await requireMembership(organizationId, "MANAGE_ATTENDANCE");
 
-    const categoryId = req.nextUrl.searchParams.get("categoryId");
     const month = req.nextUrl.searchParams.get("month");
-    if (!categoryId || !isMonthKey(month)) {
+    const scope = resolveAttendanceScope(role, assignedCategoryId, req.nextUrl.searchParams.get("categoryId"));
+    if (scope.mode === "none") {
+      return NextResponse.json({ error: "No class assigned yet." }, { status: 400 });
+    }
+    if (scope.mode === "all" || !isMonthKey(month)) {
       return NextResponse.json({ error: "categoryId and month (YYYY-MM) are required." }, { status: 400 });
     }
+    const categoryId = scope.categoryId;
 
     const category = await db.category.findFirst({
       where: { id: categoryId, organizationId, deletedAt: null },
@@ -36,6 +39,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     const days = weekdaysOfMonth(month);
 
     return NextResponse.json({
+      categoryId: category.id,
       className: category.name,
       month,
       days,

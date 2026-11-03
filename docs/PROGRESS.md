@@ -1158,3 +1158,12 @@ Dylan asked to see the email addresses of schools that sign up so he can contact
 - Search now matches signup name/email and contact name/email as well as school and country.
 - "Copy emails (n)" copies every distinct email in the current filtered list, comma-separated, for pasting into Gmail's To/BCC. "Download CSV" exports the filtered list (school, who signed up, emails, phone, status, signup date, children count); cells starting with = + - @ are neutralised so Excel doesn't treat them as formulas.
 - `GET /api/platform/organizations` adds `signupName`, `signupEmail`, `signupEmailVerified`, `contactName`, `contactEmail`, `contactPhone`. Account-holder contact data only; still no children/parent rows.
+
+## Attendance: past registers, 2-school-day edit window (3 Nov 2026)
+
+Dylan: admins and teachers can look at past registers as documents, but can only edit the last 2 days. No schema change.
+
+- One rule for everyone (admins, teachers, managers, receptionists): a register can be saved for today and the 2 school days before it. Weekends are skipped, so on a Monday that's Monday, Friday and Thursday; on a weekend it's the last two school days. Older and future days are refused by `POST /attendance/register` (403, "This register is locked..."). This replaces the 4 Oct rule "teachers today only, admins any day". Logic and tests: `src/lib/attendanceEditWindow.ts`.
+- Daily register now has a day picker (‹ previous school day, date input capped at today, › next, Today). `?date=YYYY-MM-DD` keeps the day in the URL. `GET /attendance/register` also returns `today`, `editable` and `taken`.
+- Locked days are read-only: no Save, rows aren't tappable, children with no mark show "Not marked" instead of defaulting to Present, and a note links to the monthly view/PDF. An editable past day that was never taken starts everyone on Present with a note saying so.
+- Teachers now get the Monthly register tab and PDF download for their own class: `GET /attendance/register/month` and `/attendance/register/pdf` added to the teacher allowlist; the month route forces a teacher's assigned class (ignores `categoryId`) and returns `categoryId` so the page can build the PDF link. Jumping from an old day to the month view opens that day's month (`?view=month&month=YYYY-MM`).

@@ -7,12 +7,15 @@ import { handleApiError } from "@/lib/apiError";
 import { resolveAttendanceScope } from "@/lib/attendanceScope";
 import { todayInTimeZone } from "@/lib/date";
 import { isWeekendDate } from "@/lib/lessonPlan";
+import { canEditRegister, REGISTER_EDIT_PAST_SCHOOL_DAYS } from "@/lib/attendanceEditWindow";
 
 type Params = { params: Promise<{ organizationId: string }> };
 
 // The "take the register" page's data source: every currently-enrolled
 // child in one class, plus whatever attendance status (if any) is already
-// on file for the requested date. A TEACHER's own class always wins over
+// on file for the requested date. Any date can be viewed (past registers,
+// Dylan 3 Nov 2026); `editable` says whether it can still be saved -- see
+// src/lib/attendanceEditWindow.ts. A TEACHER's own class always wins over
 // whatever categoryId the client asked for, same override rule as the
 // children GET route.
 export async function GET(req: NextRequest, { params }: Params) {
@@ -47,7 +50,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const [children, records] = await Promise.all([
+    const [children, records, org] = await Promise.all([
       db.child.findMany({
         where: {
           organizationId,
@@ -63,12 +66,21 @@ export async function GET(req: NextRequest, { params }: Params) {
         where: { organizationId, date, child: { categoryId: scope.categoryId } },
         select: { childId: true, status: true, notifiedAt: true },
       }),
+      db.organization.findUnique({ where: { id: organizationId }, select: { timezone: true } }),
     ]);
+
+    const today = todayInTimeZone(org?.timezone ?? "Africa/Johannesburg");
+    const dateKey = date.toISOString().slice(0, 10);
 
     const byChildId = new Map(records.map((r) => [r.childId, r]));
 
     return NextResponse.json({
       category,
+      date: dateKey,
+      today,
+      editable: canEditRegister(dateKey, today),
+      // True once anyone has saved this class's register for this date.
+      taken: records.length > 0,
       children: children.map((c) => ({
         ...c,
         status: byChildId.get(c.id)?.status ?? null,
@@ -105,20 +117,22 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "There is no school on weekends, so no register to take." }, { status: 400 });
     }
 
-    // Teachers can fix today's register but not earlier days (Dylan,
-    // 4 Oct 2026). "Today" is the school's own date, not the server's.
-    if (role === "TEACHER") {
-      const org = await db.organization.findUnique({
-        where: { id: organizationId },
-        select: { timezone: true },
-      });
-      const today = todayInTimeZone(org?.timezone ?? "Africa/Johannesburg");
-      if (body.date.toISOString().slice(0, 10) !== today) {
-        return NextResponse.json(
-          { error: "You can only mark today's register. Ask an admin to change an earlier day." },
-          { status: 403 }
-        );
-      }
+    // Everyone -- admins and teachers -- can change today's register and
+    // the 2 school days before it, never older or future days (Dylan,
+    // 3 Nov 2026; replaces the 4 Oct "teachers: today only" rule). "Today"
+    // is the school's own date, not the server's.
+    const org = await db.organization.findUnique({
+      where: { id: organizationId },
+      select: { timezone: true },
+    });
+    const today = todayInTimeZone(org?.timezone ?? "Africa/Johannesburg");
+    if (!canEditRegister(body.date.toISOString().slice(0, 10), today)) {
+      return NextResponse.json(
+        {
+          error: `This register is locked. Registers can only be changed for today and the ${REGISTER_EDIT_PAST_SCHOOL_DAYS} school days before it.`,
+        },
+        { status: 403 }
+      );
     }
 
     const category = await db.category.findFirst({

@@ -11,6 +11,8 @@ describe("teacherMayCall", () => {
     expect(teacherMayCall("GET", api("/children/abc123"))).toBe(true);
     expect(teacherMayCall("GET", api("/attendance/register"))).toBe(true);
     expect(teacherMayCall("POST", api("/attendance/register"))).toBe(true);
+    expect(teacherMayCall("GET", api("/attendance/register/month"))).toBe(true);
+    expect(teacherMayCall("GET", api("/attendance/register/pdf"))).toBe(true);
     expect(teacherMayCall("GET", api("/schedule"))).toBe(true);
     expect(teacherMayCall("POST", api("/reports"))).toBe(true);
     expect(teacherMayCall("GET", api("/reports/r1/pdf"))).toBe(true);

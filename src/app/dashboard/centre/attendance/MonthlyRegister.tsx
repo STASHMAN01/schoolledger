@@ -4,6 +4,8 @@
 // class and a month, sees every child in that class against every school
 // day (P / A, blank = register not taken), and downloads the same thing as
 // the printable PDF that Files > Attendance registers has always opened.
+// Teachers get it too for their own class (Dylan, 3 Nov 2026): with
+// ownClassOnly there's no class picker and the API picks their class.
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, EmptyState, Select } from "@/components/ui";
 import { canShareFiles, sharePdfFromUrl } from "@/lib/sharePdf";
@@ -18,6 +20,7 @@ type Row = {
   absent: number;
 };
 type MonthData = {
+  categoryId: string;
   className: string;
   month: string;
   days: number[];
@@ -60,14 +63,20 @@ export function MonthlyRegister({
   categories,
   categoryId,
   onCategoryChange,
+  ownClassOnly = false,
+  initialMonth,
 }: {
   organizationId: string;
   categories: Category[];
   categoryId: string;
   onCategoryChange: (id: string) => void;
+  ownClassOnly?: boolean;
+  initialMonth?: string;
 }) {
   const months = useMemo(() => recentMonths(), []);
-  const [month, setMonth] = useState(months[0]);
+  const [month, setMonth] = useState(
+    initialMonth && months.includes(initialMonth) ? initialMonth : months[0],
+  );
   const [data, setData] = useState<MonthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -80,12 +89,12 @@ export function MonthlyRegister({
   }, []);
 
   useEffect(() => {
-    if (!categoryId) return;
+    if (!categoryId && !ownClassOnly) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       setError("");
-      const qs = new URLSearchParams({ categoryId, month });
+      const qs = new URLSearchParams(ownClassOnly ? { month } : { categoryId, month });
       const res = await fetch(
         `/api/organizations/${organizationId}/attendance/register/month?${qs}`,
       );
@@ -102,12 +111,15 @@ export function MonthlyRegister({
     return () => {
       cancelled = true;
     };
-  }, [organizationId, categoryId, month]);
+  }, [organizationId, categoryId, month, ownClassOnly]);
+
+  // The class the PDF is for: a teacher's comes back from the API.
+  const pdfCategoryId = ownClassOnly ? (data?.categoryId ?? "") : categoryId;
 
   const pdfUrl = (download: boolean) =>
     `/api/organizations/${organizationId}/attendance/register/pdf?${new URLSearchParams(
       {
-        categoryId,
+        categoryId: pdfCategoryId,
         month,
         ...(download ? { download: "1" } : {}),
       },
@@ -131,6 +143,7 @@ export function MonthlyRegister({
   return (
     <div>
       <Card as="div" className="mb-4 flex flex-wrap items-end gap-3 p-4">
+        {!ownClassOnly && (
         <div className="min-w-40 flex-1 sm:flex-none">
           <label className="mb-1 block text-xs font-medium text-muted-foreground">
             Class
@@ -149,6 +162,7 @@ export function MonthlyRegister({
             ))}
           </Select>
         </div>
+        )}
         <div className="min-w-40 flex-1 sm:flex-none">
           <label className="mb-1 block text-xs font-medium text-muted-foreground">
             Month
@@ -161,7 +175,7 @@ export function MonthlyRegister({
             ))}
           </Select>
         </div>
-        {categoryId && (
+        {pdfCategoryId && (
           <div className="flex items-center gap-4">
             <a
               href={pdfUrl(true)}
@@ -197,7 +211,7 @@ export function MonthlyRegister({
         </p>
       )}
 
-      {!categoryId ? (
+      {!categoryId && !ownClassOnly ? (
         <EmptyState
           title="No class selected"
           description="Pick a class above to see its register."

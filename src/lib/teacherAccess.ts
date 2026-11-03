@@ -30,7 +30,9 @@ const ALLOWED: [string, RegExp][] = [
   ["GET", /^\/children$/], // own class, trimmed by serializeChildForTeacher
   ["GET", new RegExp(`^/children/${ID}$`)], // same
   ["GET", /^\/attendance\/register$/],
-  ["POST", /^\/attendance\/register$/], // same-day only, checked in the route
+  ["POST", /^\/attendance\/register$/], // today + 2 school days back, checked in the route
+  ["GET", /^\/attendance\/register\/month$/], // own class only, forced in the route
+  ["GET", /^\/attendance\/register\/pdf$/], // own class only, checked in the route
   ["GET", /^\/attendance\/summary$/],
   ["GET", /^\/events\/upcoming$/],
   ["GET", /^\/schedule$/],
